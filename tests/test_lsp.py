@@ -33,7 +33,7 @@ def test_text_document_did_open(client_server):
     )
     sleep(CALL_TIMEOUT)
 
-    assert len(server.lsp.workspace.documents) == 1
+    assert len(server.lsp.workspace.text_documents) == 1
     assert "Validating CP2K input..." in client.msgs[0].message
     assert client.diagnostics is not None and not client.diagnostics, "Diagnostics is not empty as expected"
 
@@ -53,8 +53,8 @@ def test_text_document_did_open_error(client_server):
     sleep(CALL_TIMEOUT)
 
     assert (
-        len(server.lsp.workspace.documents) == 1
-    ), f"More than one document open: {', '.join(server.lsp.workspace.documents.keys())}"
+        len(server.lsp.workspace.text_documents) == 1
+    ), f"More than one document open: {', '.join(server.lsp.workspace.text_documents.keys())}"
     assert "Validating CP2K input..." in client.msgs[0].message
     assert "Syntax error: unterminated string detected" in client.diagnostics[0].message
 
