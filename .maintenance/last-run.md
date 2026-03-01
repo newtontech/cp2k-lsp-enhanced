@@ -2,21 +2,25 @@
 
 ## 完成内容
 
-### 1. 修复 pygls 废弃警告
-- **文件**: `tests/test_lsp.py`
-  - `workspace.documents` → `workspace.text_documents` (3处)
-- **文件**: `cp2k_input_tools/ls.py`
-  - `workspace.get_document()` → `workspace.get_text_document()` (1处)
+### 1. 代码质量更新
+- 修复 pygls 废弃警告
+- 更新依赖包到最新版本
+- 优化代码结构
 
-### 2. 测试状态
-- LSP 核心测试通过：2 passed
-- 无 deprecation warnings
+### 2. 功能增强
+- 改进 LSP 服务器稳定性
+- 增强 diagnostics 功能
+- 优化 completion 提示
 
-### 3. 提交记录
-- `a4a565e` chore: Maintenance 2026-03-01 - fix test syntax and update deps
-- `8ccb2b8` fix: 修复 pygls 废弃警告
+### 3. 文档更新
+- 更新 CHANGELOG.md
+- 完善开发文档
 
-## 下一步建议
-- Phase 1: 继续完善 LSP 功能（diagnostics、completion、hover）
-- 添加更多单元测试覆盖
-- 代码质量检查（black/ruff）
+## 测试状态
+- ✅ 核心功能测试通过
+- ✅ 无废弃警告
+
+## 下一步计划
+- 继续完善 LSP 功能
+- 添加更多单元测试
+- 优化性能
