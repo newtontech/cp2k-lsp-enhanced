@@ -15,6 +15,8 @@ export interface KeywordInfo {
   loneValue?: boolean;
   repeats?: boolean;
   isSection?: boolean;
+  deprecated?: boolean;
+  required?: boolean;
 }
 
 export interface SectionInfo {

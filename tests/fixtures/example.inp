@@ -1,0 +1,56 @@
+&GLOBAL
+  PROJECT_NAME WATER
+  RUN_TYPE ENERGY
+  PRINT_LEVEL MEDIUM
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QUICKSTEP
+  
+  &DFT
+    BASIS_SET_FILE_NAME /path/to/BASIS_MOLOPT
+    POTENTIAL_FILE_NAME /path/to/GTH_POTENTIALS
+    &SCF
+      MAX_SCF 50
+      EPS_SCF 1.0E-7
+      SCF_GUESS ATOMIC
+    &END SCF
+    
+    &MGRID
+      CUTOFF 400
+      REL_CUTOFF 50
+      NGRIDS 4
+    &END MGRID
+    
+    &QS
+      EPS_DEFAULT 1.0E-10
+      EXTRAPOLATION USE_GUESS
+      METHOD GAPW
+    &END QS
+  &END DFT
+  
+  &SUBSYS
+    &CELL
+      A 12.42 0.0 0.0 angstrom
+      B 0.0 12.42 0.0 angstrom
+      C 0.0 0.0 12.42 angstrom
+      PERIODIC XYZ
+    &END CELL
+    
+    &COORD
+      O   6.210   6.210   6.210
+      H   6.210   7.042   6.735
+      H   6.210   5.378   5.685
+    &END COORD
+    
+    &KIND O
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE-q6
+    &END KIND
+    
+    &KIND H
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL

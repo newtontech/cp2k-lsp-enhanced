@@ -1,0 +1,19 @@
+&GLOBAL
+  PROJECT_NAME TEST
+  RUN_TYPE INVALID_VALUE  ${}  Unbalanced bracket [
+  UNKNOWN_KEYWORD TEST
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QUICSTEP  ${}  Typo: should be QUICKSTEP
+  
+  &SUBSYS
+    &KIND O
+      BASIS_SET INVALID_BASIS
+    &END KIND
+    
+    &KIND H
+      MASS abc  ${}  Invalid value (should be number)
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL

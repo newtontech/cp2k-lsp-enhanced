@@ -1,7 +1,25 @@
+/**
+ * Completion Provider Tests
+ */
+
 import { CompletionProvider } from '../src/features/completion';
 import { KeywordDatabase } from '../src/data/keyword-database';
+import { SchemaParser } from '../src/data/schema-parser';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Position } from 'vscode-languageserver/node';
+import { Position, CompletionItemKind } from 'vscode-languageserver/node';
+
+const createMockDocument = (content: string): TextDocument => {
+  return {
+    uri: 'file:///test/test.inp',
+    languageId: 'cp2k',
+    version: 1,
+    getText: () => content,
+    getTextInRange: () => content,
+    lineCount: content.split('\n').length,
+    positionAt: (offset: number) => ({ line: 0, character: offset }),
+    offsetAt: (position) => position.character,
+  } as TextDocument;
+};
 
 describe('CompletionProvider', () => {
   let provider: CompletionProvider;
@@ -12,45 +30,216 @@ describe('CompletionProvider', () => {
     provider = new CompletionProvider(keywordDb);
   });
 
-  function createDocument(content: string): TextDocument {
-    return TextDocument.create('test://test.inp', 'cp2k', 1, content);
-  }
-
-  describe('Section completion', () => {
-    it('should complete sections when typing &', () => {
-      const doc = createDocument('&GLO');
-      const position: Position = { line: 0, character: 4 };
-      
-      const items = provider.provideCompletionItems(doc, position);
-      
-      const globalSection = items.find(item => item.label === 'GLOBAL');
-      expect(globalSection).toBeDefined();
-      expect(globalSection?.kind).toBe(7); // CompletionItemKind.Class
+  describe('Basic functionality', () => {
+    test('should create provider instance', () => {
+      expect(provider).toBeDefined();
     });
 
-    it('should include section description', () => {
-      const doc = createDocument('&GLO');
-      const position: Position = { line: 0, character: 4 };
+    test('should provide completion items', () => {
+      const document = createMockDocument('TES');
+      const position = Position.create(0, 3);
+      const items = provider.provideCompletionItems(document, position);
       
-      const items = provider.provideCompletionItems(doc, position);
-      const globalSection = items.find(item => item.label === 'GLOBAL');
+      expect(Array.isArray(items)).toBe(true);
+    });
+
+    test('should respect max items limit', () => {
+      const document = createMockDocument('TEST');
+      const position = Position.create(0, 4);
       
-      expect(globalSection?.documentation).toBeDefined();
+      const providerLimited = new CompletionProvider(keywordDb, undefined, { maxItems: 5 });
+      const items = providerLimited.provideCompletionItems(document, position);
+      
+      expect(items.length).toBeLessThanOrEqual(5);
+    });
+  });
+
+  describe('Section completion', () => {
+    test('should provide section completions starting with &', () => {
+      const document = createMockDocument('&GLO');
+      const position = Position.create(0, 4);
+      const items = provider.provideCompletionItems(document, position);
+      
+      expect(items.length).toBeGreaterThan(0);
+      
+      // Should have GLOBAL section
+      const hasGlobal = items.some(item => 
+        item.label === 'GLOBAL' && 
+        item.kind === CompletionItemKind.Class
+      );
+      expect(hasGlobal).toBe(true);
+    });
+
+    test('should provide all sections when & is present', () => {
+      const document = createMockDocument('&');
+      const position = Position.create(0, 1);
+      const items = provider.provideCompletionItems(document, position);
+      
+      expect(items.length).toBeGreaterThan(0);
+      
+      // All should be sections
+      const allSections = items.every(item => item.kind === CompletionItemKind.Class);
+      expect(allSections).toBe(true);
+    });
+
+    test('should provide snippet for sections', () => {
+      const document = createMockDocument('&GLOBAL');
+      const position = Position.create(0, 7);
+      const items = provider.provideCompletionItems(document, position);
+      
+      const globalItem = items.find(item => item.label === 'GLOBAL');
+      expect(globalItem?.insertText).toContain('&END GLOBAL');
     });
   });
 
   describe('Keyword completion', () => {
-    it('should provide completions', () => {
-      const doc = createDocument(`
+    test('should provide keywords at line start', () => {
+      const document = createMockDocument('PRO');
+      const position = Position.create(0, 3);
+      const items = provider.provideCompletionItems(document, position);
+      
+      expect(items.length).toBeGreaterThan(0);
+      
+      // Should have PROJECT_NAME
+      const hasProjectName = items.some(item => 
+        item.label === 'PROJECT_NAME' &&
+        item.kind === CompletionItemKind.Property
+      );
+      expect(hasProjectName).toBe(true);
+    });
+
+    test('should provide keywords in section context', () => {
+      const document = createMockDocument(`
 &GLOBAL
   PRO
 &END GLOBAL
-      `);
-      const position: Position = { line: 1, character: 6 };
+      `.trim());
+      const position = Position.create(1, 4);
+      const items = provider.provideCompletionItems(document, position);
       
-      const items = provider.provideCompletionItems(doc, position);
+      const hasProjectName = items.some(item => 
+        item.label === 'PROJECT_NAME'
+      );
+      expect(hasProjectName).toBe(true);
+    });
+
+    test('should provide section-specific keywords', () => {
+      const document = createMockDocument(`
+&DFT
+  MAX_
+&END DFT
+      `.trim());
+      const position = Position.create(1, 4);
+      const items = provider.provideCompletionItems(document, position);
+      
+      // MAX_SCF is in SCF section, not DFT
+      // But should still provide some keywords
+      expect(items.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Value completion', () => {
+    test('should provide enum values for RUN_TYPE', () => {
+      const document = createMockDocument('RUN_TYPE ENE');
+      const position = Position.create(0, 12);
+      const items = provider.provideCompletionItems(document, position);
       
       expect(items.length).toBeGreaterThan(0);
+      
+      // Should have ENERGY
+      const hasEnergy = items.some(item => 
+        item.label === 'ENERGY' &&
+        item.kind === CompletionItemKind.EnumMember
+      );
+      expect(hasEnergy).toBe(true);
+    });
+
+    test('should provide boolean values for LOGICAL keywords', () => {
+      const document = createMockDocument('MAP_CONSISTENT T');
+      const position = Position.create(0, 18);
+      const items = provider.provideCompletionItems(document, position);
+      
+      // Should provide TRUE, FALSE, etc.
+      const hasTrue = items.some(item => 
+        ['TRUE', '.TRUE.'].includes(item.label)
+      );
+      expect(hasTrue).toBe(true);
+    });
+  });
+
+  describe('Unit completion', () => {
+    test('should provide units after numbers', () => {
+      const document = createMockDocument('CUTOFF 400 an');
+      const position = Position.create(0, 12);
+      const items = provider.provideCompletionItems(document, position);
+      
+      expect(items.length).toBeGreaterThan(0);
+      
+      // Should have angstrom
+      const hasAngstrom = items.some(item => 
+        item.label === 'angstrom' &&
+        item.kind === CompletionItemKind.Unit
+      );
+      expect(hasAngstrom).toBe(true);
+    });
+
+    test('should provide various unit types', () => {
+      const document = createMockDocument('TIMESTEP 1.0');
+      const position = Position.create(0, 12);
+      const items = provider.provideCompletionItems(document, position);
+      
+      // Should have time units
+      const hasTimeUnit = items.some(item => 
+        ['fs', 'ps', 's'].includes(item.label)
+      );
+      expect(hasTimeUnit).toBe(true);
+    });
+  });
+
+  describe('Context awareness', () => {
+    test('should detect current section', () => {
+      const document = createMockDocument(`
+&GLOBAL
+  TEST
+&END GLOBAL
+
+&FORCE_EVAL
+  SUBSYS
+&END SUBSYS
+&END FORCE_EVAL
+      `.trim());
+      
+      // Position inside GLOBAL section
+      const globalPos = Position.create(1, 4);
+      const items1 = provider.provideCompletionItems(document, globalPos);
+      expect(items1.length).toBeGreaterThan(0);
+      
+      // Position inside FORCE_EVAL section
+      const fePos = Position.create(5, 4);
+      const items2 = provider.provideCompletionItems(document, fePos);
+      expect(items2.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Documentation', () => {
+    test('should resolve completion item', () => {
+      const item: any = {
+        label: 'GLOBAL',
+        kind: CompletionItemKind.Class
+      };
+      
+      const resolved = provider.resolveCompletionItem(item);
+      expect(resolved).toBeDefined();
+      expect(resolved.documentation).toBeDefined();
+    });
+
+    test('should provide documentation for keywords', () => {
+      const document = createMockDocument('PROJECT');
+      const position = Position.create(0, 7);
+      const items = provider.provideCompletionItems(document, position);
+      
+      const projectName = items.find(item => item.label === 'PROJECT_NAME');
+      expect(projectName?.detail).toBeDefined();
     });
   });
 });
