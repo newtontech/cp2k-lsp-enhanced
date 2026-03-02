@@ -102,7 +102,7 @@ src/
 
 ## Testing
 
-The project includes comprehensive unit tests with 74%+ coverage:
+The project includes comprehensive unit tests with 78%+ coverage:
 
 ```bash
 # Run all tests
@@ -124,9 +124,9 @@ npm run test:watch
 | definition.ts | 95.2% |
 | formatting.ts | 93.3% |
 | hover.ts | 90.6% |
-| cp2k-parser.ts | 91.4% |
-| completion.ts | 71.4% |
-| **Overall** | **74.1%** |
+| cp2k-parser.ts | 94.6% |
+| completion.ts | 82.5% |
+| **Overall** | **78.4%** |
 
 ## LSP Features
 
