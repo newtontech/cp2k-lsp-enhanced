@@ -108,10 +108,15 @@ export class SchemaParser {
         stderr += data.toString();
       });
 
-      proc.on('error', (err) => {
+      proc.on('error', (err: any) => {
         if (!resolved) {
           resolved = true;
-          reject(new Error(`Failed to spawn CP2K: ${err.message}`));
+          // Return empty schema if CP2K is not available
+          if (err && (err.code === 'ENOENT' || err.code === 'EACCES')) {
+            resolve(this.getEmptySchema());
+          } else {
+            reject(new Error(`Failed to spawn CP2K: ${err?.message || 'Unknown error'}`));
+          }
         }
       });
 

@@ -77,6 +77,9 @@ export class DiagnosticsProvider {
     const semanticDiagnostics = this.validateDocument(textDocument, parsed);
     diagnostics = diagnostics.concat(semanticDiagnostics);
     
+    // Check required sections (always, not just with schema)
+    this.checkRequiredSections(parsed, diagnostics);
+    
     // Add type checking
     const typeDiagnostics = this.validateTypes(textDocument, parsed);
     diagnostics = diagnostics.concat(typeDiagnostics);
@@ -97,6 +100,8 @@ export class DiagnosticsProvider {
     callback: (diagnostics: Diagnostic[]) => void
   ): Promise<void> {
     if (!this.options.enableDeepValidation || !this.deepValidator) {
+      // Callback should be called even if deep validation is not enabled
+      callback([]);
       return;
     }
 

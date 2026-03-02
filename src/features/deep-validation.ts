@@ -173,6 +173,9 @@ export class DeepValidationProvider {
 
         proc.on('error', (err) => {
           console.error('CP2K validation error:', err);
+          if (onDiagnostics) {
+            onDiagnostics([]);
+          }
           resolveOnce([]);
         });
 

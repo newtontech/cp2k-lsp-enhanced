@@ -9,14 +9,49 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
 
 const createMockDocument = (content: string): TextDocument => {
+  const lines = content.split('\n');
   return {
     uri: 'file:///test/test.inp',
     languageId: 'cp2k',
     version: 1,
-    getText: () => content,
-    lineCount: content.split('\n').length,
-    positionAt: (offset: number) => ({ line: 0, character: offset }),
-    offsetAt: (position) => position.character,
+    getText: (range?: any) => {
+      if (!range) return content;
+      const startLine = range.start.line;
+      const endLine = range.end.line;
+      const startChar = range.start.character;
+      const endChar = range.end.character;
+      
+      if (startLine === endLine) {
+        return lines[startLine].substring(startChar, endChar);
+      }
+      
+      let result = lines[startLine].substring(startChar);
+      for (let i = startLine + 1; i < endLine; i++) {
+        result += '\n' + lines[i];
+      }
+      if (endLine < lines.length) {
+        result += '\n' + lines[endLine].substring(0, endChar);
+      }
+      return result;
+    },
+    lineCount: lines.length,
+    positionAt: (offset: number) => {
+      let currentOffset = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (currentOffset + lines[i].length >= offset) {
+          return { line: i, character: offset - currentOffset };
+        }
+        currentOffset += lines[i].length + 1;
+      }
+      return { line: 0, character: offset };
+    },
+    offsetAt: (position: any) => {
+      let offset = 0;
+      for (let i = 0; i < position.line && i < lines.length; i++) {
+        offset += lines[i].length + 1;
+      }
+      return offset + Math.min(position.character, lines[position.line]?.length || 0);
+    },
   } as TextDocument;
 };
 

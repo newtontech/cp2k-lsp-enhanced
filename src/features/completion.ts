@@ -66,20 +66,20 @@ export class CompletionProvider {
       return this.provideSectionCompletion(trimmed);
     }
     
+    // Unit completion (after numbers) - check before keyword value completion
+    if (this.options.enableUnitCompletion) {
+      const unitMatch = lineBeforeCursor.match(/\d+\s*([A-Za-z]*)$/);
+      if (unitMatch) {
+        return this.provideUnitCompletion(unitMatch[1]);
+      }
+    }
+    
     // Keyword value completion (KEYWORD <value>)
     const keywordMatch = lineBeforeCursor.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s+(.*)$/);
     if (keywordMatch) {
       const keywordName = keywordMatch[1].toUpperCase();
       const valuePrefix = keywordMatch[2];
       return this.provideValueCompletion(keywordName, valuePrefix);
-    }
-    
-    // Unit completion (after numbers)
-    if (this.options.enableUnitCompletion) {
-      const unitMatch = lineBeforeCursor.match(/\d+\s*([A-Za-z]*)$/);
-      if (unitMatch) {
-        return this.provideUnitCompletion(unitMatch[1]);
-      }
     }
     
     // Default: keyword completion
@@ -307,22 +307,34 @@ export class CompletionProvider {
    */
   resolveCompletionItem(item: CompletionItem): CompletionItem {
     // Add additional documentation if needed
+    // First try as section (with or without &)
+    let sectionName = item.label.toUpperCase();
     if (item.label.startsWith('&')) {
-      const sectionName = item.label.substring(1).toUpperCase();
+      sectionName = item.label.substring(1).toUpperCase();
+    }
+    
+    // Check if it's a section (by kind or by lookup)
+    const isSection = item.kind === CompletionItemKind.Class || 
+                      item.kind === CompletionItemKind.Module ||
+                      this.keywordDb.getSection(sectionName);
+    
+    if (isSection) {
       const section = this.schemaParser?.getSection(sectionName) || 
                       this.keywordDb.getSection(sectionName);
       if (section) {
         item.documentation = this.formatSectionDocumentation(section);
+        return item;
       }
-    } else {
-      const keyword = this.schemaParser?.getKeyword(item.label) ||
-                      this.keywordDb.getKeyword(item.label);
-      if (keyword) {
-        const kwInfo = this.isSchemaKeyword(keyword)
-          ? this.convertSchemaKeyword(keyword as SchemaKeyword)
-          : keyword as KeywordInfo;
-        item.documentation = this.formatKeywordDocumentation(kwInfo);
-      }
+    }
+    
+    // Try as keyword
+    const keyword = this.schemaParser?.getKeyword(item.label) ||
+                    this.keywordDb.getKeyword(item.label);
+    if (keyword) {
+      const kwInfo = this.isSchemaKeyword(keyword)
+        ? this.convertSchemaKeyword(keyword as SchemaKeyword)
+        : keyword as KeywordInfo;
+      item.documentation = this.formatKeywordDocumentation(kwInfo);
     }
     
     return item;
