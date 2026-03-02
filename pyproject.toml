@@ -66,3 +66,46 @@ html_docs = "make html -C docs"
 [build-system]
 requires = ["poetry>=1"]
 build-backend = "poetry.masonry.api"
+
+# Pytest and Coverage configuration - 100% coverage requirement
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=cp2k_input_tools --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=100 -v"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["cp2k_input_tools"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "pass",
+    "\.\.\."
+]
+fail_under = 100
+
+# isort configuration
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true

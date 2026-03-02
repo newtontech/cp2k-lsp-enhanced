@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: |
+        poetry install --with dev --extras "yaml lsp"
+
+    - name: Run pre-commit hooks
+      run: |
+        poetry run pre-commit run --all-files
+
+    - name: Run tests with 100% coverage
+      run: |
+        poetry run pytest --cov=cp2k_input_tools --cov-report=term-missing --cov-report=html --cov-fail-under=100
+
+    - name: Run security scan with bandit
+      run: |
+        poetry run bandit -r cp2k_input_tools/ -f json -o bandit-report.json || true
+        poetry run bandit -r cp2k_input_tools/
+
+    - name: Check dependencies for known vulnerabilities
+      run: |
+        poetry run safety check || true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ matrix.python-version }}
+        path: htmlcov/
+        if-no-files-found: ignore
