@@ -69,3 +69,24 @@ All notable changes to the CP2K LSP Enhanced project will be documented in this 
 - vscode-languageserver 9.0
 - Jest 29.7
 - ESLint 8.56
+
+## [1.1.0] - 2026-03-02
+
+### Added
+- Comprehensive test suite with 111 tests (74%+ coverage)
+- Extended tests for keyword database
+- Extended tests for completion provider
+- Extended tests for hover provider
+- Extended tests for definition provider
+- Extended tests for formatting provider
+- Server document handling tests
+
+### Improved
+- Test coverage increased from 54% to 74%
+- Better test organization with extended test files
+- More comprehensive edge case testing
+
+### Technical
+- All tests passing
+- TypeScript compilation successful
+- ESLint clean

@@ -72,6 +72,9 @@ npm run watch
 # Run tests
 npm test
 
+# Run tests with coverage
+npm run test -- --coverage
+
 # Lint
 npm run lint
 
@@ -99,7 +102,7 @@ src/
 
 ## Testing
 
-The project includes comprehensive unit tests:
+The project includes comprehensive unit tests with 74%+ coverage:
 
 ```bash
 # Run all tests
@@ -111,6 +114,50 @@ npm run test -- --coverage
 # Run in watch mode
 npm run test:watch
 ```
+
+### Test Coverage (2026-03-02)
+
+| Component | Coverage |
+|-----------|----------|
+| keyword-database.ts | 98.6% |
+| diagnostics.ts | 97.1% |
+| definition.ts | 95.2% |
+| formatting.ts | 93.3% |
+| hover.ts | 90.6% |
+| cp2k-parser.ts | 91.4% |
+| completion.ts | 71.4% |
+| **Overall** | **74.1%** |
+
+## LSP Features
+
+### Auto-completion
+- Section names (e.g., `&GLOBAL`, `&FORCE_EVAL`)
+- Keywords within sections
+- Allowed values for enumeration keywords
+- Context-aware suggestions
+
+### Diagnostics
+- Unclosed section detection
+- Mismatched section warnings
+- Required section validation
+- Variable reference validation
+
+### Hover Documentation
+- Keyword descriptions
+- Data type information
+- Default values
+- Allowed values
+
+### Go to Definition
+- Section definitions
+- Variable definitions (`@SET`)
+- Include file navigation
+
+### Formatting
+- Automatic indentation
+- Keyword normalization to uppercase
+- Comment preservation
+- Directive handling
 
 ## Contributing
 
