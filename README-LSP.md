@@ -1,0 +1,131 @@
+# CP2K Language Server Protocol (Enhanced)
+
+An enhanced Language Server Protocol implementation for CP2K input files, built with TypeScript/Node.js.
+
+## Features
+
+- **Syntax Highlighting** - Full support for CP2K input file syntax
+- **Auto-completion** - Intelligent completions for sections, keywords, and values
+- **Error Diagnostics** - Real-time validation of input files
+- **Go to Definition** - Navigate to section definitions and variable references
+- **Hover Documentation** - Contextual help for keywords and sections
+- **Code Formatting** - Automatic formatting with configurable indentation
+
+## Installation
+
+### From npm (when published)
+
+```bash
+npm install -g cp2k-lsp-enhanced
+```
+
+### From source
+
+```bash
+git clone https://github.com/newtontech/cp2k-lsp-enhanced.git
+cd cp2k-lsp-enhanced
+npm install
+npm run build
+npm link
+```
+
+## Usage
+
+### Command Line
+
+```bash
+# Start the language server
+cp2k-lsp-enhanced --stdio
+```
+
+### VS Code Extension
+
+The language server is designed to work with the OpenQC-VSCode extension.
+
+Add to your VS Code settings:
+
+```json
+{
+  "cp2k.languageServer.path": "cp2k-lsp-enhanced"
+}
+```
+
+## Supported CP2K Versions
+
+- CP2K 7.1
+- CP2K 8.1
+- CP2K 9.1
+- CP2K 2025.1
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Watch mode
+npm run watch
+
+# Run tests
+npm test
+
+# Lint
+npm run lint
+
+# Format
+npm run format
+```
+
+## Architecture
+
+```
+src/
+├── server.ts           # Main LSP server entry
+├── parser/
+│   ├── cp2k-parser.ts  # CP2K input file parser
+│   └── index.ts
+├── features/
+│   ├── diagnostics.ts  # Error/warning diagnostics
+│   ├── completion.ts   # Auto-completion provider
+│   ├── hover.ts        # Hover documentation
+│   ├── definition.ts   # Go to definition
+│   └── formatting.ts   # Code formatting
+└── data/
+    └── keyword-database.ts  # CP2K keyword definitions
+```
+
+## Testing
+
+The project includes comprehensive unit tests:
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test -- --coverage
+
+# Run in watch mode
+npm run test:watch
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Acknowledgments
+
+- Built on top of the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
+- Inspired by the original [cp2k-input-tools](https://github.com/cp2k/cp2k-input-tools) Python implementation
+- Uses [vscode-languageserver](https://www.npmjs.com/package/vscode-languageserver) library
