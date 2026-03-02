@@ -30,9 +30,7 @@ class Trafos(Enum):
 
 @click.command()
 @fhandle_argument
-@click.option(
-    "oformat", "-f", "--format", type=click.Choice(("json", "yaml", "aiida-cp2k-calc")), default="json", help="output format"
-)
+@click.option("oformat", "-f", "--format", type=click.Choice(("json", "yaml", "aiida-cp2k-calc")), default="json", help="output format")
 @canonical_option
 @base_dir_option
 @click.option(

@@ -88,7 +88,7 @@ class CP2KPreprocessor(Iterator):
                 if value is None:
                     raise PreprocessorError(f"undefined variable '{key}' (and no default given)", ctx) from None
 
-            line = f"{line[:var_start]}{value}{line[var_end+1:]}"
+            line = f"{line[:var_start]}{value}{line[var_end + 1 :]}"
 
         var_start = 0
         var_end = 0
@@ -264,9 +264,7 @@ class CP2KPreprocessor(Iterator):
                 raise
 
         if self._conditional_block is not None:
-            raise PreprocessorError(
-                "conditional block not closed at end of file", Context(ref_line=self._conditional_block.ctx.line)
-            )
+            raise PreprocessorError("conditional block not closed at end of file", Context(ref_line=self._conditional_block.ctx.line))
 
         raise StopIteration
 

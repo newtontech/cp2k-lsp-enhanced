@@ -30,7 +30,7 @@ class ECP(BaseModel, extra="forbid"):
 
         sym = NUM2SYM[self.Z]
 
-        yield f"{sym} nelec {self.Z-self.Znuc}"  # NWchem has the number of electrons in the pseudo
+        yield f"{sym} nelec {self.Z - self.Znuc}"  # NWchem has the number of electrons in the pseudo
         yield f"{sym} ul"
 
         row = 0

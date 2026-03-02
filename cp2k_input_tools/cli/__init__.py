@@ -53,9 +53,7 @@ def yaml_option(func):
 
 
 def canonical_option(func):
-    return click.option("-c", "--canonical", is_flag=True, help="use the canonical output format instead of the simplified one")(
-        func
-    )
+    return click.option("-c", "--canonical", is_flag=True, help="use the canonical output format instead of the simplified one")(func)
 
 
 def base_dir_option(func):

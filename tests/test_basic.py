@@ -2,8 +2,6 @@
 Basic tests for cp2k-lsp-enhanced
 """
 
-import pytest
-
 
 def test_import():
     """Test that the package can be imported"""

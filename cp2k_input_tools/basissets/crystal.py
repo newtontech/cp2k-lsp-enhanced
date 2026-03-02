@@ -74,7 +74,7 @@ class BasisSetData(BaseModel, DatafileIterMixin, FromDictMixin, extra="forbid"):
             try:
                 coefficients = [tuple(Decimal(c) for c in lines[nline + n].split(maxsplit=1)) for n in range(ngaussians)]
             except IndexError:
-                raise ValueError(f"Not enough exponents found. Expected {ngaussians} lines for block {shelln+1}") from None
+                raise ValueError(f"Not enough exponents found. Expected {ngaussians} lines for block {shelln + 1}") from None
 
             shells.append(
                 BasisSetCoefficients(

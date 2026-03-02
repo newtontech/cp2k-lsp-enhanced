@@ -72,7 +72,7 @@ class BasisSetData(BaseModel, DatafileIterMixin, FromDictMixin, extra="forbid"):
             try:
                 coefficients = [[Decimal(c) for c in lines[nline + n].split()] for n in range(nexp)]
             except IndexError:
-                raise ValueError(f"Not enough exponents found. Expected {nexp} lines for block {nblock+1}") from None
+                raise ValueError(f"Not enough exponents found. Expected {nexp} lines for block {nblock + 1}") from None
 
             blocks.append(
                 BasisSetCoefficients(

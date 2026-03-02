@@ -259,4 +259,4 @@ def dformat(val, ndigits, slen):
     """
 
     digits = ndigits + val.as_tuple().exponent if val.as_tuple().exponent < 0 else ndigits + 1
-    return f"{format(val, 'f') + ' '*(digits):>{slen}}"
+    return f"{format(val, 'f') + ' ' * (digits):>{slen}}"

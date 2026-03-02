@@ -62,9 +62,9 @@ def test_text_document_did_open_error(client_server):
     )
     sleep(CALL_TIMEOUT)
 
-    assert (
-        len(server.lsp.workspace.text_documents) == 1
-    ), f"More than one document open: {', '.join(server.lsp.workspace.text_documents.keys())}"
+    assert len(server.lsp.workspace.text_documents) == 1, (
+        f"More than one document open: {', '.join(server.lsp.workspace.text_documents.keys())}"
+    )
     assert "Validating CP2K input..." in client.msgs[0].message
     assert "Syntax error: unterminated string detected" in client.diagnostics[0].message
 
@@ -96,13 +96,7 @@ def _hover_text(hover):
 def test_completion_and_hover(client_server, tmp_path):
     client, _ = client_server
     doc_path = tmp_path / "completion_hover.inp"
-    content = (
-        "&F\n"
-        "&GLOBAL\n"
-        "  RUN_\n"
-        "  RUN_TYPE \n"
-        "&END GLOBAL\n"
-    )
+    content = "&F\n&GLOBAL\n  RUN_\n  RUN_TYPE \n&END GLOBAL\n"
     _open_document(client, doc_path, content)
 
     section_result = client.lsp.send_request(

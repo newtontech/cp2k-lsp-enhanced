@@ -19,9 +19,7 @@ from . import base_dir_option, canonical_option, fhandle_argument, var_values_op
 @base_dir_option
 @canonical_option
 @var_values_option
-@click.option(
-    "zipped", "--zip/--no-zip", default=False, help="whether multiple expressions are zip'ed or a cartesian product is built"
-)
+@click.option("zipped", "--zip/--no-zip", default=False, help="whether multiple expressions are zip'ed or a cartesian product is built")
 def cp2kgen(fhandle, expressions, base_dir, canonical, var_values, zipped):
     """
     Generates variations of the given CP2K input file

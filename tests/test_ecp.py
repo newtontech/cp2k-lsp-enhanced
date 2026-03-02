@@ -1,6 +1,7 @@
 """Tests for ECP (Effective Core Potential) data model"""
 
 from decimal import Decimal
+
 from cp2k_input_tools.pseudopotentials.ecp import ECP
 
 
@@ -11,10 +12,10 @@ def test_ecp_basic():
         Znuc=4,
         M=(0, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
-    
+
     assert ecp.Z == 6
     assert ecp.Znuc == 4
     assert ecp.M == (0, 1, 0, 0, 0, 0)
@@ -28,10 +29,10 @@ def test_ecp_crystal_format_line_iter():
         Znuc=4,
         M=(0, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
-    
+
     lines = list(ecp.crystal_format_line_iter())
     assert len(lines) == 2
     assert lines[0] == "4 0 1 0 0 0 0"  # Znuc + M[0-5]
@@ -45,10 +46,10 @@ def test_ecp_nwchem_format_line_iter():
         Znuc=4,
         M=(0, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
-    
+
     lines = list(ecp.nwchem_format_line_iter())
     assert len(lines) == 5  # header, ul, default S, C S, coefficient
     assert "C nelec 2" in lines[0]  # 6 - 4 = 2 electrons in pseudo
@@ -64,12 +65,12 @@ def test_ecp_multiple_coefficients():
         Znuc=6,
         M=(1, 2, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('10.0'), Decimal('0.5'), 0),
-            (Decimal('1.5'), Decimal('2.3'), 1),
-            (Decimal('3.2'), Decimal('1.1'), 1),
-        ]
+            (Decimal("10.0"), Decimal("0.5"), 0),
+            (Decimal("1.5"), Decimal("2.3"), 1),
+            (Decimal("3.2"), Decimal("1.1"), 1),
+        ],
     )
-    
+
     assert ecp.Z == 8
     assert ecp.Znuc == 6
     assert ecp.M == (1, 2, 0, 0, 0, 0)
@@ -83,11 +84,11 @@ def test_ecp_crystal_format_multiple():
         Znuc=6,
         M=(1, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('10.0'), Decimal('0.5'), 0),
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("10.0"), Decimal("0.5"), 0),
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
-    
+
     lines = list(ecp.crystal_format_line_iter())
     assert len(lines) == 3
     assert lines[0] == "6 1 1 0 0 0 0"  # Znuc + M[0-5]
@@ -100,11 +101,11 @@ def test_ecp_nwchem_format_with_s_shell():
         Znuc=4,
         M=(1, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('10.0'), Decimal('0.5'), 0),
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("10.0"), Decimal("0.5"), 0),
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
-    
+
     lines = list(ecp.nwchem_format_line_iter())
     # M[0] = 1, so should have S shell coefficient
     assert len(lines) >= 4
@@ -120,10 +121,10 @@ def test_ecp_nwchem_format_empty_p():
         Znuc=4,
         M=(1, 0, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('10.0'), Decimal('0.5'), 0),
-        ]
+            (Decimal("10.0"), Decimal("0.5"), 0),
+        ],
     )
-    
+
     lines = list(ecp.nwchem_format_line_iter())
     # M[1] = 0, so P shell should be skipped
     assert "C P" not in lines
@@ -137,20 +138,20 @@ def test_ecp_pydantic_validation():
         Znuc=4,
         M=(0, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
     assert ecp is not None
-    
+
     # Test with integer conversion
     ecp2 = ECP(
         Z=8,
         Znuc=6,
         M=(1, 1, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('10.0'), Decimal('0.5'), 0),
-            (Decimal('1.5'), Decimal('2.3'), 1),
-        ]
+            (Decimal("10.0"), Decimal("0.5"), 0),
+            (Decimal("1.5"), Decimal("2.3"), 1),
+        ],
     )
     assert ecp2.Z == 8
     assert ecp2.Znuc == 6
@@ -163,11 +164,11 @@ def test_ecp_precision():
         Znuc=1,
         M=(1, 0, 0, 0, 0, 0),
         coefficients=[
-            (Decimal('123456789.123456789'), Decimal('987654321.987654321'), 0),
-        ]
+            (Decimal("123456789.123456789"), Decimal("987654321.987654321"), 0),
+        ],
     )
-    
+
     lines = list(ecp.crystal_format_line_iter())
     assert len(lines) == 2
     # Check that precision is preserved
-    assert lines[1].count('.') >= 1
+    assert lines[1].count(".") >= 1

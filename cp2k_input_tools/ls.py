@@ -440,9 +440,7 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
                 # at least do one context
                 count = max(1, count)
 
-                erange = Range(
-                    start=Position(line=linenr, character=colnr + 1 - count), end=Position(line=linenr, character=colnr + 1)
-                )
+                erange = Range(start=Position(line=linenr, character=colnr + 1 - count), end=Position(line=linenr, character=colnr + 1))
 
             else:
                 erange = Range(start=Position(line=linenr, character=1), end=Position(line=linenr, character=len(line)))

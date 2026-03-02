@@ -216,8 +216,7 @@ class CP2KInputGenerator:
             if not any(str(k).upper() in valid_keys for k in content.keys()):
                 # return a list of sections with this param merged into the section as normal section parameter
                 return [
-                    TreeNode(path + [name], dict(_=param, **section), node, indent + self._shift)
-                    for param, section in content.items()
+                    TreeNode(path + [name], dict(_=param, **section), node, indent + self._shift) for param, section in content.items()
                 ]
 
             # otherwise the user has either specified a mix (not supported) or has a typo
