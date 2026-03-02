@@ -288,6 +288,12 @@ with open("project.inp", "w") as fhandle:
 
 The executable providing the language server is: `cp2k-language-server`
 
+Current LSP features:
+
+* real-time diagnostics on file open/change
+* schema-driven completion for sections, keywords, and common keyword values
+* hover documentation for sections, keywords, and enumerated values
+
 For `vim` you need a plugin to be able to use language servers. One such plugin is [ALE](https://github.com/dense-analysis/ale) for which you can create in its directory the file `ale_linters/cp2k/language_server.vim` with the content
 
 ```vim

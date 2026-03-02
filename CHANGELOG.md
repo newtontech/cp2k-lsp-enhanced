@@ -1,5 +1,16 @@
 # Change Log
 
+## [Unreleased]
+
+* parser: support integer range tokens like `X..Y` for integer keywords (issue #72)
+* parser: keep `X..Y` integer ranges structured internally and preserve them when regenerating CP2K input
+* parser/tokenizer: fix quoted characters inside inline comments (issue #111)
+* parser: allow lone-keyword logical values when only an inline comment follows (issue #111)
+* lsp: add section/keyword/value completion support (issue #10)
+* lsp: add hover documentation for sections, keywords, and enum values (issue #10)
+* lsp: validate document content from in-memory buffer on open/change
+* deps: relax `pint` upper bound to `<0.26` (issue #110)
+
 ## [0.9.1] - 2024-02-16
 
  * chores

@@ -84,7 +84,7 @@ def test_issue_111_quotes_inside_comment_do_not_crash_tokenizer():
         )
     )
 
-    assert tree["global"]["project"] == "demo"
+    assert tree["global"]["project_name"] == "demo"
 
 
 def test_issue_111_lone_keyword_with_inline_comment_uses_lone_value():
