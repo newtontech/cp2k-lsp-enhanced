@@ -4,6 +4,7 @@ import re
 import xml.etree.ElementTree as ET
 
 from . import DEFAULT_CP2K_INPUT_XML
+from .keyword_helpers import IntegerRange
 
 
 class GeneratorError(Exception):
@@ -112,8 +113,14 @@ class CP2KInputGenerator:
 
             raise InvalidBooleanDataError(f"the given value '{val}' could not be recognized as a CP2K boolean value")
 
+        def integer_renderer(val):
+            if isinstance(val, IntegerRange):
+                return f"{val.start}..{val.end}"
+
+            return str(val)
+
         TYPE_RENDERERS = {
-            "integer": lambda v: str(v),
+            "integer": integer_renderer,
             "keyword": lambda v: str(v).upper(),
             "logical": bool_renderer,
             "real": lambda v: str(v),

@@ -32,6 +32,7 @@ def kw_converter_str(string):
 
 
 FORTRAN_REAL = re.compile(r"(\d*\.\d+)[dD]([-+]?\d+)")
+INTEGER_RANGE = re.compile(r"^(?P<start>[+-]?\d+)\.\.(?P<end>[+-]?\d+)$")
 
 
 def kw_converter_float(string):
@@ -47,6 +48,20 @@ def kw_converter_float(string):
     return float(string)
 
 
+@dataclass(frozen=True)
+class IntegerRange:
+    start: int
+    end: int
+
+
+def kw_converter_int(string):
+    match = INTEGER_RANGE.match(string)
+    if match:
+        return IntegerRange(int(match.group("start")), int(match.group("end")))
+
+    return int(string)
+
+
 def kw_converter_keyword(string, allowed_values):
     string = string.upper()
 
@@ -58,7 +73,7 @@ def kw_converter_keyword(string, allowed_values):
 
 KW_VALUE_CONVERTERS = {
     "logical": kw_converter_bool,
-    "integer": int,
+    "integer": kw_converter_int,
     "real": kw_converter_float,
     "word": kw_converter_str,
     "string": kw_converter_str,
@@ -157,6 +172,12 @@ class Keyword:
                 value = (value * current_unit).to(default_unit).magnitude
 
             values += [value]
+
+        if not values and lone_keyword_value and all(token.startswith(COMMENT_CHARS) for token in tokens):
+            values = [datatype.parser(token) for token in lone_keyword_value]
+
+            if datatype.type == "keyword":
+                values = [key_trafo(value) for value in values]
 
         if not values:
             raise InvalidParameterError("keyword expects at least one value, only a unit spec was given")
