@@ -1,8 +1,7 @@
-# Extended tests for cp2k_input_tools/utils.py
-# Target: 100% coverage
+"""Comprehensive tests for cp2k_input_tools/utils.py to achieve 100% coverage."""
 
-import io
 import pytest
+import io
 from decimal import Decimal
 
 from cp2k_input_tools.utils import (
@@ -30,7 +29,7 @@ class TestConstants:
         assert NUM2SYM[8] == "O"
         assert NUM2SYM[26] == "Fe"
         assert NUM2SYM[118] == "Og"
-        assert len(NUM2SYM) == 119  # 0-118
+        assert len(NUM2SYM) == 119
 
     def test_sym2num_dict(self):
         """Test SYM2NUM maps symbols to atomic numbers."""
@@ -40,6 +39,10 @@ class TestConstants:
         assert SYM2NUM["O"] == 8
         assert SYM2NUM["Fe"] == 26
         assert SYM2NUM["Og"] == 118
+
+    def test_eof_marker_line(self):
+        """Test EOF_MARKER_LINE constant."""
+        assert EOF_MARKER_LINE == "Eof marker"
 
     def test_empty_line_match(self):
         """Test EMPTY_LINE_MATCH regex."""
