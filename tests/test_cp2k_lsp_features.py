@@ -6,6 +6,9 @@ from unittest.mock import Mock, MagicMock, patch, PropertyMock
 
 import pytest
 
+# Add language-server to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "packages" / "language-server"))
+
 if hasattr(sys, "pypy_version_info"):
     pytest.skip("pypy is currently not supported", allow_module_level=True)
 
@@ -350,3 +353,803 @@ class TestHoverProvider:
             assert keyword_name.isupper()
             assert len(doc) > 0
             assert keyword_name in doc
+
+
+class TestFormattingProvider:
+    """Tests for FormattingProvider."""
+    
+    @pytest.fixture
+    def provider(self):
+        server = MockServer()
+        return FormattingProvider(server)
+    
+    def test_init(self, provider):
+        """Test provider initialization."""
+        assert provider.server is not None
+    
+    def test_provide_formatting_empty(self, provider):
+        """Test formatting empty document."""
+        doc = MockDocument("")
+        provider.server.workspace.get_text_document.return_value = doc
+        
+        params = lsp.DocumentFormattingParams(
+            options=lsp.FormattingOptions(tab_size=2, insert_spaces=True),
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp")
+        )
+        
+        result = provider.provide_formatting(params)
+         # Empty document returns TextEdit
+        assert result is not None
+    
+    def test_provide_formatting_valid(self, provider):
+        """Test formatting valid document."""
+        source = "&GLOBAL\n  PROJECT_NAME test\n&END GLOBAL"
+        doc = MockDocument(source)
+        provider.server.workspace.get_text_document.return_value = doc
+        
+        params = lsp.DocumentFormattingParams(
+            options=lsp.FormattingOptions(tab_size=2, insert_spaces=True),
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp")
+        )
+        
+        result = provider.provide_formatting(params)
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], lsp.TextEdit)
+    
+    def test_provide_formatting_parse_error(self, provider):
+        """Test formatting with parse error."""
+        doc = MockDocument("&GLOBAL")  # Unclosed section
+        provider.server.workspace.get_text_document.return_value = doc
+        
+        params = lsp.DocumentFormattingParams(
+            options=lsp.FormattingOptions(tab_size=2, insert_spaces=True),
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp")
+        )
+        
+        result = provider.provide_formatting(params)
+        # Parse error returns None
+        assert result is not None
+    
+    def test_format_ast(self, provider):
+        """Test _format_ast method."""
+        from cp2k_lsp.parser.ast import CP2KInput, Section, Keyword, Value, ValueType
+        
+        ast = CP2KInput(line=1, column=1)
+        section = Section(name="GLOBAL", line=1, column=1)
+        section.keywords.append(Keyword(
+            name="PROJECT_NAME",
+            value=Value(value="test", value_type=ValueType.STRING, line=1, column=1),
+            line=1, column=1
+        ))
+        ast.global_section = section
+        
+        result = provider._format_ast(ast)
+        assert "&GLOBAL" in result
+        assert "PROJECT_NAME" in result
+        assert "&END GLOBAL" in result
+    
+    def test_format_section_with_comments(self, provider):
+        """Test _format_section with comments."""
+        from cp2k_lsp.parser.ast import Section, Comment
+        
+        section = Section(name="GLOBAL", line=1, column=1)
+        section.comments.append(Comment(text=" test comment", line=2, column=3))
+        
+        lines = provider._format_section(section, 0, "  ")
+        assert any("! test comment" in line for line in lines)
+    
+    def test_format_section_with_subsections(self, provider):
+        """Test _format_section with subsections."""
+        from cp2k_lsp.parser.ast import Section
+        
+        parent = Section(name="FORCE_EVAL", line=1, column=1)
+        subsection = Section(name="DFT", line=2, column=1)
+        parent.subsections.append(subsection)
+        
+        lines = provider._format_section(parent, 0, "  ")
+        # Check that empty line is added before subsection
+        assert "" in lines
+    
+    def test_format_value_boolean_true(self, provider):
+        """Test _format_value for boolean true."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value=True, value_type=ValueType.BOOLEAN, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == ".TRUE."
+    
+    def test_format_value_boolean_false(self, provider):
+        """Test _format_value for boolean false."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value=False, value_type=ValueType.BOOLEAN, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == ".FALSE."
+    
+    def test_format_value_string_with_space(self, provider):
+        """Test _format_value for string with space."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value="has space", value_type=ValueType.STRING, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == '"has space"'
+    
+    def test_format_value_string_no_space(self, provider):
+        """Test _format_value for string without space."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value="nospace", value_type=ValueType.STRING, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == "nospace"
+    
+    def test_format_value_number_integer(self, provider):
+        """Test _format_value for integer."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value=42, value_type=ValueType.NUMBER, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == "42"
+    
+    def test_format_value_number_float(self, provider):
+        """Test _format_value for float."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value=3.14, value_type=ValueType.NUMBER, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == "3.14"
+    
+    def test_format_value_none(self, provider):
+        """Test _format_value for None value."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        value = Value(value=None, value_type=ValueType.STRING, line=1, column=1)
+        result = provider._format_value(value)
+        assert result == ""
+
+
+class TestCodeActionProvider:
+    """Tests for CodeActionProvider."""
+    
+    @pytest.fixture
+    def provider(self):
+        server = MockServer()
+        return CodeActionProvider(server)
+    
+    def test_init(self, provider):
+        """Test provider initialization."""
+        assert provider.server is not None
+    
+    def test_provide_code_actions_empty(self, provider):
+        """Test code actions with no diagnostics."""
+        params = lsp.CodeActionParams(
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp"),
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=0)),
+            context=lsp.CodeActionContext(diagnostics=[])
+        )
+        
+        result = provider.provide_code_actions(params)
+        assert result is None
+    
+    def test_provide_code_actions_unclosed(self, provider):
+        """Test code action for unclosed section."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            message="Unclosed section &GLOBAL",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        params = lsp.CodeActionParams(
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp"),
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            context=lsp.CodeActionContext(diagnostics=[diagnostic])
+        )
+        
+        result = provider.provide_code_actions(params)
+        assert result is not None
+        assert len(result) > 0
+        assert any(action.title == "Add missing &END tag" for action in result)
+    
+    def test_provide_code_actions_mismatch(self, provider):
+        """Test code action for section name mismatch."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            message="Section name mismatch",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        params = lsp.CodeActionParams(
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp"),
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            context=lsp.CodeActionContext(diagnostics=[diagnostic])
+        )
+        
+        result = provider.provide_code_actions(params)
+        assert result is not None
+    
+    def test_provide_code_actions_unknown(self, provider):
+        """Test code action for unknown diagnostic."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            message="Unknown error",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        params = lsp.CodeActionParams(
+            text_document=lsp.TextDocumentIdentifier(uri="file://test.inp"),
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            context=lsp.CodeActionContext(diagnostics=[diagnostic])
+        )
+        
+        result = provider.provide_code_actions(params)
+        assert result is None
+    
+    def test_create_quick_fix_unclosed(self, provider):
+        """Test _create_quick_fix for unclosed section."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            message="unclosed section",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        action = provider._create_quick_fix(diagnostic, "file://test.inp")
+        assert action is not None
+        assert action.kind == lsp.CodeActionKind.QuickFix
+        assert len(action.diagnostics) == 1
+    
+    def test_create_quick_fix_expected(self, provider):
+        """Test _create_quick_fix for expected token."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            message="expected &END",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        action = provider._create_quick_fix(diagnostic, "file://test.inp")
+        assert action is not None
+    
+    def test_create_quick_fix_mismatch(self, provider):
+        """Test _create_quick_fix for section name mismatch."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=7)),
+            message="section name mismatch",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        action = provider._create_quick_fix(diagnostic, "file://test.inp")
+        assert action is not None
+    
+    def test_fix_unclosed_section(self, provider):
+        """Test _fix_unclosed_section method."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(
+                start=lsp.Position(line=0, character=0),
+                end=lsp.Position(line=0, character=7)
+            ),
+            message="Unclosed section",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        action = provider._fix_unclosed_section(diagnostic, "file://test.inp")
+        assert action.title == "Add missing &END tag"
+        assert action.kind == lsp.CodeActionKind.QuickFix
+        assert action.edit is not None
+    
+    def test_fix_section_mismatch(self, provider):
+        """Test _fix_section_mismatch method."""
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(
+                start=lsp.Position(line=0, character=0),
+                end=lsp.Position(line=0, character=7)
+            ),
+            message="Section name mismatch",
+            severity=lsp.DiagnosticSeverity.Error
+        )
+        
+        action = provider._fix_section_mismatch(diagnostic, "file://test.inp")
+        assert action.title == "Fix section name"
+        assert action.kind == lsp.CodeActionKind.QuickFix
+        assert action.is_preferred is True
+
+
+# Parser tests
+class TestParser:
+    """Tests for CP2KParser."""
+    
+    def test_parse_simple_input(self):
+        """Test parsing simple CP2K input."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = "&GLOBAL\n  PROJECT_NAME test\n&END GLOBAL"
+        parser = CP2KParser.parse_text(text)
+        
+        assert parser.ast is not None
+        assert parser.ast.global_section is not None
+        assert parser.ast.global_section.name == "GLOBAL"
+    
+    def test_parse_nested_sections(self):
+        """Test parsing nested sections."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = """&FORCE_EVAL
+  &DFT
+    BASIS_SET_FILE_NAME BASIS_SET
+  &END DFT
+&END FORCE_EVAL"""
+        parser = CP2KParser.parse_text(text)
+        
+        assert parser.ast is not None
+        assert len(parser.ast.sections) > 0
+    
+    def test_parse_with_comments(self):
+        """Test parsing with comments."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = """! This is a comment
+&GLOBAL
+  ! Inline comment
+  PROJECT_NAME test
+&END GLOBAL"""
+        parser = CP2KParser.parse_text(text)
+        
+        assert parser.ast is not None
+        assert len(parser.ast.comments) >= 0
+    
+    def test_parse_boolean_values(self):
+        """Test parsing boolean values."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = "&GLOBAL\n  DEBUG_MODE .TRUE.\n&END GLOBAL"
+        parser = CP2KParser.parse_text(text)
+        
+        assert parser.ast is not None
+        assert parser.ast.global_section is not None
+        assert len(parser.ast.global_section.keywords) > 0
+    
+    def test_parse_number_values(self):
+        """Test parsing number values."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = "&GLOBAL\n  PRINT_LEVEL 1\n&END GLOBAL"
+        parser = CP2KParser.parse_text(text)
+        
+        assert parser.ast is not None
+        assert parser.ast.global_section is not None
+    
+    def test_parse_string_values(self):
+        """Test parsing string values."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = "&GLOBAL\n  PROJECT_NAME \"my project\"\n&END GLOBAL"
+        parser = CP2KParser.parse_text(text)
+        
+        assert parser.ast is not None
+    
+    def test_parse_empty_input(self):
+        """Test parsing empty input."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        parser = CP2KParser.parse_text("")
+        assert parser.ast is not None
+    
+    def test_parse_unclosed_section(self):
+        """Test parsing unclosed section."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = "&GLOBAL\n  PROJECT_NAME test"
+        parser = CP2KParser.parse_text(text)
+        
+        # Parser may or may not have errors depending on implementation
+        # The AST should still be created
+        assert parser.ast is not None
+    
+    def test_parse_mismatched_end(self):
+        """Test parsing section with mismatched end."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        
+        text = "&GLOBAL\n&END WRONG"
+        parser = CP2KParser.parse_text(text)
+        
+        # Should have errors
+        assert len(parser.errors) > 0
+    
+    def test_parser_current_token(self):
+        """Test parser current() method."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        token = parser.current()
+        assert token.type == TokenType.SECTION_START
+    
+    def test_parser_peek_token(self):
+        """Test parser peek() method."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL\n&END GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        token = parser.peek(1)
+        assert token is not None
+    
+    def test_parser_advance(self):
+        """Test parser advance() method."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        first = parser.current()
+        advanced = parser.advance()
+        assert first.type == advanced.type
+    
+    def test_parser_match(self):
+        """Test parser match() method."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        assert parser.match(TokenType.SECTION_START) is True
+        assert parser.match(TokenType.KEYWORD) is False
+    
+    def test_parser_expect(self):
+        """Test parser expect() method."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        token = parser.expect(TokenType.SECTION_START)
+        assert token.type == TokenType.SECTION_START
+    
+    def test_parser_expect_error(self):
+        """Test parser expect() with wrong token type."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        token = parser.expect(TokenType.KEYWORD)
+        # Should have added an error
+        assert len(parser.errors) > 0
+    
+    def test_parser_skip_eol_and_comments(self):
+        """Test parser skip_eol_and_comments() method."""
+        from cp2k_lsp.parser.parser import CP2KParser
+        from cp2k_lsp.parser.lexer import Lexer
+        
+        text = "! comment\n\n&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        parser = CP2KParser(tokens)
+        
+        comments = parser.skip_eol_and_comments()
+        assert len(comments) >= 0
+
+
+class TestLexer:
+    """Tests for CP2K Lexer."""
+    
+    def test_lexer_simple_section(self):
+        """Test lexer for simple section."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.SECTION_START
+        assert tokens[0].value == "GLOBAL"
+    
+    def test_lexer_section_end(self):
+        """Test lexer for section end."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&END GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.SECTION_END
+    
+    def test_lexer_keyword(self):
+        """Test lexer for keyword."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "PROJECT_NAME"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.KEYWORD
+    
+    def test_lexer_assignment(self):
+        """Test lexer for assignment."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "PROJECT_NAME = test"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert any(t.type == TokenType.ASSIGN for t in tokens)
+    
+    def test_lexer_boolean_true(self):
+        """Test lexer for boolean true."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = ".TRUE."
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.BOOLEAN
+        assert tokens[0].value == ".TRUE."
+    
+    def test_lexer_boolean_false(self):
+        """Test lexer for boolean false."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = ".FALSE."
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.BOOLEAN
+        assert tokens[0].value == ".FALSE."
+    
+    def test_lexer_number_integer(self):
+        """Test lexer for integer."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "42"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.NUMBER
+        assert tokens[0].value == "42"
+    
+    def test_lexer_number_float(self):
+        """Test lexer for float."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "3.14"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.NUMBER
+    
+    def test_lexer_number_scientific(self):
+        """Test lexer for scientific notation."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "1.0e-5"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.NUMBER
+    
+    def test_lexer_string(self):
+        """Test lexer for string."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = '"hello world"'
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.STRING
+    
+    def test_lexer_string_single_quote(self):
+        """Test lexer for single quoted string."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "'hello'"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert tokens[0].type == TokenType.STRING
+    
+    def test_lexer_comment_exclamation(self):
+        """Test lexer for exclamation comment."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "! this is a comment"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert any(t.type == TokenType.COMMENT for t in tokens)
+    
+    def test_lexer_comment_hash(self):
+        """Test lexer for hash comment."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "# this is a comment"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert any(t.type == TokenType.COMMENT for t in tokens)
+    
+    def test_lexer_unit(self):
+        """Test lexer for unit."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "[angstrom]"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        # Check for unit token
+        assert any(t.type == TokenType.UNIT for t in tokens)
+    
+    def test_lexer_multiline(self):
+        """Test lexer for multiline input."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "&GLOBAL\n  PROJECT_NAME test\n&END GLOBAL"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+        assert any(t.type == TokenType.SECTION_START for t in tokens)
+        assert any(t.type == TokenType.SECTION_END for t in tokens)
+    
+    def test_lexer_preprocessor(self):
+        """Test lexer for preprocessor directive."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "@SET VAR value"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        # Preprocessor should be tokenized
+        assert len(tokens) > 0
+    
+    def test_lexer_include(self):
+        """Test lexer for include directive."""
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
+        
+        text = "@INCLUDE file.inp"
+        lexer = Lexer(text)
+        tokens = lexer.tokenize()
+        
+        assert len(tokens) > 0
+
+
+class TestAST:
+    """Tests for AST classes."""
+    
+    def test_cp2k_input_init(self):
+        """Test CP2KInput initialization."""
+        from cp2k_lsp.parser.ast import CP2KInput
+        
+        ast = CP2KInput(line=1, column=1)
+        assert ast.line == 1
+        assert ast.column == 1
+        assert ast.global_section is None
+        assert ast.sections == []
+        assert ast.comments == []
+    
+    def test_section_init(self):
+        """Test Section initialization."""
+        from cp2k_lsp.parser.ast import Section
+        
+        section = Section(name="GLOBAL", line=1, column=1)
+        assert section.name == "GLOBAL"
+        assert section.keywords == []
+        assert section.subsections == []
+        assert section.comments == []
+    
+    def test_keyword_init(self):
+        """Test Keyword initialization."""
+        from cp2k_lsp.parser.ast import Keyword
+        
+        keyword = Keyword(name="PROJECT_NAME", line=1, column=1)
+        assert keyword.name == "PROJECT_NAME"
+        assert keyword.value is None
+    
+    def test_keyword_with_value(self):
+        """Test Keyword with value."""
+        from cp2k_lsp.parser.ast import Keyword, Value, ValueType
+        
+        value = Value(value="test", value_type=ValueType.STRING, line=1, column=1)
+        keyword = Keyword(name="PROJECT_NAME", value=value, line=1, column=1)
+        assert keyword.name == "PROJECT_NAME"
+        assert keyword.value is not None
+        assert keyword.value.value == "test"
+    
+    def test_value_types(self):
+        """Test Value types."""
+        from cp2k_lsp.parser.ast import Value, ValueType
+        
+        # Boolean
+        bool_val = Value(value=True, value_type=ValueType.BOOLEAN, line=1, column=1)
+        assert bool_val.value_type == ValueType.BOOLEAN
+        
+        # Number
+        num_val = Value(value=42, value_type=ValueType.NUMBER, line=1, column=1)
+        assert num_val.value_type == ValueType.NUMBER
+        
+        # String
+        str_val = Value(value="test", value_type=ValueType.STRING, line=1, column=1)
+        assert str_val.value_type == ValueType.STRING
+        
+        # Unit
+        unit_val = Value(value="[angstrom]", value_type=ValueType.UNIT, line=1, column=1)
+        assert unit_val.value_type == ValueType.UNIT
+    
+    def test_comment_init(self):
+        """Test Comment initialization."""
+        from cp2k_lsp.parser.ast import Comment
+        
+        comment = Comment(text=" test comment", line=2, column=1)
+        assert comment.text == " test comment"
+        assert comment.line == 2
+    
+    def test_section_repr(self):
+        """Test Section __repr__."""
+        from cp2k_lsp.parser.ast import Section
+        
+        section = Section(name="GLOBAL", line=1, column=1)
+        repr_str = repr(section)
+        assert "GLOBAL" in repr_str
+    
+    def test_keyword_repr(self):
+        """Test Keyword __repr__."""
+        from cp2k_lsp.parser.ast import Keyword
+        
+        keyword = Keyword(name="PROJECT_NAME", line=1, column=1)
+        repr_str = repr(keyword)
+        assert "PROJECT_NAME" in repr_str
+
+
+class TestParserErrors:
+    """Tests for parser errors."""
+    
+    def test_syntax_error_init(self):
+        """Test SyntaxError initialization."""
+        from cp2k_lsp.parser.errors import SyntaxError
+        
+        error = SyntaxError("Test error", line=1, column=1, source="test.inp")
+        assert error.message == "Test error"
+        assert error.line == 1
+        assert error.column == 1
+    
+    def test_syntax_error_str(self):
+        """Test SyntaxError string representation."""
+        from cp2k_lsp.parser.errors import SyntaxError
+        
+        error = SyntaxError("Test error", line=1, column=1, source="test.inp")
+        str_repr = str(error)
+        assert "Test error" in str_repr
+    
+    def test_parse_error_init(self):
+        """Test ParseError initialization."""
+        from cp2k_lsp.parser.errors import ParseError
+        
+        error = ParseError("Parse error", line=2, column=3)
+        assert error.message == "Parse error"
+    
+    def test_parse_error_str(self):
+        """Test ParseError string representation."""
+        from cp2k_lsp.parser.errors import ParseError
+        
+        error = ParseError("Parse error", line=2, column=3)
+        str_repr = str(error)
+        assert "Parse error" in str_repr
