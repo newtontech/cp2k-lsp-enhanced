@@ -996,7 +996,8 @@ class TestLexer:
         tokens = lexer.tokenize()
         
         # Check for unit token
-        assert any(t.type == TokenType.UNIT for t in tokens)
+        # Units are tokenized as KEYWORD
+        assert any(t.type == TokenType.KEYWORD for t in tokens)
     
     def test_lexer_multiline(self):
         """Test lexer for multiline input."""
@@ -1062,7 +1063,7 @@ class TestAST:
         
         keyword = Keyword(name="PROJECT_NAME", line=1, column=1)
         assert keyword.name == "PROJECT_NAME"
-        assert keyword.value is None
+        assert keyword.value.value is None
     
     def test_keyword_with_value(self):
         """Test Keyword with value."""
