@@ -1,0 +1,8 @@
+! Generated with the CP2K input tool cp2kgen v0.9.1
+! '/home/yhm/.local/lib/python3.10/site-packages/pytest/__main__.py' \
+!   'tests/test_cli_cp2kgen.py' \
+!   '-v' \
+!   '--tb=short'
+&GLOBAL
+  PROJECT_NAME test
+&END GLOBAL
