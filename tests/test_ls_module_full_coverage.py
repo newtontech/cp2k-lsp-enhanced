@@ -359,7 +359,7 @@ class TestBuildKeywordDoc:
         assert "Project name description" in doc
         assert "PROJECT_NAME name" in doc
         assert "PROJECT" in doc
-        assert "string" in doc
+        assert "STRING" in doc
 
 
 class TestCompletionItems:
@@ -367,7 +367,7 @@ class TestCompletionItems:
 
     def test_basic_completion(self):
         """Test basic completion."""
-        items = [("TEST", "Test item")]
+        items = [("TEST", "Test item", None)]
         result = _completion_items(items, lsp.CompletionItemKind.Property, "TE")
         
         assert len(result) == 1
@@ -378,8 +378,8 @@ class TestCompletionItems:
     def test_prefix_filter(self):
         """Test prefix filtering."""
         items = [
-            ("ALPHA", "Alpha item"),
-            ("BETA", "Beta item")
+            ("ALPHA", "Alpha item", None),
+            ("BETA", "Beta item", None)
         ]
         result = _completion_items(items, lsp.CompletionItemKind.Property, "AL")
         
@@ -389,8 +389,8 @@ class TestCompletionItems:
     def test_deduplication(self):
         """Test deduplication."""
         items = [
-            ("TEST", "Item 1"),
-            ("TEST", "Item 2")
+            ("TEST", "Item 1", None),
+            ("TEST", "Item 2", None)
         ]
         result = _completion_items(items, lsp.CompletionItemKind.Property, "")
         
