@@ -1,9 +1,0 @@
-! Generated with the CP2K input tool cp2kgen v0.9.1
-! '/home/yhm/.local/lib/python3.10/site-packages/pytest/__main__.py' \
-!   'tests/' \
-!   '--cov=cp2k_input_tools' \
-!   '--cov-report=term-missing'
-&GLOBAL
-   PROJECT_NAME test_gen
-   RUN_TYPE ENERGY
-&END GLOBAL
