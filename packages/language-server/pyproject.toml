@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cp2k-lsp"
+version = "0.1.0"
+description = "CP2K Language Server Protocol implementation"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Developer", email = "dev@example.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Language Servers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pygls>=1.0.0",
+    "lsprotocol",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "pytest-asyncio",
+    "black",
+    "mypy",
+    "ruff",
+]
+
+[project.scripts]
+cp2k-lsp-server = "cp2k_lsp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cp2k_lsp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=cp2k_lsp --cov-report=term-missing --cov-report=html -v"
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "B", "I"]

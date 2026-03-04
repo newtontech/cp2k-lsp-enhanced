@@ -1,0 +1,10 @@
+pygls>=1.0.0
+lsprotocol
+
+[dev]
+pytest>=8.0
+pytest-cov>=6.0
+pytest-asyncio
+black
+mypy
+ruff

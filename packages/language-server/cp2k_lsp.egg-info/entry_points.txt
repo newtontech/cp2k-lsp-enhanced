@@ -1,0 +1,2 @@
+[console_scripts]
+cp2k-lsp-server = cp2k_lsp.server:main
