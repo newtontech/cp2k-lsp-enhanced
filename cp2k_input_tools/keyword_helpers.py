@@ -2,13 +2,18 @@ import collections
 import pathlib
 import re
 import xml.etree.ElementTree as ET
+import warnings
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pint
 
-from .parser_errors import InvalidParameterError
+from .parser_errors import (
+    DeprecatedKeywordWarning,
+    InvalidParameterError,
+    IntegerRangeError,
+)
 from .tokenizer import COMMENT_CHARS, tokenize
 
 UREG = pint.UnitRegistry()
@@ -16,6 +21,54 @@ UREG.load_definitions(str(pathlib.Path(__file__).resolve().parent.joinpath("pint
 
 # Global configuration: if True, parse X..Y integer ranges as strings instead of IntegerRange
 KEEP_RANGE_AS_STRING = False
+
+# Registry for deprecated keywords: name -> (replacement, deprecation_message)
+DEPRECATED_KEYWORDS: Dict[str, Tuple[Optional[str], str]] = {}
+
+# Registry for deprecated sections: name -> (replacement, deprecation_message)
+DEPRECATED_SECTIONS: Dict[str, Tuple[Optional[str], str]] = {}
+
+
+def register_deprecated_keyword(name: str, replacement: Optional[str] = None, message: Optional[str] = None):
+    """Register a keyword as deprecated.
+    
+    Args:
+        name: The deprecated keyword name
+        replacement: The recommended replacement keyword (if any)
+        message: Custom deprecation message
+    """
+    default_msg = f"Keyword '{name}' is deprecated and may be removed in a future version"
+    DEPRECATED_KEYWORDS[name.upper()] = (replacement, message or default_msg)
+
+
+def register_deprecated_section(name: str, replacement: Optional[str] = None, message: Optional[str] = None):
+    """Register a section as deprecated.
+    
+    Args:
+        name: The deprecated section name
+        replacement: The recommended replacement section (if any)
+        message: Custom deprecation message
+    """
+    default_msg = f"Section '{name}' is deprecated and may be removed in a future version"
+    DEPRECATED_SECTIONS[name.upper()] = (replacement, message or default_msg)
+
+
+def check_deprecated_keyword(name: str) -> Optional[DeprecatedKeywordWarning]:
+    """Check if a keyword is deprecated and return warning if so."""
+    name_upper = name.upper()
+    if name_upper in DEPRECATED_KEYWORDS:
+        replacement, message = DEPRECATED_KEYWORDS[name_upper]
+        return DeprecatedKeywordWarning(name, message, replacement)
+    return None
+
+
+def check_deprecated_section(name: str) -> Optional[DeprecatedKeywordWarning]:
+    """Check if a section is deprecated and return warning if so."""
+    name_upper = name.upper()
+    if name_upper in DEPRECATED_SECTIONS:
+        replacement, message = DEPRECATED_SECTIONS[name_upper]
+        return DeprecatedSectionWarning(name, message, replacement)
+    return None
 
 
 def kw_converter_bool(string):
@@ -53,8 +106,65 @@ def kw_converter_float(string):
 
 @dataclass(frozen=True)
 class IntegerRange:
+    """Represents an integer range in X..Y format."""
     start: int
     end: int
+
+    def __iter__(self):
+        """Allow iteration over the range."""
+        return iter(range(self.start, self.end + 1))
+
+    def __len__(self):
+        """Return the number of integers in the range."""
+        return max(0, self.end - self.start + 1)
+
+    def __contains__(self, value):
+        """Check if value is in range."""
+        return self.start <= value <= self.end
+
+    def __str__(self):
+        return f"{self.start}..{self.end}"
+
+    def to_list(self):
+        """Convert range to list of integers."""
+        return list(range(self.start, self.end + 1))
+
+
+def parse_integer_range(string: str) -> Union[int, IntegerRange, str]:
+    """Parse a string that may contain an integer range (X..Y).
+    
+    Args:
+        string: The string to parse
+        
+    Returns:
+        IntegerRange if X..Y format detected, int if simple integer, 
+        or original string if KEEP_RANGE_AS_STRING is True
+        
+    Raises:
+        IntegerRangeError: If the range format is invalid
+    """
+    if KEEP_RANGE_AS_STRING:
+        return string
+
+    match = INTEGER_RANGE.match(string.strip())
+    if match:
+        start = int(match.group("start"))
+        end = int(match.group("end"))
+        
+        if start > end:
+            raise IntegerRangeError(
+                f"Invalid integer range '{string}': start ({start}) must be <= end ({end})"
+            )
+        
+        return IntegerRange(start, end)
+
+    # Try to parse as simple integer
+    try:
+        return int(string)
+    except ValueError:
+        pass
+
+    return string
 
 
 def kw_converter_int(string, keep_range_as_string=None):
@@ -72,7 +182,13 @@ def kw_converter_int(string, keep_range_as_string=None):
     if match:
         if keep_range_as_string:
             return string
-        return IntegerRange(int(match.group("start")), int(match.group("end")))
+        start = int(match.group("start"))
+        end = int(match.group("end"))
+        if start > end:
+            raise IntegerRangeError(
+                f"Invalid integer range '{string}': start ({start}) must be <= end ({end})"
+            )
+        return IntegerRange(start, end)
 
     return int(string)
 
@@ -211,3 +327,23 @@ class Keyword:
             key_name = "*"
 
         return Keyword(key_name, values, True if kw_node.get("repeats") == "yes" else False, kw_node)
+
+
+# Pre-register some commonly deprecated CP2K keywords/sections
+# These can be loaded from XML or configuration in the future
+
+def _load_builtin_deprecations():
+    """Load built-in deprecations for common CP2K keywords."""
+    # Example deprecations - these should be updated based on CP2K changelog
+    common_deprecations = [
+        # (name, replacement, message)
+        ("WF_CORRELATION", None, "Use RI_MP2 or RI_RPA instead"),
+        ("MP2", "RI_MP2", "Direct MP2 is deprecated, use RI-MP2"),
+    ]
+    
+    for name, replacement, message in common_deprecations:
+        register_deprecated_keyword(name, replacement, message)
+
+
+# Initialize built-in deprecations
+_load_builtin_deprecations()
