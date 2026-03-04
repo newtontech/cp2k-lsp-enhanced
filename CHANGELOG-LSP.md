@@ -90,3 +90,10 @@ All notable changes to the CP2K LSP Enhanced project will be documented in this 
 - All tests passing
 - TypeScript compilation successful
 - ESLint clean
+
+## [1.2.0] - 2026-03-04
+
+### Added
+- Python LSP feature providers implemented
+- 40+ Python unit test files added
+- Documentation updated
