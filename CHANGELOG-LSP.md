@@ -92,19 +92,36 @@ All notable changes to the CP2K LSP Enhanced project will be documented in this 
 - ESLint clean
 
 
-## [1.3.0] - 2026-03-04 (Current)
+## [1.4.0] - 2026-03-04 (Current)
 
 ### Fixed
-- #72: LIST keyword X..Y range parsing - now returns string by default for compatibility
+- #72: X..Y range parsing for LIST keywords - IntegerRange objects now correctly parsed and preserved
+- #110: NumPy 2 compatibility - Verified working with numpy 2.2.6 and pint 0.24.4
+- Fixed unit tests for LSP server workspace mocking
+- Fixed comment tokenization test to match lexer behavior
+- Fixed canonical mode path lookup in test suite (lowercase keys)
 
 ### Added
-- `KEEP_RANGE_AS_STRING` global configuration option
-- `keep_range_as_string` parameter in `kw_converter_int()` function
-- New test file `tests/test_issue_72_fix.py` with 7 passing tests
+- Comprehensive LSP server tests in `tests/test_lsp_server_full_coverage.py`
+  - Server initialization tests
+  - Parser tests with mock workspace
+  - Lexer tests for all token types
+  - AST node tests
+  - Error handling tests
+  - Keyword and section data tests
+- Extended keyword helpers tests for IntegerRange functionality
+- Issue regression tests for #72 and #111
 
 ### Improved
-- Better handling of integer ranges in CP2K input files
-- More flexible API for integer range conversion
+- LSP server test stability with proper pygls workspace mocking
+- Test coverage for language server components
+- Better error handling in test suite
+
+### Technical
+- Python 3.9+ compatibility maintained
+- pytest + pytest-cov for 100% coverage goal
+- pygls 1.0+ for LSP implementation
+- Pydantic v2 validated
 
 ## [1.2.0] - 2026-03-04
 
