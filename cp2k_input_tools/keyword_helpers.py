@@ -14,6 +14,9 @@ from .tokenizer import COMMENT_CHARS, tokenize
 UREG = pint.UnitRegistry()
 UREG.load_definitions(str(pathlib.Path(__file__).resolve().parent.joinpath("pint_units.txt")))
 
+# Global configuration: if True, parse X..Y integer ranges as strings instead of IntegerRange
+KEEP_RANGE_AS_STRING = True
+
 
 def kw_converter_bool(string):
     string = string.upper()
@@ -54,9 +57,21 @@ class IntegerRange:
     end: int
 
 
-def kw_converter_int(string):
+def kw_converter_int(string, keep_range_as_string=None):
+    """Convert string to integer or IntegerRange.
+
+    Args:
+        string: The string to convert
+        keep_range_as_string: If True, return X..Y range as string instead of IntegerRange.
+                              If None, uses global KEEP_RANGE_AS_STRING setting.
+    """
+    if keep_range_as_string is None:
+        keep_range_as_string = KEEP_RANGE_AS_STRING
+
     match = INTEGER_RANGE.match(string)
     if match:
+        if keep_range_as_string:
+            return string
         return IntegerRange(int(match.group("start")), int(match.group("end")))
 
     return int(string)
