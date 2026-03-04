@@ -91,6 +91,21 @@ All notable changes to the CP2K LSP Enhanced project will be documented in this 
 - TypeScript compilation successful
 - ESLint clean
 
+
+## [1.3.0] - 2026-03-04 (Current)
+
+### Fixed
+- #72: LIST keyword X..Y range parsing - now returns string by default for compatibility
+
+### Added
+- `KEEP_RANGE_AS_STRING` global configuration option
+- `keep_range_as_string` parameter in `kw_converter_int()` function
+- New test file `tests/test_issue_72_fix.py` with 7 passing tests
+
+### Improved
+- Better handling of integer ranges in CP2K input files
+- More flexible API for integer range conversion
+
 ## [1.2.0] - 2026-03-04
 
 ### Added
