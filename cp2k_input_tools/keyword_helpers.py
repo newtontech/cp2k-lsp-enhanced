@@ -15,7 +15,7 @@ UREG = pint.UnitRegistry()
 UREG.load_definitions(str(pathlib.Path(__file__).resolve().parent.joinpath("pint_units.txt")))
 
 # Global configuration: if True, parse X..Y integer ranges as strings instead of IntegerRange
-KEEP_RANGE_AS_STRING = True
+KEEP_RANGE_AS_STRING = False
 
 
 def kw_converter_bool(string):
