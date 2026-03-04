@@ -23,7 +23,7 @@ from cp2k_input_tools.cli import (
     var_values_option,
     canonical_option,
     yaml_option,
-    validate_kv,
+    click_validate_kv,
     smart_open,
 )
 
@@ -74,37 +74,37 @@ class TestSmartOpen:
 
 
 class TestValidateKv:
-    """Test validate_kv callback"""
+    """Test click_validate_kv callback"""
     
-    def test_validate_kv_empty(self):
+    def test_click_validate_kv_empty(self):
         """Test with empty list"""
-        result = validate_kv(None, None, [])
+        result = click_validate_kv(None, None, [])
         assert result == {}
     
-    def test_validate_kv_single_pair(self):
+    def test_click_validate_kv_single_pair(self):
         """Test with single key-value pair"""
-        result = validate_kv(None, None, ["key=value"])
+        result = click_validate_kv(None, None, ["key=value"])
         assert result == {"key": "value"}
     
-    def test_validate_kv_multiple_pairs(self):
+    def test_click_validate_kv_multiple_pairs(self):
         """Test with multiple key-value pairs"""
-        result = validate_kv(None, None, ["key1=value1", "key2=value2"])
+        result = click_validate_kv(None, None, ["key1=value1", "key2=value2"])
         assert result == {"key1": "value1", "key2": "value2"}
     
-    def test_validate_kv_already_dict(self):
+    def test_click_validate_kv_already_dict(self):
         """Test when value is already a dict"""
         input_dict = {"key": "value"}
-        result = validate_kv(None, None, input_dict)
+        result = click_validate_kv(None, None, input_dict)
         assert result is input_dict
     
-    def test_validate_kv_invalid_format(self):
+    def test_click_validate_kv_invalid_format(self):
         """Test with invalid format"""
         with pytest.raises(ValueError, match="must be in format"):
-            validate_kv(None, None, ["invalid_no_equals"])
+            click_validate_kv(None, None, ["invalid_no_equals"])
     
-    def test_validate_kv_with_equals_in_value(self):
+    def test_click_validate_kv_with_equals_in_value(self):
         """Test with equals sign in value"""
-        result = validate_kv(None, None, ["key=value=with=equals"])
+        result = click_validate_kv(None, None, ["key=value=with=equals"])
         assert result == {"key": "value=with=equals"}
 
 

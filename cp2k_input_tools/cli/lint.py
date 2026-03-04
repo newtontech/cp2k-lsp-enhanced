@@ -22,6 +22,11 @@ def cp2klint(fhandle, var_values, base_dir):
     try:
         cp2k_parser.parse(fhandle, dict(var_values))
     except (TokenizerError, ParserError) as exc:
+        # Handle cases where exception may not have context
+        if len(exc.args) < 2:
+            print(f"Syntax error: {exc}")
+            sys.exit(1)
+        
         ctx = exc.args[1]
         line = ctx.line.rstrip()
 
