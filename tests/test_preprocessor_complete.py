@@ -97,11 +97,11 @@ class TestVariableResolution:
     
     def test_resolve_simple_brace_variable(self):
         """Test resolving ${VAR} style variable"""
-        content = "@SET VAR test_value\n"
+        content = "@SET VAR test_value\nPROJECT_NAME test\n"
         fhandle = io.StringIO(content)
         preprocessor = CP2KPreprocessor(fhandle, ".")
-        # Process the SET line
-        next(preprocessor)
+        # Process all lines to set up the variable
+        lines = list(preprocessor)
         
         # Now test variable resolution
         result = preprocessor._resolve_variables("VALUE: ${VAR}")
@@ -109,10 +109,10 @@ class TestVariableResolution:
     
     def test_resolve_simple_dollar_variable(self):
         """Test resolving $VAR style variable"""
-        content = "@SET VAR test_value\n"
+        content = "@SET VAR test_value\nPROJECT_NAME test\n"
         fhandle = io.StringIO(content)
         preprocessor = CP2KPreprocessor(fhandle, ".")
-        next(preprocessor)
+        lines = list(preprocessor)
         
         result = preprocessor._resolve_variables("VALUE: $VAR")
         assert result == "VALUE: test_value"
@@ -165,21 +165,20 @@ class TestVariableResolution:
     
     def test_resolve_multiple_variables(self):
         """Test resolving multiple variables in one line"""
-        content = "@SET VAR1 hello\n@SET VAR2 world\n"
+        content = "@SET VAR1 hello\n@SET VAR2 world\nPROJECT_NAME test\n"
         fhandle = io.StringIO(content)
         preprocessor = CP2KPreprocessor(fhandle, ".")
-        next(preprocessor)
-        next(preprocessor)
+        lines = list(preprocessor)
         
         result = preprocessor._resolve_variables("${VAR1} ${VAR2}")
         assert result == "hello world"
     
     def test_resolve_variable_case_insensitive(self):
         """Test that variable names are case-insensitive"""
-        content = "@SET VAR test_value\n"
+        content = "@SET VAR test_value\nPROJECT_NAME test\n"
         fhandle = io.StringIO(content)
         preprocessor = CP2KPreprocessor(fhandle, ".")
-        next(preprocessor)
+        lines = list(preprocessor)
         
         result = preprocessor._resolve_variables("${var}")
         assert result == "test_value"
