@@ -20,6 +20,13 @@ class CompletionProvider:
         ("SCF", "Self-Consistent Field settings"),
         ("XC", "Exchange-Correlation functional"),
         ("PRINT", "Print control section"),
+        ("SUBSYS", "System definition section"),
+        ("CELL", "Unit cell definition"),
+        ("COORD", "Atomic coordinates"),
+        ("MD", "Molecular dynamics settings"),
+        ("GEO_OPT", "Geometry optimization settings"),
+        ("THERMOSTAT", "Thermostat settings"),
+        ("BAROSTAT", "Barostat settings"),
     ]
 
     # Common keywords
@@ -27,6 +34,23 @@ class CompletionProvider:
         ("PROJECT_NAME", "Name of the project"),
         ("RUN_TYPE", "Type of calculation"),
         ("PRINT_LEVEL", "Level of output printing"),
+        ("WALLTIME", "Maximum walltime"),
+        ("CHARGE", "Total charge of the system"),
+        ("MULTIPLICITY", "Spin multiplicity"),
+        ("BASIS_SET_FILE_NAME", "Basis set file"),
+        ("POTENTIAL_FILE_NAME", "Potential file"),
+        ("METHOD", "Electronic structure method"),
+        ("EPS_DEFAULT", "Default threshold"),
+        ("SCF_GUESS", "Initial SCF guess"),
+        ("EPS_SCF", "SCF convergence threshold"),
+        ("MAX_SCF", "Maximum SCF iterations"),
+        ("ELEMENT", "Chemical element symbol"),
+        ("BASIS_SET", "Basis set for this kind"),
+        ("POTENTIAL", "Pseudopotential for this kind"),
+        ("STEPS", "Number of MD steps"),
+        ("TIMESTEP", "MD timestep"),
+        ("TEMPERATURE", "Target temperature"),
+        ("ENSEMBLE", "Statistical ensemble"),
     ]
 
     # RUN_TYPE enum values
@@ -53,6 +77,15 @@ class CompletionProvider:
 
     # PRINT_LEVEL enum values
     PRINT_LEVELS = ["SILENT", "LOW", "MEDIUM", "HIGH", "DEBUG"]
+
+    # SCF_GUESS values
+    SCF_GUESSES = ["ATOMIC", "CORE", "RANDOM", "RESTART", "SPARSE"]
+
+    # MD ENSEMBLE values
+    MD_ENSEMBLES = ["NVE", "NVT", "NPT_I", "NPT_F", "LANGEVIN"]
+
+    # QS METHOD values
+    QS_METHODS = ["GPW", "GAPW", "GTO", "STO", "OCE"]
 
     def __init__(self, server):
         self.server = server
@@ -96,6 +129,7 @@ class CompletionProvider:
                 detail=desc,
                 insert_text=f"{name}\n\u0026END {name}",
                 insert_text_format=lsp.InsertTextFormat.PlainText,
+                documentation=f"CP2K Section: {name}\n\n{desc}",
             )
             items.append(item)
         return items
@@ -110,6 +144,7 @@ class CompletionProvider:
                 detail=desc,
                 insert_text=f"{name} = ",
                 insert_text_format=lsp.InsertTextFormat.PlainText,
+                documentation=f"CP2K Keyword: {name}\n\n{desc}",
             )
             items.append(item)
         return items
@@ -121,17 +156,72 @@ class CompletionProvider:
 
         if "RUN_TYPE" in line_upper:
             for rt in self.RUN_TYPES:
-                items.append(lsp.CompletionItem(label=rt, kind=lsp.CompletionItemKind.EnumMember, detail=f"Run type: {rt}"))
+                items.append(
+                    lsp.CompletionItem(
+                        label=rt,
+                        kind=lsp.CompletionItemKind.EnumMember,
+                        detail=f"Run type: {rt}",
+                        documentation=f"Run type {rt} for CP2K calculations",
+                    )
+                )
         elif "PRINT_LEVEL" in line_upper:
             for pl in self.PRINT_LEVELS:
-                items.append(lsp.CompletionItem(label=pl, kind=lsp.CompletionItemKind.EnumMember, detail=f"Print level: {pl}"))
+                items.append(
+                    lsp.CompletionItem(
+                        label=pl,
+                        kind=lsp.CompletionItemKind.EnumMember,
+                        detail=f"Print level: {pl}",
+                    )
+                )
+        elif "SCF_GUESS" in line_upper:
+            for guess in self.SCF_GUESSES:
+                items.append(
+                    lsp.CompletionItem(
+                        label=guess,
+                        kind=lsp.CompletionItemKind.EnumMember,
+                        detail=f"SCF guess: {guess}",
+                    )
+                )
+        elif "ENSEMBLE" in line_upper:
+            for ensemble in self.MD_ENSEMBLES:
+                items.append(
+                    lsp.CompletionItem(
+                        label=ensemble,
+                        kind=lsp.CompletionItemKind.EnumMember,
+                        detail=f"MD ensemble: {ensemble}",
+                    )
+                )
+        elif "METHOD" in line_upper:
+            for method in self.QS_METHODS:
+                items.append(
+                    lsp.CompletionItem(
+                        label=method,
+                        kind=lsp.CompletionItemKind.EnumMember,
+                        detail=f"QS method: {method}",
+                    )
+                )
         else:
             # Boolean values
             items.extend(
                 [
-                    lsp.CompletionItem(label=".TRUE.", kind=lsp.CompletionItemKind.Keyword, detail="Boolean true"),
-                    lsp.CompletionItem(label=".FALSE.", kind=lsp.CompletionItemKind.Keyword, detail="Boolean false"),
+                    lsp.CompletionItem(
+                        label=".TRUE.",
+                        kind=lsp.CompletionItemKind.Keyword,
+                        detail="Boolean true",
+                        documentation="CP2K boolean value for true",
+                    ),
+                    lsp.CompletionItem(
+                        label=".FALSE.",
+                        kind=lsp.CompletionItemKind.Keyword,
+                        detail="Boolean false",
+                        documentation="CP2K boolean value for false",
+                    ),
                 ]
             )
 
         return items
+
+    def resolve_completion(self, item: lsp.CompletionItem) -> lsp.CompletionItem:
+        """Resolve additional information for a completion item."""
+        # This can be used to lazy-load documentation
+        return item

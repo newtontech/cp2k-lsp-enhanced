@@ -95,5 +95,42 @@ class FormattingProvider:
             if " " in str(value.value):
                 return f'"{value.value}"'
             return str(value.value)
+        elif value.value_type == ValueType.NUMBER:
+            if isinstance(value.value, float):
+                # Format floats with appropriate precision
+                return f"{value.value:.10g}"
+            return str(value.value)
         else:
             return str(value.value)
+
+    def provide_range_formatting(
+        self, params: lsp.DocumentRangeFormattingParams
+    ) -> Optional[List[lsp.TextEdit]]:
+        """Format a range of the document."""
+        uri = params.text_document.uri
+        document = self.server.workspace.get_text_document(uri)
+
+        # For range formatting, we format the entire document but return only the range
+        # This is a simplified implementation
+        try:
+            parser = CP2KParser.parse_text(document.source, uri)
+            if parser.ast:
+                formatted = self._format_ast(parser.ast)
+                return [
+                    lsp.TextEdit(
+                        range=params.range,
+                        new_text=formatted,
+                    )
+                ]
+        except Exception:
+            pass
+
+        return None
+
+    def provide_on_type_formatting(
+        self, params: lsp.DocumentOnTypeFormattingParams
+    ) -> Optional[List[lsp.TextEdit]]:
+        """Format as the user types."""
+        # This is triggered when the user types certain characters
+        # For now, return None as it's optional
+        return None

@@ -105,9 +105,21 @@ class Lexer:
         start_line = self.line
         start_col = self.column
         value = ""
-        while self.peek().isalnum() or self.peek() in "_-":
+        while self.peek().isalnum() or self.peek() in "_":
             value += self.advance()
         return Token(TokenType.KEYWORD, value, start_line, start_col)
+
+    def read_unit(self) -> Token:
+        """Read a unit specifier (e.g., [eV], [angstrom])."""
+        start_line = self.line
+        start_col = self.column
+        value = ""
+        self.advance()  # consume [
+        while self.peek() not in "]\n\0" and self.pos < len(self.text):
+            value += self.advance()
+        if self.peek() == "]":
+            self.advance()  # consume ]
+        return Token(TokenType.UNIT, value, start_line, start_col)
 
     def read_comment(self) -> Token:
         start_line = self.line
@@ -116,6 +128,11 @@ class Lexer:
         while self.peek() not in "\n\0":
             value += self.advance()
         return Token(TokenType.COMMENT, value, start_line, start_col)
+
+    def _is_section_end(self) -> bool:
+        """Check if current position is a section end."""
+        remaining = self.text[self.pos:].upper()
+        return remaining.startswith("END") and (len(remaining) == 3 or not remaining[3].isalnum())
 
     def tokenize(self) -> List[Token]:
         while self.pos < len(self.text):
@@ -138,11 +155,19 @@ class Lexer:
                 start_line = self.line
                 start_col = self.column
                 self.advance()
-                if self.text[self.pos : self.pos + 3].upper() == "END":
+                if self._is_section_end():
+                    # Consume "END"
+                    self.advance()
+                    self.advance()
+                    self.advance()
+                    # Skip whitespace after END
+                    while self.peek() in " \t":
+                        self.advance()
+                    # Read section name if present
                     name = ""
                     while self.peek().isalnum() or self.peek() == "_":
                         name += self.advance()
-                    self.tokens.append(Token(TokenType.SECTION_END, name, start_line, start_col))
+                    self.tokens.append(Token(TokenType.SECTION_END, name or "END", start_line, start_col))
                 else:
                     name = ""
                     while self.peek().isalnum() or self.peek() == "_":
@@ -162,6 +187,8 @@ class Lexer:
                     self.tokens.append(Token(TokenType.BOOLEAN, ".FALSE.", start_line, start_col))
                 else:
                     self.advance()
+            elif char == "[":
+                self.tokens.append(self.read_unit())
             elif char in "!#":
                 self.tokens.append(self.read_comment())
             elif char.isalpha() or char == "_":

@@ -60,6 +60,29 @@ Controls geometry optimization and MD:
 - MD ensemble and thermostat
 - Convergence criteria
 """,
+        "KIND": """**KIND** - Atomic kind definition
+
+Defines properties of atomic species:
+- ELEMENT - Chemical element
+- BASIS_SET - Basis set name
+- POTENTIAL - Pseudopotential
+- MAGNETIZATION - Initial magnetic moment
+""",
+        "CELL": """**CELL** - Unit cell definition
+
+Defines the simulation cell:
+- A, B, C - Cell vectors
+- ALPHA, BETA, GAMMA - Cell angles
+- PERIODIC - Periodic boundary conditions
+- SYMMETRY - Space group symmetry
+""",
+        "COORD": """**COORD** - Atomic coordinates
+
+Defines atomic positions:
+- Cartesian or fractional coordinates
+- UNIT - Coordinate unit (ANGSTROM, BOHR)
+- SCALED - Use scaled coordinates
+""",
     }
 
     # Documentation for common keywords
@@ -111,6 +134,28 @@ Maximum number of SCF iterations before giving up.
 **Type**: Integer
 **Default**: 50
 """,
+        "BASIS_SET": """**BASIS_SET** - Basis set name
+
+Specifies the Gaussian basis set for this atomic kind.
+Common choices: DZVP-MOLOPT-SR-GTH, TZVP-MOLOPT-GTH
+
+**Type**: String
+**Required**: Yes
+""",
+        "POTENTIAL": """**POTENTIAL** - Pseudopotential name
+
+Specifies the pseudopotential for this atomic kind.
+Common choices: GTH-PBE, GTH-BLYP
+
+**Type**: String
+""",
+        "ELEMENT": """**ELEMENT** - Chemical element symbol
+
+Specifies the chemical element for this atomic kind.
+
+**Type**: String
+**Required**: Yes
+""",
     }
 
     def __init__(self, server):
@@ -138,6 +183,20 @@ Maximum number of SCF iterations before giving up.
         # Check if it's a keyword
         if word_upper in self.KEYWORD_DOCS:
             return lsp.Hover(contents=lsp.MarkupContent(kind=lsp.MarkupKind.Markdown, value=self.KEYWORD_DOCS[word_upper]))
+
+        # Check from keyword database if available
+        try:
+            from cp2k_lsp.data.keywords import get_keyword_info
+            kw_info = get_keyword_info(word_upper)
+            if kw_info:
+                doc = f"**{kw_info.name}**\n\n{kw_info.description}\n\n**Type**: {kw_info.keyword_type.value}"
+                if kw_info.default is not None:
+                    doc += f"\n**Default**: {kw_info.default}"
+                if kw_info.required:
+                    doc += "\n**Required**: Yes"
+                return lsp.Hover(contents=lsp.MarkupContent(kind=lsp.MarkupKind.Markdown, value=doc))
+        except ImportError:
+            pass
 
         return None
 

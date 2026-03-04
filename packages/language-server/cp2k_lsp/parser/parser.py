@@ -135,7 +135,7 @@ class CP2KParser:
         # Expect end of section
         if self.match(TokenType.SECTION_END):
             end_token = self.advance()
-            end_name = end_token.value[3:] if end_token.value.upper().startswith("END") else ""
+            end_name = end_token.value
             if end_name and end_name.upper() != section.name.upper():
                 self.errors.append(
                     SyntaxError(
