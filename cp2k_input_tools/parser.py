@@ -1,5 +1,6 @@
 import itertools
 import re
+import warnings
 import xml.etree.ElementTree as ET
 from collections import Counter
 from dataclasses import dataclass, field
@@ -7,16 +8,24 @@ from fractions import Fraction
 from typing import Iterator, List, Optional, Tuple, Union
 
 from . import DEFAULT_CP2K_INPUT_XML
-from .keyword_helpers import UREG, Keyword
+from .keyword_helpers import (
+    UREG,
+    Keyword,
+    check_deprecated_keyword,
+    check_deprecated_section,
+)
 from .parser_errors import (
+    ErrorContext,
     InvalidNameError,
     InvalidParameterError,
     InvalidSectionError,
     NameRepetitionError,
+    NestedSectionError,
+    ParserError,
     SectionMismatchError,
 )
 from .preprocessor import CP2KPreprocessor
-from .tokenizer import COMMENT_CHARS, Context, TokenizerError
+from .tokenizer import COMMENT_CHARS, TokenizerError
 
 _SECTION_MATCH = re.compile(r"&(?P<name>[\w\-_]+)\s*(?P<param>.*)")
 _KEYWORD_MATCH = re.compile(r"(?P<name>[\w\-_]+)\s*(?P<value>.*)")
@@ -30,6 +39,7 @@ class Section:
     keywords: List[Keyword] = field(default_factory=list)
     param: Union[int, float, str, bool, None] = None
     repeats: bool = False
+    line_number: Optional[int] = None
 
     def subsections_by_name(self, name) -> Iterator["Section"]:
         yield from (s for s in self.subsections if s.name == name)
@@ -55,6 +65,13 @@ class Section:
                     return node
 
         return None
+    
+    def get_section_stack(self) -> List[str]:
+        """Get the full section stack path."""
+        stack = []
+        # This would need parent references to work fully
+        # For now, return just this section's name
+        return [self.name] if self.name != "/" else []
 
 
 class CP2KInputParser:
@@ -76,17 +93,49 @@ class CP2KInputParser:
 
         self._key_trafo = key_trafo
         self._base_inc_dir = base_dir
+        
+        # Track warnings
+        self._warnings = []
+        
+        # Enhanced error tracking
+        self._last_error_context = None
 
-    def _add_tree_section(self, section_name, repeats, node):
+    def _add_tree_section(self, section_name, repeats, node, line_number=None):
         if not repeats and any(s.name == section_name for s in self._treerefs[-1].subsections):
             # TODO: the user possibly specified an alias, but here we only return the matching key
-            raise InvalidNameError(f"the section '{section_name}' can not be defined multiple times", Context())
+            ctx = ErrorContext(
+                line=None,  # Will be set by caller
+                section=self._treerefs[-1],
+                section_stack=self._get_current_section_stack()
+            )
+            raise InvalidNameError(
+                f"the section '{section_name}' can not be defined multiple times",
+                ctx
+            )
 
-        self._treerefs[-1].subsections += [Section(section_name, repeats=repeats, node=node)]
+        # Check for deprecated sections
+        deprecation_warning = check_deprecated_section(section_name)
+        if deprecation_warning:
+            warnings.warn(deprecation_warning)
+            self._warnings.append(str(deprecation_warning))
+
+        self._treerefs[-1].subsections += [Section(section_name, repeats=repeats, node=node, line_number=line_number)]
         self._treerefs += [self._treerefs[-1].subsections[-1]]
 
-    def _parse_as_section(self, line):
+    def _get_current_section_stack(self) -> List[str]:
+        """Get the current section stack for error reporting."""
+        return [s.name for s in self._treerefs if s.name != "/"]
+
+    def _parse_as_section(self, line, line_number=None):
         match = _SECTION_MATCH.match(line)
+        
+        if not match:
+            ctx = ErrorContext(
+                line=line,
+                linenr=line_number,
+                section_stack=self._get_current_section_stack()
+            )
+            raise InvalidSectionError(f"invalid section syntax: {line}", ctx)
 
         section_name = match.group("name").upper()
         section_param = match.group("param")
@@ -95,41 +144,103 @@ class CP2KInputParser:
             section_param = section_param.rstrip()
 
             if section_param and section_param.upper() not in [e.text for e in self._treerefs[-1].node.iterfind("./NAME")]:
-                raise SectionMismatchError("could not match open section with name: {section_param}", Context())
+                ctx = ErrorContext(
+                    line=line,
+                    linenr=line_number,
+                    section=self._treerefs[-1],
+                    section_stack=self._get_current_section_stack(),
+                    suggestion=f"Did you mean to close section '{self._treerefs[-1].name}'?"
+                )
+                raise SectionMismatchError(
+                    f"could not match open section with name: {section_param}",
+                    ctx
+                )
 
             # if the END param was a match or none was specified, go a level up
-            self._treerefs.pop()
+            if len(self._treerefs) > 1:  # Don't pop root
+                self._treerefs.pop()
             return
 
         # check all section nodes for matching names or aliases
         section_node = self._treerefs[-1].find_node_by_name("SECTION", section_name)
         if section_node is None:
-            raise InvalidSectionError(f"invalid section '{section_name}'", Context())
+            # Try to find similar section names for better error messages
+            available_sections = list(self._treerefs[-1].section_names)
+            suggestion = None
+            if available_sections:
+                # Simple fuzzy match - find sections with similar prefix
+                similar = [s for s in available_sections if s and (section_name in s or s in section_name)]
+                if similar:
+                    suggestion = f"Did you mean: {', '.join(similar[:3])}?"
+            
+            ctx = ErrorContext(
+                line=line,
+                linenr=line_number,
+                section_stack=self._get_current_section_stack(),
+                suggestion=suggestion
+            )
+            raise InvalidSectionError(f"invalid section '{section_name}'", ctx)
 
         repeats = True if section_node.get("repeats") == "yes" else False
 
-        self._add_tree_section(section_name, repeats, section_node)
+        self._add_tree_section(section_name, repeats, section_node, line_number)
 
         # check whether we got a parameter for the section and validate it
         if section_param and not section_param.startswith(COMMENT_CHARS):
             param_node = section_node.find("./SECTION_PARAMETERS")
             if param_node:  # validate the section parameter like a kw datatype
                 # there is no way we get a second section parameter, assign directly
-                self._treerefs[-1].param = Keyword.from_string(param_node, section_param).values
+                try:
+                    self._treerefs[-1].param = Keyword.from_string(param_node, section_param).values
+                except InvalidParameterError as exc:
+                    ctx = ErrorContext(
+                        line=line,
+                        linenr=line_number,
+                        section=self._treerefs[-1],
+                        section_stack=self._get_current_section_stack()
+                    )
+                    raise InvalidParameterError(
+                        f"invalid parameter for section '{section_name}': {exc.message}",
+                        ctx
+                    ) from exc
             else:
+                ctx = ErrorContext(
+                    line=line,
+                    linenr=line_number,
+                    section=self._treerefs[-1],
+                    section_stack=self._get_current_section_stack()
+                )
                 raise InvalidParameterError(
-                    f"section parameters given for non-parametrized section '{section_name}': {section_param}", Context()
+                    f"section parameters given for non-parametrized section '{section_name}': {section_param}",
+                    ctx
                 )
 
-    def _add_tree_keyword(self, kw):
+    def _add_tree_keyword(self, kw, line_number=None):
         if not kw.repeats and any(k.name == kw.name for k in self._treerefs[-1].keywords):
             # TODO: the user possibly specified an alias, but here we only return the matching key
-            raise NameRepetitionError(f"the keyword '{kw.name}' can only be mentioned once")
+            ctx = ErrorContext(
+                line=None,
+                linenr=line_number,
+                section=self._treerefs[-1],
+                section_stack=self._get_current_section_stack()
+            )
+            raise NameRepetitionError(
+                f"the keyword '{kw.name}' can only be mentioned once",
+                ctx
+            )
 
         self._treerefs[-1].keywords += [kw]
 
-    def _parse_as_keyword(self, line):
+    def _parse_as_keyword(self, line, line_number=None):
         match = _KEYWORD_MATCH.match(line)
+        
+        if not match:
+            ctx = ErrorContext(
+                line=line,
+                linenr=line_number,
+                section_stack=self._get_current_section_stack()
+            )
+            raise InvalidNameError(f"invalid keyword syntax: {line}", ctx)
 
         kw_name = match.group("name").upper()
         kw_value = match.group("value")
@@ -143,14 +254,47 @@ class CP2KInputParser:
                 kw_value = line
 
         if kw_node is None:
-            raise InvalidNameError(f"invalid keyword '{kw_name}' specified and no default keyword for this section", Context())
+            # Try to find similar keyword names for better error messages
+            available_keywords = list(self._treerefs[-1].keyword_names)
+            suggestion = None
+            if available_keywords:
+                similar = [k for k in available_keywords if k and (kw_name in k or k in kw_name)]
+                if similar:
+                    suggestion = f"Did you mean: {', '.join(similar[:3])}?"
+            
+            ctx = ErrorContext(
+                line=line,
+                linenr=line_number,
+                section=self._treerefs[-1],
+                section_stack=self._get_current_section_stack(),
+                suggestion=suggestion
+            )
+            raise InvalidNameError(
+                f"invalid keyword '{kw_name}' specified and no default keyword for this section",
+                ctx
+            )
+
+        # Check for deprecated keywords
+        deprecation_warning = check_deprecated_keyword(kw_name)
+        if deprecation_warning:
+            warnings.warn(deprecation_warning)
+            self._warnings.append(str(deprecation_warning))
 
         try:
             kw = Keyword.from_string(kw_node, kw_value, self._key_trafo)  # the key_trafo is needed to mangle keywords
         except InvalidParameterError as exc:
-            raise InvalidParameterError(f"invalid values for keyword: {match.group('name')}", Context()) from exc
+            ctx = ErrorContext(
+                line=line,
+                linenr=line_number,
+                section=self._treerefs[-1],
+                section_stack=self._get_current_section_stack()
+            )
+            raise InvalidParameterError(
+                f"invalid values for keyword '{kw_name}': {exc.message}",
+                ctx
+            ) from exc
 
-        self._add_tree_keyword(kw)
+        self._add_tree_keyword(kw, line_number)
 
     @property
     def nested_dict(self):
@@ -205,27 +349,39 @@ class CP2KInputParser:
         preprocessor = CP2KPreprocessor(fhandle, self._base_inc_dir, initial_variable_values)
         self._tree = Section("/", node=self._spec.getroot())
         self._treerefs = [self._tree]
+        self._warnings = []
 
         for line in preprocessor:
+            line_number = preprocessor.line_range[1] if hasattr(preprocessor, 'line_range') else None
             try:
                 if line.startswith("&"):
-                    self._parse_as_section(line)
+                    self._parse_as_section(line, line_number)
                     continue
 
-                self._parse_as_keyword(line)
+                self._parse_as_keyword(line, line_number)
 
             except (TokenizerError, InvalidParameterError, InvalidSectionError, InvalidNameError) as exc:
-                exc.args[1].filename = preprocessor.fname
-                exc.args[1].linenr = preprocessor.line_range[1]
-                exc.args[1].colnrs = preprocessor.colnrs
-                exc.args[1].line = line
-                exc.args[1].section = self._treerefs[-1]
+                # Enhance error context with preprocessor information
+                if hasattr(exc, 'context') and exc.context:
+                    exc.context.filename = preprocessor.fname
+                    exc.context.linenr = preprocessor.line_range[1]
+                    exc.context.colnrs = preprocessor.colnrs
+                    exc.context.line = line
+                    exc.context.section = self._treerefs[-1]
+                    exc.context.section_stack = self._get_current_section_stack()
                 raise
 
         if len(self._treerefs) > 1:
+            unclosed = self._treerefs[-1]
+            ctx = ErrorContext(
+                line=None,
+                section=unclosed,
+                section_stack=self._get_current_section_stack(),
+                suggestion=f"Add '&END {unclosed.name}' to close the section"
+            )
             raise SectionMismatchError(
-                f"section '{self._treerefs[-1].name}' not closed",
-                Context(line=line, section=self._treerefs[-1]),  # preprocessor is not valid anymore at this point
+                f"section '{unclosed.name}' not closed",
+                ctx
             )
 
         # returning the nested dictionary representation for convenience
@@ -264,6 +420,11 @@ class CP2KInputParser:
                 position = ((p * current_unit).to(UREG.angstrom).magnitude for p in position)
 
             yield (name, tuple(position), molname)
+
+    @property
+    def warnings(self) -> List[str]:
+        """Return list of warnings generated during parsing."""
+        return self._warnings.copy()
 
 
 class CP2KInputParserSimplified(CP2KInputParser):

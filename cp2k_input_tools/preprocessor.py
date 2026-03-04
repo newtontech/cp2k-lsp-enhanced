@@ -3,21 +3,21 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
-from typing import NamedTuple, Sequence
+from typing import NamedTuple, Optional, Sequence
 
 from .lineiterator import MultiFileLineIterator
-from .parser_errors import PreprocessorError
-from .tokenizer import COMMENT_CHARS, Context, TokenizerError, tokenize
+from .parser_errors import ErrorContext, PreprocessorError
+from .tokenizer import COMMENT_CHARS, TokenizerError, tokenize
 
 
 class _Variable(NamedTuple):
     value: str
-    ctx: defaultdict
+    ctx: Optional[ErrorContext] = None
 
 
 class _ConditionalBlock(NamedTuple):
     condition: str
-    ctx: defaultdict
+    ctx: ErrorContext
 
 
 _VALID_VAR_NAME_MATCH = re.compile(r"^[a-z_]\w*$", flags=re.IGNORECASE | re.ASCII)
@@ -43,15 +43,17 @@ class CP2KPreprocessor(Iterator):
             raise TypeError("invalid type passed for base_dir")
 
         if initial_variable_values:
-            self._varstack.update({k.upper(): _Variable(v, None) for k, v in initial_variable_values.items()})
+            for k, v in initial_variable_values.items():
+                ctx = ErrorContext(line=f"@SET {k} {v}")
+                self._varstack[k.upper()] = _Variable(v, ctx)
 
         self._lineiter.add_file(fhandle, managed=False)
 
-    def _resolve_variables(self, line):
+    def _resolve_variables(self, line, line_number=None, filename=None):
         var_start = 0
         var_end = 0
 
-        ctx = Context(line=line)
+        ctx = ErrorContext(line=line, linenr=line_number, filename=filename)
 
         # the following algorithm is from CP2Ks cp_parser_inpp_methods.F to reproduce its behavior :(
 
@@ -120,10 +122,10 @@ class CP2KPreprocessor(Iterator):
 
         return line
 
-    def _parse_preprocessor_instruction(self, line):
+    def _parse_preprocessor_instruction(self, line, line_number=None, filename=None):
         conditional_match = _CONDITIONAL_MATCH.match(line)
 
-        ctx = Context(line=line)
+        ctx = ErrorContext(line=line, linenr=line_number, filename=filename)
 
         if conditional_match:
             stmt = conditional_match.group("stmt")
@@ -147,10 +149,11 @@ class CP2KPreprocessor(Iterator):
 
                 # resolve any variables inside the condition
                 try:
-                    condition = self._resolve_variables(condition)
+                    condition = self._resolve_variables(condition, line_number, filename)
                 except PreprocessorError as exc:
-                    exc.args[1].colnr += conditional_match.start("cond")
-                    exc.args[1].ref_colnr += conditional_match.start("cond")
+                    if exc.context:
+                        exc.context.colnr += conditional_match.start("cond")
+                        exc.context.ref_colnr += conditional_match.start("cond")
                     raise
 
                 # prefix-whitespace are consumed in the regex, suffix with the strip() above
@@ -174,7 +177,13 @@ class CP2KPreprocessor(Iterator):
         if set_match:
             # resolve other variables in the definition first
             key = set_match.group("var")
-            value = self._resolve_variables(set_match.group("value"))
+            try:
+                value = self._resolve_variables(set_match.group("value"), line_number, filename)
+            except PreprocessorError as exc:
+                if exc.context:
+                    exc.context.colnr += set_match.start("value")
+                    exc.context.ref_colnr += set_match.start("value")
+                raise
 
             if not _VALID_VAR_NAME_MATCH.match(key):
                 raise PreprocessorError(f"invalid variable name '{key}'", ctx) from None
@@ -188,32 +197,38 @@ class CP2KPreprocessor(Iterator):
 
             # resolve variables first
             try:
-                filename = self._resolve_variables(include_match.group("file"))
+                filename = self._resolve_variables(include_match.group("file"), line_number, filename)
             except PreprocessorError as exc:
-                exc.args[1].colnr += include_match.start("file")  # shift colnr
-                exc.args[1].ref_colnr += include_match.start("file")
+                if exc.context:
+                    exc.context.colnr += include_match.start("file")  # shift colnr
+                    exc.context.ref_colnr += include_match.start("file")
                 raise
 
             if filename.startswith(("'", '"')):
                 try:
                     tokens = tokenize(filename)  # use the tokenizer to detect unterminated quotes
                 except TokenizerError as exc:
-                    exc.args[1].colnr += include_match.start("file")  # shift colnr
-                    exc.args[1].ref_colnr += include_match.start("file")
+                    if hasattr(exc, 'context') and exc.context:
+                        exc.context.colnr += include_match.start("file")  # shift colnr
+                        exc.context.ref_colnr += include_match.start("file")
                     raise
 
                 if len(tokens) != 1:
+                    ctx.colnr = include_match.start("complete")
+                    ctx.ref_colnr = include_match.end("complete")
                     raise PreprocessorError(
                         "@INCLUDE requires exactly one argument",
-                        Context(colnr=include_match.start("complete"), ref_colnr=include_match.end("complete")),
+                        ctx
                     )
 
                 filename = tokens[0].strip("'\"")
 
             if not filename:
+                ctx.colnr = include_match.start("complete")
+                ctx.ref_colnr = include_match.end("complete")
                 raise PreprocessorError(
                     f"@{inctype} requires exactly one argument",
-                    Context(colnr=include_match.start("complete"), ref_colnr=include_match.end("complete")),
+                    ctx
                 )
 
             filename = filename.strip("'\"")
@@ -241,30 +256,35 @@ class CP2KPreprocessor(Iterator):
 
     def __next__(self):
         for line in self._lineiter:
+            line_number = self._lineiter.line_range[1] if hasattr(self._lineiter, 'line_range') else None
+            filename = self._lineiter.fname if hasattr(self._lineiter, 'fname') else None
+            
             try:
                 # ignore empty lines and comments:
                 if not line or line.startswith(COMMENT_CHARS):
                     continue
 
                 if line.startswith("@"):
-                    self._parse_preprocessor_instruction(line)
+                    self._parse_preprocessor_instruction(line, line_number, filename)
                     continue
 
                 # ignore everything in a disable @IF/@ENDIF block
                 if self._conditional_block and not self._conditional_block.condition:
                     continue
 
-                return self._resolve_variables(line)
+                return self._resolve_variables(line, line_number, filename)
 
             except (PreprocessorError, TokenizerError) as exc:
-                exc.args[1].filename = self._lineiter.fname
-                exc.args[1].linenr = self._lineiter.line_range[1]
-                exc.args[1].colnrs = self._lineiter.colnrs
-                exc.args[1].line = line
+                if hasattr(exc, 'context') and exc.context:
+                    exc.context.filename = self._lineiter.fname
+                    exc.context.linenr = self._lineiter.line_range[1]
+                    exc.context.colnrs = self._lineiter.colnrs
+                    exc.context.line = line
                 raise
 
         if self._conditional_block is not None:
-            raise PreprocessorError("conditional block not closed at end of file", Context(ref_line=self._conditional_block.ctx.line))
+            ctx = ErrorContext(ref_line=self._conditional_block.ctx.line)
+            raise PreprocessorError("conditional block not closed at end of file", ctx)
 
         raise StopIteration
 

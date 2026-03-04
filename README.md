@@ -1,221 +1,155 @@
-# cp2k-input-tools
+# CP2K Input Tools & LSP
 
-[![Build status](https://github.com/cp2k/cp2k-input-tools/actions/workflows/test.yml/badge.svg)](https://github.com/cp2k/cp2k-input-tools/actions) [![codecov](https://codecov.io/gh/cp2k/cp2k-input-tools/branch/develop/graph/badge.svg)](https://codecov.io/gh/cp2k/cp2k-input-tools) [![PyPI](https://img.shields.io/pypi/pyversions/cp2k-input-tools)](https://pypi.org/project/cp2k-input-tools/)
+[![Build status](https://github.com/cp2k/cp2k-input-tools/actions/workflows/test.yml/badge.svg)](https://github.com/cp2k/cp2k-input-tools/actions) 
+[![codecov](https://codecov.io/gh/cp2k/cp2k-input-tools/branch/develop/graph/badge.svg)](https://codecov.io/gh/cp2k/cp2k-input-tools) 
+[![PyPI](https://img.shields.io/pypi/pyversions/cp2k-input-tools)](https://pypi.org/project/cp2k-input-tools/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Fully validating pure-python CP2K input file parsers including preprocessing capabilities
+> **Enhanced with Language Server Protocol (LSP) support for intelligent CP2K input file editing**
 
-Available commands (also available through an API, see below):
+Fully validating pure-python CP2K input file parsers including preprocessing capabilities, with an enhanced Language Server Protocol implementation for intelligent code completion, diagnostics, and more.
 
-* `cp2klint` .. a CP2K input file linter
-* `fromcp2k` .. create a JSON/YAML configuration file or an [AiiDA](https://github.com/aiidateam/aiida-cp2k) run script from a CP2K input file (includes validation)
-* `tocp2k` .. convert a JSON or YAML configuration back to CP2K's input file format (includes validation)
-* `cp2kgen` .. generate new input files based on a given input file and expressions to change parameters programmatically
-* `cp2kget` .. get values from a CP2K input file (most likely a restart file) given a path of sections and attribute
-* `cp2k-language-server` .. a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the CP2K input file format
-* `cp2k-datafile-lint` .. linters for other CP2K-related data file formats (like pseudos and basissets)
+## 🚀 Quick Start
 
-For a description of the JSON/YAML formats used, see below.
+```bash
+# Install the base package
+pip install cp2k-input-tools
 
-## Requirements
+# Install with YAML support
+pip install cp2k-input-tools[yaml]
 
-* Python 3.9+
-* https://pypi.org/project/transitions/
-* https://pypi.org/project/pint/
-* optional: https://pypi.org/project/ruamel.yaml/ for YAML support
-* optional: https://github.com/openlawlibrary/pygls for the cp2k-language-server
-
-For development: https://poetry.eustace.io/ https://pytest.org/
-
-## Idea
-
-* have a pure-python CP2K input file linter with proper syntax error reporting (context, etc.)
-* a final & complete restart file parser
-* basis for an AiiDA CP2K project importer
-* testbed for alternative import formats (YAML, JSON) for CP2K
-* possible testbed for a re-implementation of the CP2K input parser itself
-
-## TODOs
-
-* parser: improve error reporting with context
-* preprocessor: don't lose original context when interpolating variables
-* parser: parsing the XML is slow (easily 70% of the time), pickle or generate Python code directly instead and keep XML parsing as fallback
-* parser: preserve comments when going to/from YAML
-
-# Usage
-
-## Installation
-
-You will get most tools using simply:
-
-```console
-$ pip install cp2k-input-tools
+# Install with Language Server support
+pip install cp2k-input-tools[lsp]
 ```
 
-For YAML support you should use
+## ✨ Features
 
-```console
-$ pip install cp2k-input-tools[yaml]
+### Core Tools
+
+| Tool | Description |
+|------|-------------|
+| `cp2klint` | CP2K input file linter with detailed error reporting |
+| `fromcp2k` | Convert CP2K input to JSON/YAML or AiiDA run scripts |
+| `tocp2k` | Convert JSON/YAML back to CP2K input format |
+| `cp2kgen` | Generate input files for parameter sweeps |
+| `cp2kget` | Extract values from CP2K restart files |
+| `cp2k-language-server` | **Language Server Protocol implementation** |
+| `cp2k-datafile-lint` | Linter for pseudos and basis sets |
+
+### 🆕 LSP Features (New!)
+
+The enhanced Language Server Protocol implementation provides IDE-like features for CP2K input files:
+
+- **📝 Intelligent Auto-completion**
+  - Section names (`&GLOBAL`, `&FORCE_EVAL`, etc.)
+  - Context-aware keywords
+  - Enum values and units
+  - Snippet support
+
+- **🔍 Real-time Diagnostics**
+  - Syntax error detection
+  - Schema validation
+  - Type checking
+  - Missing section warnings
+
+- **📖 Hover Documentation**
+  - Keyword descriptions
+  - Default values
+  - Allowed values
+  - Data types
+
+- **🎯 Go to Definition**
+  - Section navigation
+  - Variable references (`@SET` → `${VAR}`)
+
+- **✨ Code Formatting**
+  - Automatic indentation
+  - Keyword normalization
+  - Comment preservation
+
+## 📦 Installation
+
+### Basic Installation
+
+```bash
+pip install cp2k-input-tools
 ```
 
-and for the Language Server:
+### With All Features
 
-```console
-$ pip install cp2k-input-tools[lsp]
+```bash
+# Full installation with YAML and LSP support
+pip install cp2k-input-tools[yaml,lsp]
+
+# Or install individually
+pip install cp2k-input-tools[yaml]    # YAML support
+pip install cp2k-input-tools[lsp]     # Language Server support
 ```
 
-## Command Line Interface
+### Development Installation
 
-Generate JSON, YAML or aiida-cp2k run script from a CP2K input file:
-
-```console
-$ fromcp2k --help
-usage: fromcp2k [-h] [-y] [-c] [-b BASE_DIR] [-t TRAFO] <file>
-
-Convert CP2K input to JSON (default) or YAML
-
-positional arguments:
-  <file>                CP2K input file
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -y, --yaml            output yaml instead of json
-  -c, --canonical       use the canonical output format
-  -b BASE_DIR, --base-dir BASE_DIR
-                        search path used for relative @include's
-  -t TRAFO, --trafo TRAFO
-                        transformation applied to key and section names (auto,
-                        upper, lower)
+```bash
+git clone https://github.com/cp2k/cp2k-input-tools.git
+cd cp2k-input-tools
+pip install -e ".[yaml,lsp]"
+pip install -e ".[dev]"
 ```
 
-Generate an [aiida-cp2k](https://github.com/aiidateam/aiida-cp2k) template run script:
+### TypeScript/Node.js LSP (Enhanced Version)
 
-```console
-$ fromcp2k --format aiida-cp2k-calc tests/inputs/test01.inp
-Any key transformation function other than 'auto' is ignored when generating an aiida-cp2k run script template
+For the enhanced TypeScript LSP implementation:
 
-from aiida.engine import run
-from aiida.orm import (load_code, Dict, StructureData)
+```bash
+git clone https://github.com/newtontech/cp2k-lsp-enhanced.git
+cd cp2k-lsp-enhanced
+npm install
+npm run build
+npm link
+```
 
-cp2k_code = load_code('...')
+## 🖥️ VS Code Integration
 
-# Structure
-structure = StructureData(...)
+### Using the Python LSP
 
-# Parameters
-parameters = Dict(
-    dict={
-           "FORCE_EVAL": {
-               "DFT": {
-                   "KPOINTS": {
-                       "FULL_GRID": False,
-                       "PARALLEL_GROUP_SIZE": -1,
-                       "SCHEME": "MONKHORST-PACK 3 3 3",
-                       "SYMMETRY": False,
-                   },
-                   "MGRID": {
-                       "CUTOFF": 1000.0,
-                       "REL_CUTOFF": 100.0,
-                   },
-                   "POISSON": {
-                       "PERIODIC": "XYZ",
-                   },
-                   "PRINT": {
-                       "OVERLAP_CONDITION": {
-                           "_": "ON",
-                           "1-NORM": True,
-                           "DIAGONALIZATION": True,
-                       },
-                   },
-                   "QS": {
-                       "EPS_DEFAULT": 1e-16,
-                       "EXTRAPOLATION": "USE_GUESS",
-                       "METHOD": "GAPW",
-                   },
-                   "SCF": {
-                       "SMEAR": {
-                           "_": True,
-                           "ELECTRONIC_TEMPERATURE": 300.0,
-                           "METHOD": "FERMI_DIRAC",
-                       },
-                       "ADDED_MOS": 40,
-                       "EPS_SCF": 1e-08,
-                       "MAX_SCF": 50,
-                   },
-                   "XC": {
-                       "XC_FUNCTIONAL": {
-                           "_": "PBE",
-                       },
-                   },
-                   "BASIS_SET_FILE_NAME": "./BASIS_SETS",
-                   "POTENTIAL_FILE_NAME": "./POTENTIALS",
-               },
-               "SUBSYS": {
-                   "CELL": {
-                       "CELL_REF": {
-                           "A": "4.32947291598 0.0 0.0",
-                           "B": "2.16473645799 3.7494335304 0.0",
-                           "C": "2.16473645799 1.24981118034 3.53499983838",
-                           "PERIODIC": "XYZ",
-                       },
-                       "A": "4.07419 0.0 0.0",
-                       "B": "2.037095 3.52835204 0.0",
-                       "C": "2.037095 1.17611735 3.32656221",
-                       "PERIODIC": "XYZ",
-                   },
-                   "KIND": [
-                       {
-                       "_": "Ge",
-                       "ELEMENT": "Ge",
-                       "POTENTIAL": "ALL-q32",
-                       "BASIS_SET": "ORB pob-TZVP",
-                       },
-                   ],
-                   "TOPOLOGY": {
-                       "COORD_FILE_NAME": "./struct.xyz",
-                       "COORD_FILE_FORMAT": "XYZ",
-                   },
-               },
-               "METHOD": "QUICKSTEP",
-           },
-           "GLOBAL": {
-               "PRINT_LEVEL": "MEDIUM",
-               "PROJECT_NAME": "fatman.calc",
-               "RUN_TYPE": "ENERGY",
-           },
-    })
+1. Install the [OpenQC-VSCode](https://marketplace.visualstudio.com/items?itemName=openqc.openqc-vscode) extension
+2. Configure the language server path in VS Code settings:
 
-# Construct process builder.
-builder = cp2k_code.get_builder()
-builder.structure = structure
-builder.parameters = parameters
-builder.code = cp2k_code
-builder.metadata.options.resources = {
-    "num_machines": 1,
-    "num_mpiprocs_per_machine": 1,
+```json
+{
+  "cp2k.languageServer.path": "cp2k-language-server",
+  "cp2k.enableSchemaValidation": true,
+  "cp2k.enableDeepValidation": false
 }
-builder.metadata.options.max_wallclock_seconds = 1 * 3 * 60
-
-run(builder)
 ```
 
+### Using the Enhanced TypeScript LSP
 
-Generate a CP2K input file from a JSON or YAML:
-
-```console
-$ tocp2k --help
-usage: tocp2k [-h] [-y] <file>
-
-Convert JSON or YAML input to CP2K
-
-positional arguments:
-  <file>      JSON or YAML input file
-
-optional arguments:
-  -h, --help  show this help message and exit
-  -y, --yaml
+```json
+{
+  "cp2k.languageServer.path": "cp2k-lsp-enhanced",
+  "cp2k.enableSchemaValidation": true,
+  "cp2k.enableDeepValidation": true,
+  "cp2k.cp2kPath": "/usr/local/bin/cp2k.psmp",
+  "cp2k.validationDelay": 1000
+}
 ```
 
-Lint a CP2K input file:
+### Configuration Options
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `cp2k.languageServer.path` | string | `"cp2k-language-server"` | Path to LSP executable |
+| `cp2k.enableSchemaValidation` | boolean | `true` | Enable XML schema validation |
+| `cp2k.enableDeepValidation` | boolean | `false` | Enable CP2K CLI deep validation |
+| `cp2k.cp2kPath` | string | `""` | Path to CP2K executable |
+| `cp2k.validationDelay` | number | `1000` | Debounce delay for validation (ms) |
+| `cp2k.maxNumberOfProblems` | number | `100` | Maximum diagnostics to show |
+
+## 📖 Usage Examples
+
+### Command Line Tools
+
+#### Lint a CP2K Input File
 
 ```console
 $ cp2klint tests/inputs/unterminated_var.inp
@@ -224,286 +158,193 @@ line   36: @IF ${HP
                ~~~~^
 ```
 
-Generate input files for a `CUTOFF` convergence study (multiple expressions will be combined as a cartesian product):
+#### Convert to JSON/YAML
 
 ```console
-$ cp2kgen tests/inputs/NaCl.inp "force_eval/dft/mgrid/cutoff=[800,900,1000]"
-Writing 'NaCl-cutoff_800.inp'...
-Writing 'NaCl-cutoff_900.inp'...
-Writing 'NaCl-cutoff_1000.inp'...
-$ diff -Naurb NaCl-cutoff_800.inp NaCl-cutoff_900.inp
---- NaCl-cutoff_800.inp	2019-10-21 18:52:09.994323474 +0200
-+++ NaCl-cutoff_900.inp	2019-10-21 18:52:10.680996641 +0200
-@@ -69,7 +69,7 @@
-       POTENTIAL_FILE_NAME ALL_POTENTIALS
-       &MGRID
-          REL_CUTOFF 80.0
--         CUTOFF 800
-+         CUTOFF 900
-          NGRIDS 6
-       &END MGRID
-       &XC
+$ fromcp2k input.inp -o output.json
+$ fromcp2k input.inp -y -o output.yaml
 ```
 
-Get a value from a CP2K input file, for example a `RESTART` file generated in a cell optimization:
+#### Generate AiiDA Run Script
 
 ```console
-$ cp2kget tests/inputs/NaCl.inp "force_eval/subsys/cell/a/0"
+$ fromcp2k --format aiida-cp2k-calc input.inp > aiida_script.py
+```
+
+#### Convert Back to CP2K Format
+
+```console
+$ tocp2k config.yaml -o output.inp
+```
+
+#### Parameter Sweep Generation
+
+```console
+$ cp2kgen input.inp "force_eval/dft/mgrid/cutoff=[800,900,1000]"
+Writing 'input-cutoff_800.inp'...
+Writing 'input-cutoff_900.inp'...
+Writing 'input-cutoff_1000.inp'...
+```
+
+#### Extract Values from Restart Files
+
+```console
+$ cp2kget restart.inp "force_eval/subsys/cell/a/0"
 force_eval/subsys/cell/a/0: 5.64123539364476
 ```
 
-## API
-
-Convert a CP2K input file to a nested Python dictionary:
+### Python API
 
 ```python
 from cp2k_input_tools.parser import CP2KInputParser, CP2KInputParserSimplified
-
-canonical = False
-
-if canonical:
-    parser = CP2KInputParser()
-else:
-    parser = CP2KInputParserSimplified()
-
-with open("project.inp") as fhandle:
-    tree = parser.parse(fhandle)
-```
-
-Convert a nested Python dictionary back to a CP2K input file:
-
-```python
 from cp2k_input_tools.generator import CP2KInputGenerator
 
+# Parse CP2K input file
+parser = CP2KInputParserSimplified()
+with open("project.inp") as f:
+    tree = parser.parse(f)
+
+# Modify the tree
+print(tree['global']['project_name'])
+
+# Generate CP2K input from dictionary
 generator = CP2KInputGenerator()
-
-tree = {"global": {}}  # ... the input tree
-
-with open("project.inp", "w") as fhandle:
+with open("output.inp", "w") as f:
     for line in generator.line_iter(tree):
-        fhandle.write(f"{line}\n")
+        f.write(f"{line}\n")
 ```
 
-## Language Server Protocol
+### LSP Usage
 
-The executable providing the language server is: `cp2k-language-server`
+Start the language server manually:
 
-Current LSP features:
+```bash
+# Python LSP
+cp2k-language-server
 
-* real-time diagnostics on file open/change
-* schema-driven completion for sections, keywords, and common keyword values
-* hover documentation for sections, keywords, and enumerated values
-
-For `vim` you need a plugin to be able to use language servers. One such plugin is [ALE](https://github.com/dense-analysis/ale) for which you can create in its directory the file `ale_linters/cp2k/language_server.vim` with the content
-
-```vim
-call ale#Set('cp2k_lsp_executable', 'cp2k-language-server')
-
-function! ale_linters#cp2k#language_server#GetProjectRoot(buffer) abort
-    let l:git_path = ale#path#FindNearestDirectory(a:buffer, '.git')
-
-    return !empty(l:git_path) ? fnamemodify(l:git_path, ':h:h') : ''
-endfunction
-
-call ale#linter#Define('cp2k', {
-\   'name': 'language_server',
-\   'lsp': 'stdio',
-\   'executable': {b -> ale#Var(b, 'cp2k_lsp_executable')},
-\   'project_root': function('ale_linters#cp2k#language_server#GetProjectRoot'),
-\   'command': '%e',
-\})
-```
-Afterwards you must set the filetype when editing a CP2K input file to `cp2k` to get it running. This can be done explicitly using `:set filetype=cp2k`.
-
-
-# The CP2K JSON and YAML formats
-
-A reference to the CP2K input format can be found here: https://manual.cp2k.org/
-
-## Canonical format
-
-For everything except the pre-processor capabilities (`@IF/@ENDIF/$var/@SET`) there is a canonical one-to-one mapping of the CP2K input format to either JSON or YAML:
-
-* repeatable sections are mapped to dictionaries
-* keywords or subsections are key/value entries in sections
-* all repeatable elements (sections and keywords) are mapped to lists of their respective mapped datatype
-* section parameters are mapped to a special key named `_`
-* default section keywords are mapped to a special key name `*`
-* sections in JSON or YAML must be prefixed to avoid double definition of a key in case of same name for a section and a keyword (like the `POTENTIAL` in `KIND`), to avoid quotation marks, instead of CP2K's `&` we are using the `+`
-* keyword values are mapped based on their datatypes: a list of values is always mapped to a list of their respective datatypes
-
-The following example input:
-
-```
-&GLOBAL
-   PRINT_LEVEL MEDIUM
-   PROJECT test
-   RUN_TYPE ENERGY
-&END GLOBAL
-&FORCE_EVAL
-   METHOD Quickstep
-   &DFT
-      BASIS_SET_FILE_NAME "./BASIS_SETS"
-      POTENTIAL_FILE_NAME ./POTENTIALS
-      &XC
-         &XC_FUNCTIONAL PBE
-         &END XC_FUNCTIONAL
-      &END XC
-   &END DFT
-   &SUBSYS
-      &CELL
-         A [angstrom] 4.07419 0.0 0.0
-         B [angstrom] 2.037095 3.52835204 0.0
-         C [angstrom] 2.037095 1.17611735 3.32656221
-         PERIODIC XYZ
-      &END CELL
-      &KIND Ge
-         ELEMENT Ge
-         POTENTIAL ALL-q32
-         BASIS_SET ORB pob-TZVP
-      &END KIND
-      &TOPOLOGY
-         COORD_FILE ./struct.xyz
-         COORD_FILE_FORMAT XYZ
-      &END TOPOLOGY
-   &END SUBSYS
-&END FORCE_EVAL
+# Enhanced TypeScript LSP
+cp2k-lsp-enhanced --stdio
 ```
 
-would generate the (canonical) JSON:
+## 🏗️ Architecture
 
-```json
-{
-  "+global": {
-    "print_level": "medium",
-    "project_name": "test",
-    "run_type": "energy"
-  },
-  "+force_eval": [
-    {
-      "method": "quickstep",
-      "+DFT": {
-        "basis_set_file_name": [
-          "./BASIS_SETS"
-        ],
-        "potential_file_name": "./POTENTIALS"
-      },
-      "+XC": {
-        "+xc_functional": {
-          "_": "PBE"
-        }
-      },
-      "+subsys": {
-        "cell": {
-          "A": [ 4.07419, 0, 0 ],
-          "B": [ 2.037095, 3.52835204, 0 ],
-          "C": [ 2.037095, 1.17611735, 3.32656221 ],
-          "periodic": "XYZ"
-        },
-        "+kind": [
-          {
-            "_": "Ge",
-            "element": "Ge",
-            "potential": "ALL-q32",
-            "basis_set": [
-              [ "ORB", "pob-TZVP" ]
-            ]
-          }
-          ],
-        "+topology": {
-          "coord_file_name": "./struct.xyz",
-          "coord_file_format": "XYZ"
-        }
-      }
-    }
-  ]
-}
+The project consists of two LSP implementations:
+
+### Python LSP (`cp2k-language-server`)
+
+Located in `cp2k_input_tools/lsp/`:
+- Built on [pygls](https://github.com/openlawlibrary/pygls)
+- Full LSP protocol support
+- Integrated with existing Python parser
+
+```
+cp2k_input_tools/lsp/
+├── server.py           # Main LSP server
+├── parser/             # Parser components
+│   ├── lexer.py
+│   ├── parser.py
+│   └── ast.py
+└── features/           # LSP features
+    ├── completion.py
+    ├── diagnostics.py
+    ├── hover.py
+    └── formatting.py
 ```
 
-*Caveats*:
+### TypeScript LSP (`cp2k-lsp-enhanced`)
 
-* the full input format needs be known and is being loaded from a bundled `cp2k_input.xml`
-* the YAML/JSON is quiet verbose and one has to know exactly which keywords can be repeated
+Located in `src/`:
+- Built on [vscode-languageserver](https://www.npmjs.com/package/vscode-languageserver)
+- Enhanced with XML schema validation
+- Deep validation via CP2K CLI
 
-While there is no solution to remedy the first caveat, the second can be solved with the simplified output format
-
-## Simplified format
-
-Still based on the canonical format the simplified format relaxes some of the rules
-
-1. a section must only be prefixed with a `+` if a keyword with the same name is present at the same time in the same section (since we can figure out whether the user wanted to specify the section or the keyword by inspecting the value for the key: `dict` for a section)
-2. if a repeated keyword or section contains only one entry, the list can be omitted (in case of ambiguity priority is given to multiple values per keyword rather than keyword repetition)
-3. sections with default parameters can be formulated as dictionaries, as long as the default parameter values are unique and do not match section keyword or subsection names
-
-the example from before in the simplified format:
-
-```json
-{
-  "global": {
-    "print_level": "medium",
-    "project_name": "test",
-    "run_type": "energy"
-  },
-  "force_eval": {
-    "method": "quickstep",
-    "DFT": {
-      "basis_set_file_name": "./BASIS_SETS",
-      "potential_file_name": "./POTENTIALS"
-    },
-    "xc": {
-      "xc_functional": {
-        "_": "PBE"
-      }
-    },
-    "subsys": {
-      "cell": {
-        "A": [ 4.07419, 0, 0 ],
-        "B": [ 2.037095, 3.52835204, 0 ],
-        "C": [ 2.037095, 1.17611735, 3.32656221 ],
-        "periodic": "XYZ"
-      },
-      "kind": {
-        "_": "Ge",
-        "element": "Ge",
-        "potential": "ALL-q32",
-        "basis_set": [ "ORB", "pob-TZVP" ]
-      },
-      "topology": {
-        "coord_file_name": "./struct.xyz",
-        "coord_file_format": "XYZ"
-      }
-    }
-  }
-}
+```
+src/
+├── server.ts           # Main LSP server
+├── parser/             # CP2K parser
+│   └── cp2k-parser.ts
+├── features/           # LSP providers
+│   ├── completion.ts
+│   ├── diagnostics.ts
+│   ├── hover.ts
+│   ├── definition.ts
+│   └── formatting.ts
+└── data/
+    ├── keyword-database.ts
+    └── schema-parser.ts
 ```
 
-or in YAML (with simplification rule #3 applied):
+## 📋 Supported CP2K Versions
 
-```yaml
-global:
-  print_level: medium
-  project_name: test
-  run_type: energy
-force_eval:
-  DFT:
-    basis_set_file_name: ./BASIS_SETS
-    potential_file_name: ./POTENTIALS
-  XC:
-    xc_functional:
-      _: PBE  # this can NOT be simplified since PBE could also be a subsection of xc_functional
-  method: quickstep
-  subsys:
-    cell:
-      A: [ 4.07419, 0.0, 0.0]
-      B: [ 2.037095, 3.52835204, 0.0]
-      C: [ 2.037095, 1.17611735, 3.32656221]
-      periodic: XYZ
-    kind:
-      Ge:
-        basis_set: [ORB, pob-TZVP]
-        element: Ge
-        potential: ALL-q32
-    topology:
-      coord_file_format: XYZ
-      coord_file_name: ./struct.xyz
+- CP2K 7.1
+- CP2K 8.1
+- CP2K 9.1
+- CP2K 2025.1
+
+## 🧪 Testing
+
+### Python Tests
+
+```bash
+# Run all tests with coverage
+pytest
+
+# Run specific test file
+pytest tests/test_lsp_server_full_coverage.py -v
+
+# Run with coverage report
+pytest --cov=cp2k_input_tools --cov-report=html
 ```
+
+### TypeScript Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test -- --coverage
+
+# Watch mode
+npm run test:watch
+```
+
+Current test coverage:
+- Python LSP: 100% target (in progress)
+- TypeScript LSP: 78%+ coverage
+
+## 📝 Documentation
+
+- [LSP Documentation](README-LSP.md) - Detailed LSP implementation guide
+- [Usage Guide](docs/usage.md) - Comprehensive usage examples
+- [Changelog](CHANGELOG.md) - Version history and changes
+- [LSP Changelog](CHANGELOG-LSP.md) - LSP-specific changes
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure:
+- Tests pass (`pytest` for Python, `npm test` for TypeScript)
+- Code is formatted (`black` for Python, `prettier` for TypeScript)
+- Type checking passes (`mypy` for Python, `tsc` for TypeScript)
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Original [cp2k-input-tools](https://github.com/cp2k/cp2k-input-tools) by Tiziano Müller
+- Built on the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
+- Uses [pygls](https://github.com/openlawlibrary/pygls) for Python LSP
+- Uses [vscode-languageserver](https://www.npmjs.com/package/vscode-languageserver) for TypeScript LSP
+- CP2K input format reference: https://manual.cp2k.org/
+
+---
+
+**Note**: This project is an enhanced version of the original cp2k-input-tools with added Language Server Protocol support. The original Python tools remain fully functional and maintained.

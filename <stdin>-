@@ -1,0 +1,54 @@
+! Generated with the CP2K input tool cp2kgen v0.9.1
+! '/home/yhm/.local/lib/python3.10/site-packages/pytest/__main__.py' \
+!   'tests/test_basic.py' \
+!   'tests/test_basisset.py' \
+!   'tests/test_cli_comprehensive.py' \
+!   'tests/test_cli_cp2kgen.py' \
+!   'tests/test_cli_cp2kget.py' \
+!   'tests/test_cli_datafile_lint.py' \
+!   'tests/test_cli_fromcp2k.py' \
+!   'tests/test_cli_full_coverage.py' \
+!   'tests/test_cli_lsp.py' \
+!   'tests/test_cli.py' \
+!   'tests/test_cli_tocp2k.py' \
+!   'tests/test_cli_utils.py' \
+!   'tests/test_cp2k_lsp_comprehensive.py' \
+!   'tests/test_cp2k_lsp_features.py' \
+!   'tests/test_crystal.py' \
+!   'tests/test_ecp.py' \
+!   'tests/test_generator_comprehensive.py' \
+!   'tests/test_generator_full_coverage.py' \
+!   'tests/test_generator.py' \
+!   'tests/test_issue_72_fix.py' \
+!   'tests/test_issue_regressions.py' \
+!   'tests/test_keyword_helpers_extended.py' \
+!   'tests/test_lineiterator_extended.py' \
+!   'tests/test_lineiterator.py' \
+!   'tests/test_ls_module_full_coverage.py' \
+!   'tests/test_lsp_extended.py' \
+!   'tests/test_lsp.py' \
+!   'tests/test_lsp_server_full_coverage.py' \
+!   'tests/test_parser_enhanced.py' \
+!   'tests/test_parser_errors_and_tokenizer.py' \
+!   'tests/test_parser_errors.py' \
+!   'tests/test_parser_extensions.py' \
+!   'tests/test_parser_incomplete.py' \
+!   'tests/test_parser_preprocessor.py' \
+!   'tests/test_parser.py' \
+!   'tests/test_parser_simplified.py' \
+!   'tests/test_preprocessor_complete.py' \
+!   'tests/test_preprocessor_extended.py' \
+!   'tests/test_pseudo.py' \
+!   'tests/test_roundtrip.py' \
+!   'tests/test_utils_complete.py' \
+!   'tests/test_utils_comprehensive.py' \
+!   'tests/test_utils_elements.py' \
+!   'tests/test_utils_extended.py' \
+!   'tests/test_utils_full_coverage.py' \
+!   'tests/test_utils.py' \
+!   '--cov=cp2k_input_tools' \
+!   '--cov-report=term' \
+!   '--cov-fail-under=0'
+&GLOBAL
+  PROJECT_NAME test
+&END GLOBAL

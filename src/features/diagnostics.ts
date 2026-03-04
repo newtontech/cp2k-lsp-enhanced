@@ -1,17 +1,19 @@
 /**
  * Enhanced Diagnostics Provider
  * 
- * Provides comprehensive diagnostics for CP2K input files including:
+ * Provides comprehensive diagnostics for CP2K input files:
  * - Syntax validation
- * - Schema-based keyword validation
+ * - Section/keyword validation against schema
+ * - Type checking (integer, real, logical, enum)
+ * - Unclosed section detection
+ * - Duplicate keyword detection
  * - Required section/keyword checking
- * - Type checking
- * - CP2K CLI deep validation
+ * - Variable expansion validation
  */
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticSeverity, Range, Position } from 'vscode-languageserver/node';
-import { CP2KParser } from '../parser/cp2k-parser';
+import { CP2KParser, CP2KSection, CP2KKeyword } from '../parser/cp2k-parser';
 import { SchemaParser, SchemaSection, SchemaKeyword } from '../data/schema-parser';
 import { DeepValidationProvider } from './deep-validation';
 
@@ -19,6 +21,7 @@ export interface DiagnosticsOptions {
   maxProblems?: number;
   enableSchemaValidation?: boolean;
   enableDeepValidation?: boolean;
+  enableTypeChecking?: boolean;
   cp2kPath?: string;
 }
 
@@ -39,6 +42,7 @@ export class DiagnosticsProvider {
       maxProblems: 100,
       enableSchemaValidation: true,
       enableDeepValidation: false,
+      enableTypeChecking: true,
       ...options
     };
     
@@ -61,6 +65,13 @@ export class DiagnosticsProvider {
   }
 
   /**
+   * Set schema parser
+   */
+  setSchemaParser(schemaParser: SchemaParser): void {
+    this.schemaParser = schemaParser;
+  }
+
+  /**
    * Provide diagnostics for a document
    */
   provideDiagnostics(textDocument: TextDocument, maxProblems?: number): Diagnostic[] {
@@ -73,23 +84,28 @@ export class DiagnosticsProvider {
       diagnostics = diagnostics.concat(schemaDiagnostics);
     }
     
+    // Add type checking
+    if (this.options.enableTypeChecking) {
+      const typeDiagnostics = this.validateTypes(textDocument, parsed);
+      diagnostics = diagnostics.concat(typeDiagnostics);
+    }
+    
     // Add semantic validation
     const semanticDiagnostics = this.validateDocument(textDocument, parsed);
     diagnostics = diagnostics.concat(semanticDiagnostics);
     
-    // Check required sections (always, not just with schema)
+    // Check required sections
     this.checkRequiredSections(parsed, diagnostics);
     
-    // Add type checking
-    const typeDiagnostics = this.validateTypes(textDocument, parsed);
-    diagnostics = diagnostics.concat(typeDiagnostics);
+    // Check for duplicate keywords
+    this.checkDuplicateKeywords(parsed, diagnostics);
     
     // Add constraint validation
     const constraintDiagnostics = this.validateConstraints(textDocument, parsed);
     diagnostics = diagnostics.concat(constraintDiagnostics);
     
     const limit = maxProblems ?? this.options.maxProblems ?? 100;
-    return diagnostics.slice(0, limit);
+    return this.deduplicateDiagnostics(diagnostics).slice(0, limit);
   }
 
   /**
@@ -100,7 +116,6 @@ export class DiagnosticsProvider {
     callback: (diagnostics: Diagnostic[]) => void
   ): Promise<void> {
     if (!this.options.enableDeepValidation || !this.deepValidator) {
-      // Callback should be called even if deep validation is not enabled
       callback([]);
       return;
     }
@@ -116,9 +131,6 @@ export class DiagnosticsProvider {
     
     if (!this.schemaParser) return diagnostics;
 
-    // Check for required top-level sections
-    this.checkRequiredSections(parsed, diagnostics);
-    
     // Validate each section and keyword
     for (const section of parsed.sections) {
       this.validateSection(section, diagnostics, textDocument);
@@ -131,7 +143,8 @@ export class DiagnosticsProvider {
    * Check for required sections
    */
   private checkRequiredSections(parsed: any, diagnostics: Diagnostic[]): void {
-    const requiredSections = ['GLOBAL', 'FORCE_EVAL'];
+    // CP2K requires at least GLOBAL and FORCE_EVAL for most calculations
+    const requiredSections = ['GLOBAL'];
     
     for (const required of requiredSections) {
       const hasSection = parsed.sections.some(
@@ -140,13 +153,28 @@ export class DiagnosticsProvider {
       
       if (!hasSection) {
         diagnostics.push({
-          severity: DiagnosticSeverity.Error,
+          severity: DiagnosticSeverity.Warning,
           range: Range.create(0, 0, 0, 0),
-          message: `Missing required section: ${required}`,
+          message: `Missing recommended section: ${required}`,
           source: 'cp2k-schema',
           code: 'missing-section'
         });
       }
+    }
+    
+    // Warn about missing FORCE_EVAL
+    const hasForceEval = parsed.sections.some(
+      (s: any) => s.name.toUpperCase() === 'FORCE_EVAL'
+    );
+    
+    if (!hasForceEval) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Information,
+        range: Range.create(0, 0, 0, 0),
+        message: 'Missing FORCE_EVAL section. No force evaluation will be performed.',
+        source: 'cp2k-schema',
+        code: 'missing-force-eval'
+      });
     }
   }
 
@@ -158,11 +186,23 @@ export class DiagnosticsProvider {
 
     const schemaSection = this.schemaParser.getSection(section.name);
     
+    // Check if section exists in schema
+    if (!schemaSection) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: section.range,
+        message: `Unknown section: ${section.name}`,
+        source: 'cp2k-schema',
+        code: 'unknown-section'
+      });
+      return;
+    }
+    
     // Check if section is deprecated
     if (schemaSection?.deprecated) {
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
-        range: this.createRange(section.location),
+        range: section.range,
         message: `Section ${section.name} is deprecated`,
         source: 'cp2k-schema',
         code: 'deprecated-section'
@@ -170,7 +210,24 @@ export class DiagnosticsProvider {
     }
 
     // Validate keywords in this section
+    const seenKeywords = new Set<string>();
     for (const keyword of section.keywords || []) {
+      // Check for duplicates
+      const kwKey = keyword.name.toUpperCase();
+      if (seenKeywords.has(kwKey)) {
+        const kwInfo = schemaSection.keywords.get(kwKey);
+        if (kwInfo && !kwInfo.repeats) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: keyword.range,
+            message: `Duplicate keyword: ${keyword.name} (not repeatable)`,
+            source: 'cp2k-schema',
+            code: 'duplicate-keyword'
+          });
+        }
+      }
+      seenKeywords.add(kwKey);
+      
       this.validateKeyword(keyword, schemaSection, diagnostics, document);
     }
 
@@ -195,14 +252,16 @@ export class DiagnosticsProvider {
                           this.schemaParser.getKeyword(keyword.name);
 
     if (!schemaKeyword) {
-      // Unknown keyword
-      diagnostics.push({
-        severity: DiagnosticSeverity.Warning,
-        range: this.createRange(keyword.location),
-        message: `Unknown keyword: ${keyword.name}`,
-        source: 'cp2k-schema',
-        code: 'unknown-keyword'
-      });
+      // Unknown keyword - only warn if we have schema for this section
+      if (schemaSection) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Warning,
+          range: keyword.range,
+          message: `Unknown keyword: ${keyword.name}`,
+          source: 'cp2k-schema',
+          code: 'unknown-keyword'
+        });
+      }
       return;
     }
 
@@ -210,7 +269,7 @@ export class DiagnosticsProvider {
     if (schemaKeyword.deprecated) {
       diagnostics.push({
         severity: DiagnosticSeverity.Information,
-        range: this.createRange(keyword.location),
+        range: keyword.range,
         message: `Keyword ${keyword.name} is deprecated`,
         source: 'cp2k-schema',
         code: 'deprecated-keyword'
@@ -219,18 +278,106 @@ export class DiagnosticsProvider {
 
     // Validate value against allowed values
     if (schemaKeyword.allowedValues && keyword.value) {
-      const values = Array.isArray(keyword.value) ? keyword.value : [keyword.value];
-      for (const val of values) {
-        const upperVal = String(val).toUpperCase();
-        if (!schemaKeyword.allowedValues.some(av => av.toUpperCase() === upperVal)) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: this.createRange(keyword.location),
-            message: `Invalid value "${val}" for ${keyword.name}. Allowed values: ${schemaKeyword.allowedValues.join(', ')}`,
-            source: 'cp2k-schema',
-            code: 'invalid-value'
-          });
-        }
+      this.validateEnumValue(keyword, schemaKeyword, diagnostics);
+    }
+    
+    // Validate data type
+    if (schemaKeyword.dataType && keyword.value) {
+      this.validateDataType(keyword, schemaKeyword, diagnostics);
+    }
+  }
+
+  /**
+   * Validate enum value
+   */
+  private validateEnumValue(
+    keyword: any,
+    schemaKeyword: SchemaKeyword,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!schemaKeyword.allowedValues) return;
+    
+    const values = Array.isArray(keyword.value) ? keyword.value : [keyword.value];
+    
+    for (const val of values) {
+      if (!val) continue;
+      
+      const upperVal = String(val).toUpperCase().trim();
+      if (!upperVal) continue;
+      
+      const isValid = schemaKeyword.allowedValues.some(
+        av => av.toUpperCase() === upperVal
+      );
+      
+      if (!isValid) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: keyword.range,
+          message: `Invalid value "${val}" for ${keyword.name}. Allowed: ${schemaKeyword.allowedValues.slice(0, 10).join(', ')}${schemaKeyword.allowedValues.length > 10 ? '...' : ''}`,
+          source: 'cp2k-schema',
+          code: 'invalid-value'
+        });
+      }
+    }
+  }
+
+  /**
+   * Validate data type
+   */
+  private validateDataType(
+    keyword: any,
+    schemaKeyword: SchemaKeyword,
+    diagnostics: Diagnostic[]
+  ): void {
+    const value = keyword.value;
+    if (!value) return;
+    
+    const values = Array.isArray(value) ? value : [value];
+    const dataType = schemaKeyword.dataType;
+    
+    for (const val of values) {
+      if (!val) continue;
+      
+      const strVal = String(val).trim();
+      
+      switch (dataType) {
+        case 'INTEGER':
+        case 'INTEGER_LIST':
+          if (!this.isValidInteger(strVal)) {
+            diagnostics.push({
+              severity: DiagnosticSeverity.Error,
+              range: keyword.range,
+              message: `Expected integer value for ${keyword.name}, got "${strVal}"`,
+              source: 'cp2k-type',
+              code: 'type-mismatch'
+            });
+          }
+          break;
+          
+        case 'REAL':
+        case 'REAL_LIST':
+          if (!this.isValidReal(strVal)) {
+            diagnostics.push({
+              severity: DiagnosticSeverity.Error,
+              range: keyword.range,
+              message: `Expected real number for ${keyword.name}, got "${strVal}"`,
+              source: 'cp2k-type',
+              code: 'type-mismatch'
+            });
+          }
+          break;
+          
+        case 'LOGICAL':
+          if (!this.isValidLogical(strVal)) {
+            diagnostics.push({
+              severity: DiagnosticSeverity.Error,
+              range: keyword.range,
+              message: `Expected logical value (TRUE/FALSE) for ${keyword.name}, got "${strVal}"`,
+              source: 'cp2k-type',
+              code: 'type-mismatch'
+            });
+          }
+          break;
       }
     }
   }
@@ -243,25 +390,17 @@ export class DiagnosticsProvider {
     const text = textDocument.getText();
     const lines = text.split(/\r?\n/);
     
-    // Check for FORCE_EVAL section
-    const hasForceEval = parsed.sections.some((s: any) => s.name.toUpperCase() === 'FORCE_EVAL');
-    if (!hasForceEval) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Information,
-        range: Range.create(0, 0, 0, 0),
-        message: 'Missing FORCE_EVAL section. This input file will not perform any calculations.',
-        source: 'cp2k-lsp',
-      });
-    }
-    
     // Check for variable expansion issues
     this.checkVariableExpansion(lines, diagnostics);
     
     // Check for unbalanced brackets
     this.checkBalancedBrackets(lines, diagnostics);
     
-    // Check for invalid section/keyword syntax
-    this.checkSyntax(textDocument, parsed, diagnostics);
+    // Check for section balance
+    this.checkSectionBalance(lines, diagnostics);
+    
+    // Check for @IF/@ENDIF balance
+    this.checkPreprocessorBalance(lines, diagnostics);
     
     return diagnostics;
   }
@@ -282,8 +421,22 @@ export class DiagnosticsProvider {
             range: Range.create(lineNum, match.index, lineNum, match.index + match[0].length),
             message: 'Empty variable reference',
             source: 'cp2k-lsp',
+            code: 'empty-variable'
           });
         }
+      }
+      
+      // Check for unclosed variable references
+      const openVar = line.indexOf('${');
+      const closeVar = line.indexOf('}', openVar);
+      if (openVar !== -1 && closeVar === -1) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: Range.create(lineNum, openVar, lineNum, line.length),
+          message: 'Unclosed variable reference',
+          source: 'cp2k-lsp',
+          code: 'unclosed-variable'
+        });
       }
     });
   }
@@ -293,10 +446,16 @@ export class DiagnosticsProvider {
    */
   private checkBalancedBrackets(lines: string[], diagnostics: Diagnostic[]): void {
     lines.forEach((line, lineNum) => {
-      const openParen = (line.match(/\(/g) || []).length;
-      const closeParen = (line.match(/\)/g) || []).length;
-      const openBracket = (line.match(/\[/g) || []).length;
-      const closeBracket = (line.match(/\]/g) || []).length;
+      // Skip comments
+      const commentIdx = line.search(/[#!]/);
+      const checkLine = commentIdx !== -1 ? line.substring(0, commentIdx) : line;
+      
+      const openParen = (checkLine.match(/\(/g) || []).length;
+      const closeParen = (checkLine.match(/\)/g) || []).length;
+      const openBracket = (checkLine.match(/\[/g) || []).length;
+      const closeBracket = (checkLine.match(/\]/g) || []).length;
+      const openBrace = (checkLine.match(/\{/g) || []).length;
+      const closeBrace = (checkLine.match(/\}/g) || []).length;
       
       if (openParen !== closeParen) {
         diagnostics.push({
@@ -304,6 +463,7 @@ export class DiagnosticsProvider {
           range: Range.create(lineNum, 0, lineNum, line.length),
           message: `Unbalanced parentheses: ${openParen} opening, ${closeParen} closing`,
           source: 'cp2k-lsp',
+          code: 'unbalanced-parens'
         });
       }
       
@@ -313,123 +473,135 @@ export class DiagnosticsProvider {
           range: Range.create(lineNum, 0, lineNum, line.length),
           message: `Unbalanced brackets: ${openBracket} opening, ${closeBracket} closing`,
           source: 'cp2k-lsp',
+          code: 'unbalanced-brackets'
+        });
+      }
+      
+      if (openBrace !== closeBrace) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Warning,
+          range: Range.create(lineNum, 0, lineNum, line.length),
+          message: `Unbalanced braces: ${openBrace} opening, ${closeBrace} closing`,
+          source: 'cp2k-lsp',
+          code: 'unbalanced-braces'
         });
       }
     });
   }
 
   /**
-   * Syntax validation
+   * Check section balance
    */
-  private checkSyntax(
-    textDocument: TextDocument,
-    parsed: any,
-    diagnostics: Diagnostic[]
-  ): void {
-    const text = textDocument.getText();
-    const lines = text.split(/\r?\n/);
+  private checkSectionBalance(lines: string[], diagnostics: Diagnostic[]): void {
+    const sectionStack: Array<{ name: string; line: number }> = [];
     
     lines.forEach((line, lineNum) => {
       const trimmed = line.trim();
       
-      // Check for invalid section syntax
-      if (trimmed.startsWith('&')) {
-        const match = trimmed.match(/^&(\S+)/);
-        if (!match) {
+      if (!trimmed.startsWith('&')) return;
+      
+      const match = trimmed.match(/^&(\S+)(.*)$/);
+      if (!match) return;
+      
+      const [, name, rest] = match;
+      const upperName = name.toUpperCase();
+      
+      if (upperName === 'END') {
+        // Section end
+        const endName = rest.trim().toUpperCase();
+        
+        if (sectionStack.length === 0) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: Range.create(lineNum, line.indexOf('&'), lineNum, line.length),
+            message: `Unexpected \u0026END: no matching opening section`,
+            source: 'cp2k-lsp',
+            code: 'unexpected-end'
+          });
+          return;
+        }
+        
+        const opened = sectionStack.pop()!;
+        
+        if (endName && endName !== opened.name) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: Range.create(lineNum, line.indexOf('&'), lineNum, line.length),
+            message: `Mismatched section: expected \u0026END ${opened.name}, found \u0026END ${endName}`,
+            source: 'cp2k-lsp',
+            code: 'mismatched-end'
+          });
+        }
+      } else {
+        // Section start
+        sectionStack.push({ name: upperName, line: lineNum });
+      }
+    });
+    
+    // Report unclosed sections
+    for (const section of sectionStack) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range: Range.create(section.line, 0, section.line, lines[section.line]?.length || 0),
+        message: `Unclosed section: \u0026${section.name}`,
+        source: 'cp2k-lsp',
+        code: 'unclosed-section'
+      });
+    }
+  }
+
+  /**
+   * Check preprocessor directive balance
+   */
+  private checkPreprocessorBalance(lines: string[], diagnostics: Diagnostic[]): void {
+    const ifStack: number[] = [];
+    
+    lines.forEach((line, lineNum) => {
+      const trimmed = line.trim().toUpperCase();
+      
+      if (trimmed.startsWith('@IF')) {
+        ifStack.push(lineNum);
+      } else if (trimmed.startsWith('@ENDIF')) {
+        if (ifStack.length === 0) {
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: Range.create(lineNum, 0, lineNum, line.length),
-            message: 'Invalid section syntax',
+            message: 'Unexpected @ENDIF: no matching @IF',
             source: 'cp2k-lsp',
+            code: 'unexpected-endif'
           });
+        } else {
+          ifStack.pop();
         }
       }
-      
-      // Check for duplicate keywords in same section (when not allowed)
-      // This is handled in validateConstraints
     });
+    
+    // Report unclosed @IF
+    for (const lineNum of ifStack) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: Range.create(lineNum, 0, lineNum, lines[lineNum]?.length || 0),
+        message: 'Unclosed @IF directive',
+        source: 'cp2k-lsp',
+        code: 'unclosed-if'
+      });
+    }
+  }
+
+  /**
+   * Check for duplicate keywords
+   */
+  private checkDuplicateKeywords(parsed: any, diagnostics: Diagnostic[]): void {
+    // Already checked in validateSection with schema awareness
+    // This method can be used for additional duplicate detection
   }
 
   /**
    * Type checking validation
    */
   private validateTypes(textDocument: TextDocument, parsed: any): Diagnostic[] {
-    const diagnostics: Diagnostic[] = [];
-    
-    for (const section of parsed.sections) {
-      for (const keyword of section.keywords || []) {
-        this.validateKeywordType(keyword, diagnostics);
-      }
-      
-      // Check subsections recursively
-      this.validateTypesRecursive(section.subsections || [], diagnostics);
-    }
-    
-    return diagnostics;
-  }
-
-  /**
-   * Recursively validate types in subsections
-   */
-  private validateTypesRecursive(subsections: any[], diagnostics: Diagnostic[]): void {
-    for (const subsection of subsections) {
-      for (const keyword of subsection.keywords || []) {
-        this.validateKeywordType(keyword, diagnostics);
-      }
-      this.validateTypesRecursive(subsection.subsections || [], diagnostics);
-    }
-  }
-
-  /**
-   * Validate keyword value type
-   */
-  private validateKeywordType(keyword: any, diagnostics: Diagnostic[]): void {
-    if (!this.schemaParser || !keyword.value) return;
-
-    const schemaKeyword = this.schemaParser.getKeyword(keyword.name);
-    if (!schemaKeyword) return;
-
-    const value = keyword.value;
-    
-    switch (schemaKeyword.dataType) {
-      case 'INTEGER':
-      case 'INTEGER_LIST':
-        if (!this.isValidInteger(value)) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: this.createRange(keyword.location),
-            message: `Expected integer value for ${keyword.name}, got "${value}"`,
-            source: 'cp2k-type-check',
-            code: 'type-mismatch'
-          });
-        }
-        break;
-        
-      case 'REAL':
-      case 'REAL_LIST':
-        if (!this.isValidReal(value)) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: this.createRange(keyword.location),
-            message: `Expected real number for ${keyword.name}, got "${value}"`,
-            source: 'cp2k-type-check',
-            code: 'type-mismatch'
-          });
-        }
-        break;
-        
-      case 'LOGICAL':
-        if (!this.isValidLogical(value)) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: this.createRange(keyword.location),
-            message: `Expected logical value (TRUE/FALSE) for ${keyword.name}, got "${value}"`,
-            source: 'cp2k-type-check',
-            code: 'type-mismatch'
-          });
-        }
-        break;
-    }
+    // Type checking is now done in validateKeyword via validateDataType
+    return [];
   }
 
   /**
@@ -449,53 +621,48 @@ export class DiagnosticsProvider {
    * Validate section-level constraints
    */
   private validateSectionConstraints(section: any, diagnostics: Diagnostic[]): void {
-    // Check for required keywords in section
-    if (this.schemaParser) {
-      const schemaSection = this.schemaParser.getSection(section.name);
-      
-      if (schemaSection) {
-        // Check required keywords
-        for (const [kwName, kw] of schemaSection.keywords) {
-          if (kw.required) {
-            const hasKeyword = section.keywords?.some(
-              (k: any) => k.name.toUpperCase() === kwName
-            );
-            
-            if (!hasKeyword) {
-              diagnostics.push({
-                severity: DiagnosticSeverity.Error,
-                range: this.createRange(section.location),
-                message: `Missing required keyword ${kwName} in section ${section.name}`,
-                source: 'cp2k-constraint',
-                code: 'missing-keyword'
-              });
-            }
-          }
-        }
+    if (!this.schemaParser) return;
+    
+    const schemaSection = this.schemaParser.getSection(section.name);
+    if (!schemaSection) return;
+    
+    // Check required keywords
+    for (const [kwName, kw] of schemaSection.keywords) {
+      if (kw.required) {
+        const hasKeyword = section.keywords?.some(
+          (k: any) => k.name.toUpperCase() === kwName
+        );
         
-        // Check required subsections
-        for (const [subName, sub] of schemaSection.subsections) {
-          if (sub.required) {
-            const hasSubsection = section.subsections?.some(
-              (s: any) => s.name.toUpperCase() === subName
-            );
-            
-            if (!hasSubsection) {
-              diagnostics.push({
-                severity: DiagnosticSeverity.Error,
-                range: this.createRange(section.location),
-                message: `Missing required subsection ${subName} in section ${section.name}`,
-                source: 'cp2k-constraint',
-                code: 'missing-subsection'
-              });
-            }
-          }
+        if (!hasKeyword) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: section.range,
+            message: `Missing required keyword ${kwName} in section ${section.name}`,
+            source: 'cp2k-constraint',
+            code: 'missing-required-keyword'
+          });
         }
       }
     }
     
-    // Check for mutually exclusive keywords
-    this.checkMutuallyExclusive(section, diagnostics);
+    // Check required subsections
+    for (const [subName, sub] of schemaSection.subsections) {
+      if (sub.required) {
+        const hasSubsection = section.subsections?.some(
+          (s: any) => s.name.toUpperCase() === subName
+        );
+        
+        if (!hasSubsection) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: section.range,
+            message: `Missing required subsection ${subName} in section ${section.name}`,
+            source: 'cp2k-constraint',
+            code: 'missing-required-subsection'
+          });
+        }
+      }
+    }
     
     // Recursively check subsections
     for (const subsection of section.subsections || []) {
@@ -504,72 +671,41 @@ export class DiagnosticsProvider {
   }
 
   /**
-   * Check for mutually exclusive keywords
-   */
-  private checkMutuallyExclusive(section: any, diagnostics: Diagnostic[]): void {
-    // Define mutually exclusive keyword groups
-    const exclusiveGroups = [
-      ['METHOD', 'DFT'],  // Can't have both in some contexts
-      // Add more as needed
-    ];
-    
-    for (const group of exclusiveGroups) {
-      const found = group.filter(kw =>
-        section.keywords?.some((k: any) => k.name.toUpperCase() === kw)
-      );
-      
-      if (found.length > 1) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Error,
-          range: this.createRange(section.location),
-          message: `Mutually exclusive keywords: ${found.join(', ')}`,
-          source: 'cp2k-constraint',
-          code: 'mutual-exclusion'
-        });
-      }
-    }
-  }
-
-  /**
-   * Helper: Create Range from location object
-   */
-  private createRange(location: any): Range {
-    if (!location) {
-      return Range.create(0, 0, 0, 0);
-    }
-    
-    return Range.create(
-      Position.create(location.start?.line || 0, location.start?.column || 0),
-      Position.create(location.end?.line || 0, location.end?.column || 0)
-    );
-  }
-
-  /**
    * Helper: Validate integer
    */
-  private isValidInteger(value: any): boolean {
-    if (Array.isArray(value)) {
-      return value.every(v => this.isValidInteger(v));
-    }
-    return /^[-+]?\d+$/.test(String(value).trim());
+  private isValidInteger(value: string): boolean {
+    return /^[-+]?\d+$/.test(value.trim());
   }
 
   /**
    * Helper: Validate real number
    */
-  private isValidReal(value: any): boolean {
-    if (Array.isArray(value)) {
-      return value.every(v => this.isValidReal(v));
-    }
-    const str = String(value).trim();
+  private isValidReal(value: string): boolean {
+    const str = value.trim();
+    // Match: 123, 123.456, .456, 1e10, 1.5e-10, etc.
     return /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(str);
   }
 
   /**
    * Helper: Validate logical
    */
-  private isValidLogical(value: any): boolean {
-    const str = String(value).trim().toUpperCase();
-    return ['TRUE', 'FALSE', 'T', 'F', 'YES', 'NO', 'ON', 'OFF', '.TRUE.', '.FALSE.'].includes(str);
+  private isValidLogical(value: string): boolean {
+    const valid = ['TRUE', 'FALSE', 'T', 'F', 'YES', 'NO', 'ON', 'OFF', '.TRUE.', '.FALSE.'];
+    return valid.includes(value.trim().toUpperCase());
+  }
+
+  /**
+   * Remove duplicate diagnostics
+   */
+  private deduplicateDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
+    const seen = new Set<string>();
+    return diagnostics.filter(d => {
+      const key = `${d.range.start.line}:${d.range.start.character}:${d.message}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 }

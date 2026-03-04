@@ -11,6 +11,7 @@ import pint
 
 from .parser_errors import (
     DeprecatedKeywordWarning,
+    DeprecatedSectionWarning,
     InvalidParameterError,
     IntegerRangeError,
 )

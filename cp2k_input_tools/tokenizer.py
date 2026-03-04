@@ -7,14 +7,21 @@ COMMENT_CHARS = ("!", "#")
 
 
 class TokenizerError(Exception):
-    pass
+    """Base tokenizer error with context."""
+    
+    def __init__(self, message, context=None):
+        super().__init__(message)
+        self.message = message
+        self.context = context
 
 
 class UnterminatedStringError(TokenizerError):
+    """Error for unterminated strings."""
     pass
 
 
 class InvalidTokenCharError(TokenizerError):
+    """Error for invalid characters in tokens."""
     pass
 
 
@@ -27,6 +34,7 @@ class Context:
     ref_line: Optional[str] = None
     filename: Optional[str] = None
     section: Any = None
+    section_stack: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -53,11 +61,21 @@ class CP2KInputTokenizer(transitions.Machine):
         # end of the basic token is determined by the character that follows
         self._tokens += [(self._current_token_start, colnr + 1)]
 
-    def unterminated_string(self, _, colnr):
-        raise UnterminatedStringError("unterminated string detected", Context(colnr=colnr, ref_colnr=self._current_token_start))
+    def unterminated_string(self, content, colnr):
+        ctx = Context(
+            colnr=colnr,
+            ref_colnr=self._current_token_start,
+            line=content
+        )
+        raise UnterminatedStringError("unterminated string detected", ctx)
 
     def invalid_token_char(self, content, colnr):
-        raise InvalidTokenCharError("invalid keyword character found", Context(colnr=colnr, ref_colnr=self._current_token_start))
+        ctx = Context(
+            colnr=colnr,
+            ref_colnr=self._current_token_start,
+            line=content
+        )
+        raise InvalidTokenCharError("invalid keyword character found", ctx)
 
     def is_not_escaped(self, content, colnr):
         if colnr > 0:
@@ -120,6 +138,18 @@ class CP2KInputTokenizer(transitions.Machine):
 
 
 def tokenize(string: str) -> Tuple[str, ...]:
+    """Tokenize a CP2K input line.
+    
+    Args:
+        string: The input line to tokenize
+        
+    Returns:
+        Tuple of token strings
+        
+    Raises:
+        UnterminatedStringError: If a string is not properly terminated
+        InvalidTokenCharError: If an invalid character is found in a token
+    """
     tokenizer = CP2KInputTokenizer()
 
     char_map = {" ": tokenizer.ws_char, "\t": tokenizer.ws_char, "'": tokenizer.quote_char, '"': tokenizer.quote_char}
@@ -133,3 +163,39 @@ def tokenize(string: str) -> Tuple[str, ...]:
     tokenizer.nl_char(string, len(string))
 
     return tuple(string[s:e] for s, e in tokenizer.tokens)
+
+
+def tokenize_with_context(string: str, filename: Optional[str] = None, line_number: Optional[int] = None) -> List[Token]:
+    """Tokenize a CP2K input line with context information.
+    
+    Args:
+        string: The input line to tokenize
+        filename: Optional filename for context
+        line_number: Optional line number for context
+        
+    Returns:
+        List of Token objects with context information
+    """
+    tokenizer = CP2KInputTokenizer()
+
+    char_map = {" ": tokenizer.ws_char, "\t": tokenizer.ws_char, "'": tokenizer.quote_char, '"': tokenizer.quote_char}
+
+    for cchar in COMMENT_CHARS:
+        char_map[cchar] = tokenizer.comment_char
+
+    for colnr, char in enumerate(string):
+        char_map.get(char, tokenizer.token_char)(string, colnr)
+
+    tokenizer.nl_char(string, len(string))
+
+    tokens = []
+    for s, e in tokenizer.tokens:
+        ctx = Context(
+            colnr=s,
+            ref_colnr=e,
+            line=string,
+            filename=filename
+        )
+        tokens.append(Token(string[s:e], ctx))
+
+    return tokens
