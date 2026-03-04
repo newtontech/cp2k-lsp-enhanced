@@ -504,12 +504,13 @@ export class CompletionProvider {
       variables.add(match[1]);
     }
     
-    variables.forEach((variable, index) => {
+    let varIndex = 0;
+    variables.forEach((variable) => {
       items.push({
         label: variable,
         kind: CompletionItemKind.Variable,
         detail: 'Preprocessor variable',
-        sortText: this.getSortText(index),
+        sortText: this.getSortText(varIndex++),
       });
     });
     

@@ -216,7 +216,7 @@ export class HoverProvider {
    */
   private provideKeywordHover(keywordName: string, currentSection?: string): Hover | null {
     // Try to find keyword in schema first
-    let keyword = this.schemaParser?.getKeyword(keywordName);
+    let keyword: any = this.schemaParser?.getKeyword(keywordName);
     
     // Fall back to keyword DB
     if (!keyword) {
@@ -250,7 +250,7 @@ export class HoverProvider {
       const maxValues = this.options.maxEnumValues || 20;
       const displayValues = keyword.allowedValues.slice(0, maxValues);
       
-      displayValues.forEach(value => {
+      displayValues.forEach((value: string) => {
         const valueInfo = this.keywordDb.getValueInfo(value);
         if (valueInfo) {
           doc += `- \`${value}\`: ${valueInfo}\n`;
