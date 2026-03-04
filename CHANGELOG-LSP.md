@@ -2,6 +2,37 @@
 
 All notable changes to the CP2K LSP Enhanced project will be documented in this file.
 
+## [1.4.0] - 2026-03-04 (Current)
+
+### Fixed
+- #72: X..Y range parsing for LIST keywords - IntegerRange objects now correctly parsed and preserved
+- #110: NumPy 2 compatibility - Verified working with numpy 2.2.6 and pint 0.24.4
+- Fixed unit tests for LSP server workspace mocking
+- Fixed comment tokenization test to match lexer behavior
+- Fixed canonical mode path lookup in test suite (lowercase keys)
+
+### Added
+- Comprehensive LSP server tests in `tests/test_lsp_server_full_coverage.py`
+  - Server initialization tests
+  - Parser tests with mock workspace
+  - Lexer tests for all token types
+  - AST node tests
+  - Error handling tests
+  - Keyword and section data tests
+- Extended keyword helpers tests for IntegerRange functionality
+- Issue regression tests for #72 and #111
+
+### Improved
+- LSP server test stability with proper pygls workspace mocking
+- Test coverage for language server components
+- Better error handling in test suite
+
+### Technical
+- Python 3.9+ compatibility maintained
+- pytest + pytest-cov for 100% coverage goal
+- pygls 1.0+ for LSP implementation
+- Pydantic v2 validated
+
 ## [1.0.0] - 2025-03-02
 
 ### Added

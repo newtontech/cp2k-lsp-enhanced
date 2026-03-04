@@ -2,7 +2,50 @@
 
 An enhanced Language Server Protocol implementation for CP2K input files, built with TypeScript/Node.js.
 
-## Features
+## Python LSP Implementation
+
+In addition to the TypeScript/Node.js implementation, this project now includes a Python-based LSP server in `packages/language-server/`:
+
+```bash
+# Install the Python LSP
+pip install -e packages/language-server
+
+# Run the Python LSP server
+cp2k-language-server
+```
+
+### Python LSP Features
+- **Full LSP Protocol Support** via `pygls`
+- **Parser** - Custom lexer and parser for CP2K input files
+- **Auto-completion** - Context-aware completions powered by keyword database
+- **Diagnostics** - Real-time error detection and reporting
+- **Hover** - Documentation on hover for keywords and sections
+- **Formatting** - Code formatting with configurable options
+- **Code Actions** - Quick fixes for common issues
+
+### Python LSP Architecture
+```
+packages/language-server/cp2k_lsp/
+├── server.py           # Main LSP server
+├── parser/
+│   ├── lexer.py        # Tokenizer/lexer
+│   ├── parser.py       # CP2K input parser
+│   ├── ast.py          # AST node definitions
+│   └── errors.py       # Error types
+├── features/
+│   ├── completion.py   # Auto-completion
+│   ├── diagnostics.py  # Error diagnostics
+│   ├── hover.py        # Hover documentation
+│   ├── formatting.py   # Code formatting
+│   └── code_action.py  # Quick fixes
+└── data/
+    ├── keywords.py     # Keyword definitions
+    └── sections.py     # Section definitions
+```
+
+## TypeScript LSP Implementation
+
+### Features
 
 - **Syntax Highlighting** - Full support for CP2K input file syntax
 - **Auto-completion** - Intelligent completions for sections, keywords, and values
@@ -57,7 +100,7 @@ Add to your VS Code settings:
 - CP2K 9.1
 - CP2K 2025.1
 
-## Development
+### Development
 
 ```bash
 # Install dependencies
@@ -82,7 +125,7 @@ npm run lint
 npm run format
 ```
 
-## Architecture
+### Architecture
 
 ```
 src/
@@ -100,7 +143,7 @@ src/
     └── keyword-database.ts  # CP2K keyword definitions
 ```
 
-## Testing
+### Testing (TypeScript)
 
 The project includes comprehensive unit tests with 78%+ coverage:
 
@@ -128,7 +171,7 @@ npm run test:watch
 | completion.ts | 82.5% |
 | **Overall** | **78.4%** |
 
-## LSP Features
+### LSP Features (TypeScript)
 
 ### Auto-completion
 - Section names (e.g., `&GLOBAL`, `&FORCE_EVAL`)
@@ -158,6 +201,24 @@ npm run test:watch
 - Keyword normalization to uppercase
 - Comment preservation
 - Directive handling
+
+
+### Testing (Python)
+
+The Python LSP includes comprehensive tests:
+
+```bash
+# Run Python tests
+python -m pytest tests/test_lsp_server_full_coverage.py -v
+
+# Run with coverage
+python -m pytest tests/ --cov=cp2k_input_tools --cov-report=html
+```
+
+#### Test Coverage Goals
+- Target: 100% code coverage
+- Current: 60%+ (work in progress)
+- Key areas: Parser, Lexer, AST, Feature providers
 
 ## Contributing
 

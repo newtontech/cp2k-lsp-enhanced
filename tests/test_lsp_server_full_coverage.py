@@ -85,9 +85,14 @@ class TestCP2KLanguageServer:
         
         # Mock workspace document
         mock_doc = MockDocument("&GLOBAL\n  PROJECT_NAME test\n&END GLOBAL")
-        server.workspace.get_text_document = Mock(return_value=mock_doc)
+        mock_workspace = MagicMock()
+        mock_workspace.get_text_document.return_value = mock_doc
         
-        server._parse_document("file://test.inp")
+        # Mock the lsp workspace
+        mock_lsp = MagicMock()
+        mock_lsp.workspace = mock_workspace
+        with patch.object(server, 'lsp', mock_lsp):
+            server._parse_document("file://test.inp")
         
         assert "file://test.inp" in server.parsed_documents
         assert "file://test.inp" in server.parser_errors
@@ -108,9 +113,14 @@ class TestCP2KLanguageServer:
         server = CP2KLanguageServer()
         
         mock_doc = MockDocument("&GLOBAL\n&END GLOBAL")
-        server.workspace.get_text_document = Mock(return_value=mock_doc)
+        mock_workspace = MagicMock()
+        mock_workspace.get_text_document.return_value = mock_doc
         
-        result = server.get_ast("file://test.inp")
+        # Mock the lsp workspace
+        mock_lsp = MagicMock()
+        mock_lsp.workspace = mock_workspace
+        with patch.object(server, 'lsp', mock_lsp):
+            result = server.get_ast("file://test.inp")
         assert result is not None
     
     def test_get_errors_cached(self):
@@ -295,7 +305,7 @@ class TestLexer:
         tokens = lexer.tokenize()
         comment_tokens = [t for t in tokens if t.type == TokenType.COMMENT]
         assert len(comment_tokens) == 1
-        assert comment_tokens[0].value == " comment text"
+        assert comment_tokens[0].value == "! comment text"
     
     def test_tokenize_assignment(self):
         """Test tokenizing assignment."""

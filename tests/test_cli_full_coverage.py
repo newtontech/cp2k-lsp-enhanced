@@ -148,7 +148,7 @@ class TestCp2kget:
         input_file = tmp_path / "input.inp"
         input_file.write_text(sample_input)
         
-        result = runner.invoke(cp2kget, ["--canonical", str(input_file), "+GLOBAL/PROJECT_NAME"])
+        result = runner.invoke(cp2kget, ["--canonical", str(input_file), "+global/project_name"])
         assert result.exit_code == 0
 
 
