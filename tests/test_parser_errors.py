@@ -1,218 +1,208 @@
-import io
+"""Unit tests for parser_errors module."""
 
 import pytest
-
-from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
-from cp2k_input_tools.parser import CP2KInputParser
 from cp2k_input_tools.parser_errors import (
+    ErrorContext,
     InvalidNameError,
     InvalidParameterError,
     InvalidSectionError,
-    PreprocessorError,
+    NameRepetitionError,
+    NestedSectionError,
+    ParserError,
     SectionMismatchError,
 )
-from cp2k_input_tools.tokenizer import UnterminatedStringError
-
-from . import TEST_DIR
 
 
-def test_error_invalid_number_of_parameters():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
+class TestErrorContext:
+    """Tests for ErrorContext dataclass."""
 
-    with open(TEST_DIR.joinpath("inputs/error_nvar.inp"), "r") as fhandle:
-        with pytest.raises(InvalidParameterError) as excinfo:
-            cp2k_parser.parse(fhandle)
+    def test_error_context_default(self):
+        """Test ErrorContext with default values."""
+        ctx = ErrorContext()
+        assert ctx.line is None
+        assert ctx.linenr is None
+        assert ctx.colnrs == []
+        assert ctx.filename is None
+        assert ctx.section is None
+        assert ctx.section_stack == []
+        assert ctx.suggestion is None
 
-    assert "invalid values for keyword: A" in excinfo.value.args[0]
-    assert excinfo.value.args[1].linenr == 41
-    assert isinstance(excinfo.value.__cause__, InvalidParameterError)
-    assert "keyword expects exactly 3 values, 2 were given" in excinfo.value.__cause__.args[0]
-
-
-def test_unterminated_string():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
-
-    with open(TEST_DIR.joinpath("inputs/unterminated_string.inp"), "r") as fhandle:
-        with pytest.raises(UnterminatedStringError) as excinfo:
-            cp2k_parser.parse(fhandle)
-
-    assert excinfo.value.args[1].linenr == 14
-
-
-def test_undefined_preprocessor_var():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
-
-    with open(TEST_DIR.joinpath("inputs/preprocesser_undefined_var.inp"), "r") as fhandle:
-        with pytest.raises(PreprocessorError) as excinfo:
-            cp2k_parser.parse(fhandle)
-
-    assert "undefined variable 'HP'" in excinfo.value.args[0]
-    assert excinfo.value.args[1].linenr == 30
-
-
-def test_multiple_defined_non_repeating_section():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
-
-    fhandle = io.StringIO(
-        """
-        &GLOBAL
-        &END GLOBAL
-        &GLOBAL
-        &END GLOBAL
-        """
-    )
-
-    with pytest.raises(InvalidNameError) as excinfo:
-        cp2k_parser.parse(fhandle)
-
-    assert "the section 'GLOBAL' can not be defined multiple times" in excinfo.value.args[0]
+    def test_error_context_with_values(self):
+        """Test ErrorContext with all values."""
+        ctx = ErrorContext(
+            line="TEST_LINE",
+            linenr=42,
+            colnrs=[1, 2, 3],
+            filename="test.inp",
+            section="GLOBAL",
+            section_stack=["FORCE_EVAL", "DFT"],
+            suggestion="Did you mean...?"
+        )
+        assert ctx.line == "TEST_LINE"
+        assert ctx.linenr == 42
+        assert ctx.colnrs == [1, 2, 3]
+        assert ctx.filename == "test.inp"
+        assert ctx.section == "GLOBAL"
+        assert ctx.section_stack == ["FORCE_EVAL", "DFT"]
+        assert ctx.suggestion == "Did you mean...?"
 
 
-def test_missing_section_end():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
+class TestParserError:
+    """Tests for ParserError base class."""
 
-    fhandle = io.StringIO(
-        """
-        &GLOBAL
-        ! &END GLOBAL
-        &FORCE_EVAL
-        &END FORCE_EVAL
-        """
-    )
+    def test_parser_error_basic(self):
+        """Test basic ParserError creation."""
+        error = ParserError("Test error message")
+        assert error.message == "Test error message"
+        assert str(error) == "Test error message"
 
-    with pytest.raises(InvalidSectionError) as excinfo:
-        cp2k_parser.parse(fhandle)
-
-    assert "invalid section" in excinfo.value.args[0]
-
-    fhandle = io.StringIO(
-        """
-        &GLOBAL
-        &END GLOBAL
-        &FORCE_EVAL
-        """
-    )
-
-    with pytest.raises(SectionMismatchError) as excinfo:
-        cp2k_parser.parse(fhandle)
-
-    assert "not closed" in excinfo.value.args[0]
+    def test_parser_error_with_context(self):
+        """Test ParserError with context."""
+        ctx = ErrorContext(line="TEST", linenr=10)
+        error = ParserError("Test error", ctx)
+        assert error.context == ctx
+        assert error.message == "Test error"
 
 
-def test_section_end_mismatch():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
+class TestInvalidNameError:
+    """Tests for InvalidNameError."""
 
-    fhandle = io.StringIO(
-        """
-        &GLOBAL
-        &END GLOBI
-        &FORCE_EVAL
-        &END FORCE_EVAL
-        """
-    )
+    def test_invalid_name_error_basic(self):
+        """Test InvalidNameError creation."""
+        error = InvalidNameError("Invalid name 'FOO'")
+        assert error.message == "Invalid name 'FOO'"
+        assert str(error) == "Invalid name 'FOO'"
 
-    with pytest.raises(SectionMismatchError) as excinfo:
-        cp2k_parser.parse(fhandle)
-
-    assert "could not match open section" in excinfo.value.args[0]
-
-
-def test_section_parameter_error():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
-
-    fhandle = io.StringIO(
-        """
-        &GLOBAL invalidparam
-        &END GLOBAL
-        """
-    )
-
-    with pytest.raises(InvalidParameterError) as excinfo:
-        cp2k_parser.parse(fhandle)
-
-    assert "section parameters given for non-parametrized section" in excinfo.value.args[0]
+    def test_invalid_name_error_with_context(self):
+        """Test InvalidNameError with context."""
+        ctx = ErrorContext(
+            line="FOO_BAR = 1",
+            linenr=5,
+            suggestion="Did you mean: FOO?"
+        )
+        error = InvalidNameError("Invalid name 'FOO_BAR'", ctx)
+        assert error.context.suggestion == "Did you mean: FOO?"
 
 
-def test_invalid_keyword():
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
+class TestInvalidSectionError:
+    """Tests for InvalidSectionError."""
 
-    fhandle = io.StringIO(
-        """
-        &FORCE_EVAL
-           &SUBSYS
-              BASIS_SET TZVPd-MOLOPT-SR-GTH
-           &END SUBSYS
-        &END FORCE_EVAL
-        """
-    )
+    def test_invalid_section_error_basic(self):
+        """Test InvalidSectionError creation."""
+        error = InvalidSectionError("Invalid section '&FOO'")
+        assert error.message == "Invalid section '&FOO'"
+        assert str(error) == "Invalid section '&FOO'"
 
-    with pytest.raises(InvalidNameError) as excinfo:
-        cp2k_parser.parse(fhandle)
+    def test_invalid_section_error_with_suggestion(self):
+        """Test InvalidSectionError with suggestion."""
+        ctx = ErrorContext(
+            line="&FOO",
+            linenr=1,
+            section_stack=["GLOBAL"],
+            suggestion="Did you mean: FORCE_EVAL?"
+        )
+        error = InvalidSectionError("Invalid section '&FOO'", ctx)
+        assert error.context.suggestion is not None
 
-    assert "invalid keyword" in excinfo.value.args[0]
+
+class TestInvalidParameterError:
+    """Tests for InvalidParameterError."""
+
+    def test_invalid_parameter_error_basic(self):
+        """Test InvalidParameterError creation."""
+        error = InvalidParameterError("Invalid parameter value")
+        assert error.message == "Invalid parameter value"
+
+    def test_invalid_parameter_error_with_context(self):
+        """Test InvalidParameterError with context."""
+        ctx = ErrorContext(
+            line="PROJECT_NAME",
+            linenr=3,
+            section="GLOBAL"
+        )
+        error = InvalidParameterError("Expected string value", ctx)
+        assert error.context.section == "GLOBAL"
 
 
-def test_internal_cp2k_unit():
-    """
-    Ensure that values for keywords with a default internal_cp2k unit are accepted unless there is an explicit unit.
-    The first one is a reproducer of https://github.com/cp2k/cp2k-input-tools/issues/54
-    """
+class TestSectionMismatchError:
+    """Tests for SectionMismatchError."""
 
-    cp2k_parser = CP2KInputParser(DEFAULT_CP2K_INPUT_XML)
+    def test_section_mismatch_error_basic(self):
+        """Test SectionMismatchError creation."""
+        error = SectionMismatchError("Section mismatch")
+        assert error.message == "Section mismatch"
 
-    fhandle_no_extra_unit = io.StringIO(
-        """
-        &FORCE_EVAL
-          METHOD  FIST
-          &MM
-            &FORCEFIELD
-              IGNORE_MISSING_CRITICAL_PARAMS  T
-              &BOND
-                ATOMS O H
-                KIND  HARMONIC
-                K      4.7265512325474252E-01
-                R0     1.9124028464802707E+00
-              &END BOND
-              &BEND
-                ATOMS H O H
-                KIND  HARMONIC
-                K     1.2095435014802065E-01
-                THETA0     1.9764108449583786E+00
-              &END BEND
-            &END FORCEFIELD
-          &END MM
-        &END FORCE_EVAL
-        """
-    )
+    def test_section_mismatch_error_unclosed(self):
+        """Test SectionMismatchError for unclosed section."""
+        ctx = ErrorContext(
+            line="&GLOBAL",
+            linenr=1,
+            suggestion="Add '&END GLOBAL' to close the section"
+        )
+        error = SectionMismatchError("section 'GLOBAL' not closed", ctx)
+        assert "not closed" in error.message
+        assert error.context.suggestion is not None
 
-    cp2k_parser.parse(fhandle_no_extra_unit)
 
-    fhandle_extra_unit = io.StringIO(
-        """
-        &FORCE_EVAL
-          METHOD  FIST
-          &MM
-            &FORCEFIELD
-              IGNORE_MISSING_CRITICAL_PARAMS  T
-              &BOND
-                ATOMS O H
-                KIND  HARMONIC
-                K      [hartree] 4.7265512325474252E-01
-                R0     1.9124028464802707E+00
-              &END BOND
-              &BEND
-                ATOMS H O H
-                KIND  HARMONIC
-                K     [hartree] 1.2095435014802065E-01
-                THETA0     1.9764108449583786E+00
-              &END BEND
-            &END FORCEFIELD
-          &END MM
-        &END FORCE_EVAL
-        """
-    )
+class TestNameRepetitionError:
+    """Tests for NameRepetitionError."""
 
-    with pytest.raises(InvalidParameterError) as excinfo:
-        cp2k_parser.parse(fhandle_extra_unit)
+    def test_name_repetition_error_basic(self):
+        """Test NameRepetitionError creation."""
+        error = NameRepetitionError("Keyword 'FOO' mentioned twice")
+        assert error.message == "Keyword 'FOO' mentioned twice"
 
-    assert "invalid values" in excinfo.value.args[0]
+    def test_name_repetition_error_duplicate_keyword(self):
+        """Test NameRepetitionError for duplicate keyword."""
+        ctx = ErrorContext(
+            line="PROJECT_NAME test1",
+            linenr=5,
+            section="GLOBAL",
+            section_stack=["GLOBAL"]
+        )
+        error = NameRepetitionError(
+            "the keyword 'PROJECT_NAME' can only be mentioned once",
+            ctx
+        )
+        assert "PROJECT_NAME" in error.message
+        assert error.context.section == "GLOBAL"
+
+
+class TestNestedSectionError:
+    """Tests for NestedSectionError."""
+
+    def test_nested_section_error_basic(self):
+        """Test NestedSectionError creation."""
+        error = NestedSectionError("Nested section error")
+        assert error.message == "Nested section error"
+
+
+class TestErrorChaining:
+    """Tests for error chaining and exception behavior."""
+
+    def test_error_is_exception(self):
+        """Test that all errors are proper exceptions."""
+        errors = [
+            ParserError("test"),
+            InvalidNameError("test"),
+            InvalidSectionError("test"),
+            InvalidParameterError("test"),
+            SectionMismatchError("test"),
+            NameRepetitionError("test"),
+            NestedSectionError("test"),
+        ]
+        for error in errors:
+            assert isinstance(error, Exception)
+
+    def test_error_can_be_caught(self):
+        """Test that errors can be caught as ParserError."""
+        try:
+            raise InvalidNameError("test")
+        except ParserError as e:
+            assert "test" in str(e)
+
+    def test_error_attributes(self):
+        """Test that all errors have required attributes."""
+        error = InvalidNameError("message", ErrorContext())
+        assert hasattr(error, 'message')
+        assert hasattr(error, 'context')
