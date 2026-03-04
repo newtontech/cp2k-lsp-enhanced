@@ -9,7 +9,8 @@ import click
 def smart_open(filename=None, mode="r"):
     """A context manager to automatically read from stdin, based on https://stackoverflow.com/a/17603000/1400465"""
 
-    assert mode in ("r", "w", "x"), "Only r and w/x modes are supported"
+    if mode not in ("r", "w", "x"):
+        raise ValueError("Invalid mode")
 
     filebased = filename and str(filename) != "-"
 
