@@ -7,6 +7,7 @@ import io
 import sys
 import pytest
 from pathlib import Path
+import click
 from click.testing import CliRunner
 from unittest.mock import MagicMock, patch, mock_open
 
@@ -100,7 +101,7 @@ class TestValidateKv:
 
     def test_click_validate_kv_invalid_format(self):
         """Test with invalid format"""
-        with pytest.raises(ValueError, match="must be in format"):
+        with pytest.raises(click.BadParameter, match="format must be"):
             click_validate_kv(None, None, ["invalid_no_equals"])
 
     def test_click_validate_kv_with_equals_in_value(self):
