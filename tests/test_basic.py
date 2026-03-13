@@ -1,15 +1,13 @@
-\"\"\"
-Basic tests for cp2k-lsp-enhanced
-\"\"\"
+"""Basic tests for CP2K input tools."""
 
-import pytest
+from cp2k_input_tools.parser import CP2KInputParser
 
 
-def test_import():
-    \"\"\"Test that the package can be imported\"\"\"
-    assert True
+def test_parse_simple_input():
+    """Test parsing a simple CP2K input."""
+    parser = CP2KInputParser()
+    assert parser is not None
 
 
-def test_placeholder():
-    \"\"\"Placeholder test - replace with actual tests\"\"\"
-    assert True
+if __name__ == "__main__":
+    test_parse_simple_input()
