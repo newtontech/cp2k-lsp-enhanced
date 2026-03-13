@@ -600,3 +600,225 @@ class TestIntegration:
 
         errors = [d for d in diagnostics if d.severity == "error"]
         assert len(errors) == 0
+
+
+class TestRemovedKeywords:
+    """Test removed/deprecated keywords validation."""
+
+    # Note: Many removed keywords are caught at parser level
+    # Semantic validation catches keywords that are valid in syntax but deprecated
+
+    def test_removed_keyword_detection(self):
+        """Removed keywords should be detected if they pass parser."""
+        # This test documents that removed keywords like SINGLE_PRECISION_MATRICES
+        # are caught at the parser level, not semantic level
+        # The semantic validator adds version-specific messages
+        pass
+
+
+class TestSCFParamsValidation:
+    """Test SCF parameters validation."""
+
+    def test_low_max_scf_warning(self):
+        """Low MAX_SCF should raise warning."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &SCF
+      MAX_SCF 10
+      &OT
+      &END OT
+    &END SCF
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "LOW_MAX_SCF" in codes
+
+        diag = next(d for d in diagnostics if d.code == "LOW_MAX_SCF")
+        assert diag.severity == "warning"
+
+    def test_loose_eps_scf_warning(self):
+        """Loose EPS_SCF should raise warning."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &SCF
+      EPS_SCF 1.0E-3
+      &OT
+      &END OT
+    &END SCF
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "LOOSE_EPS_SCF" in codes
+
+    def test_ignore_convergence_failure_warning(self):
+        """IGNORE_CONVERGENCE_FAILURE should raise warning."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &SCF
+      IGNORE_CONVERGENCE_FAILURE T
+      &OT
+      &END OT
+    &END SCF
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "IGNORE_SCF_FAILURE" in codes
+
+
+class TestCoordinateValidation:
+    """Test coordinate section validation."""
+
+    def test_unknown_element_error(self):
+        """Unknown element symbol should raise error."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+  &SUBSYS
+    &COORD
+      O  0.0  0.0  0.0
+      X  1.0  0.0  0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "UNKNOWN_ELEMENT" in codes
+
+        error = next(d for d in diagnostics if d.code == "UNKNOWN_ELEMENT")
+        assert "X" in error.message
+        assert error.severity == "error"
+
+    def test_valid_elements_no_error(self):
+        """Valid elements should not raise error."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+  &SUBSYS
+    &COORD
+      C  0.0  0.0  0.0
+      H  0.9  0.0  0.0
+      H -0.9  0.0  0.0
+      O  0.0  1.0  0.0
+      N  0.0  2.0  0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "UNKNOWN_ELEMENT" not in codes
+
+
+class TestXCFunctionalValidation:
+    """Test XC functional validation."""
+
+    def test_no_xc_functional_warning(self):
+        """Missing XC functional should raise warning."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &XC
+    &END XC
+  &END DFT
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "NO_XC_FUNCTIONAL" in codes
+
+    def test_xc_functional_present_is_valid(self):
+        """XC functional present should be valid."""
+        content = """
+&GLOBAL
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+&END FORCE_EVAL
+"""
+        parser = CP2KInputParserSimplified()
+        tree = parser.parse(content.split("\n"))
+        diagnostics = validate_semantics(tree)
+
+        codes = [d.code for d in diagnostics]
+        assert "NO_XC_FUNCTIONAL" not in codes

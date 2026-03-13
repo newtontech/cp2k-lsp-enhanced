@@ -2,6 +2,8 @@
 
 This module provides physics/chemistry-aware validation that goes beyond
 syntax checking to detect semantically incorrect but syntactically valid inputs.
+
+Supports CP2K versions: 2022.x, 2023.x, 2024.1, 2024.2
 """
 
 from dataclasses import dataclass
@@ -19,8 +21,46 @@ class SemanticDiagnostic:
     section: Optional[str] = None
 
 
+# Version-specific removed/deprecated keywords
+REMOVED_KEYWORDS = {
+    # CP2K 2023.x removed
+    "SINGLE_PRECISION_MATRICES": {
+        "since": "2023.1",
+        "message": "SINGLE_PRECISION_MATRICES 已在 CP2K 2023.x 中移除。\n"
+        "建议：移除此关键字，精度控制现在通过其他参数实现。",
+    },
+    "BROYDEN_MIXING_NEW": {
+        "since": "2024.1",
+        "message": "BROYDEN_MIXING_NEW 已在 CP2K 2024.x 中移除。\n"
+        "建议：使用 BROYDEN_MIXING 或其他混合方法。",
+    },
+    "KP_RI_EXTENSION_FACTOR": {
+        "since": "2024.1",
+        "message": "KP_RI_EXTENSION_FACTOR 已在 CP2K 2024.x 中移除。\n"
+        "建议：使用新的 K 点 RI 参数配置。",
+    },
+}
+
+DEPRECATED_KEYWORDS = {
+    # CP2K 2024.x deprecated
+    "QUIP": {
+        "since": "2024.1",
+        "message": "QUIP 支持已在 CP2K 2024.x 中标记为废弃，将在未来版本移除。\n"
+        "建议：迁移到其他机器学习势方法如 DeePMD 或 NequIP。",
+    },
+    "PEXSI": {
+        "since": "2024.1",
+        "message": "PEXSI 支持已在 CP2K 2024.x 中标记为废弃。\n"
+        "建议：考虑使用其他电子结构方法。",
+    },
+}
+
+
 class CP2KSemanticValidator:
     """Validates CP2K input files for semantic correctness."""
+
+    # Target CP2K version for validation
+    TARGET_VERSION = "2024.1"
 
     # RUN_TYPE to MOTION section mapping
     # Format: RUN_TYPE -> (required_sections, forbidden_sections, description)
@@ -166,6 +206,36 @@ class CP2KSemanticValidator:
         # 5. Validate cutoff energy
         for fe in force_eval_sections:
             self._validate_cutoff(fe)
+
+        # 6. Validate removed/deprecated keywords (version-aware)
+        self._validate_removed_keywords(tree)
+
+        # 7. Validate SCF parameters
+        for fe in force_eval_sections:
+            dft = fe.get("dft", {})
+            if isinstance(dft, list):
+                dft = dft[0] if dft else {}
+            scf = dft.get("scf", {})
+            if isinstance(scf, list):
+                scf = scf[0] if scf else {}
+            self._validate_scf_params(scf)
+
+        # 8. Validate coordinate section
+        for fe in force_eval_sections:
+            subsys = fe.get("subsys", {})
+            if isinstance(subsys, list):
+                subsys = subsys[0] if subsys else {}
+            coord = subsys.get("coord", {})
+            if isinstance(coord, list):
+                coord = coord[0] if coord else {}
+            self._validate_coordinates(coord)
+
+        # 9. Validate XC functional
+        for fe in force_eval_sections:
+            dft = fe.get("dft", {})
+            if isinstance(dft, list):
+                dft = dft[0] if dft else {}
+            self._validate_xc_functional(dft)
 
         return self.diagnostics
 
@@ -456,6 +526,224 @@ class CP2KSemanticValidator:
                     severity="warning",
                     code="LOW_CUTOFF",
                     section="FORCE_EVAL/DFT/MGRID",
+                )
+            )
+
+    def _validate_removed_keywords(self, tree: Dict):
+        """Validate removed/deprecated keywords based on CP2K version."""
+        # Recursively search for removed keywords
+        self._check_keywords_recursive(tree, [])
+
+    def _check_keywords_recursive(self, section: Dict, path: List[str]):
+        """Recursively check for removed/deprecated keywords."""
+        if not isinstance(section, dict):
+            return
+
+        for key, value in section.items():
+            if key.startswith("_"):
+                continue
+
+            key_upper = key.upper()
+
+            # Check for removed keywords
+            if key_upper in REMOVED_KEYWORDS:
+                info = REMOVED_KEYWORDS[key_upper]
+                line = self._get_section_line(section)
+                section_path = "/".join(path) if path else "ROOT"
+
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"关键字 `{key}` 已在 CP2K {info['since']} 中移除。\n"
+                        f"{info['message']}\n"
+                        f"当前 LSP 支持版本：{self.TARGET_VERSION}",
+                        severity="error",
+                        code="REMOVED_KEYWORD",
+                        section=section_path,
+                    )
+                )
+
+            # Check for deprecated keywords
+            if key_upper in DEPRECATED_KEYWORDS:
+                info = DEPRECATED_KEYWORDS[key_upper]
+                line = self._get_section_line(section)
+                section_path = "/".join(path) if path else "ROOT"
+
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"关键字 `{key}` 在 CP2K {info['since']} 中已废弃。\n"
+                        f"{info['message']}",
+                        severity="warning",
+                        code="DEPRECATED_KEYWORD",
+                        section=section_path,
+                    )
+                )
+
+            # Recurse into subsections
+            if isinstance(value, dict):
+                self._check_keywords_recursive(value, path + [key_upper])
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        self._check_keywords_recursive(item, path + [key_upper])
+
+    def _validate_scf_params(self, scf: Dict):
+        """Validate SCF parameters for common issues."""
+        if not scf:
+            return
+
+        # Check MAX_SCF
+        max_scf_str = self._get_keyword_value(scf, "max_scf", "50")
+        try:
+            max_scf = int(max_scf_str)
+            if max_scf < 20:
+                line = self._get_section_line(scf)
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"MAX_SCF 设置过少可能导致 SCF 不收敛。\n"
+                        f"  - 当前值：{max_scf}\n"
+                        f"  - 建议值：≥ 20（默认 50）\n"
+                        f"建议：增加 MAX_SCF 或检查初始猜测设置",
+                        severity="warning",
+                        code="LOW_MAX_SCF",
+                        section="FORCE_EVAL/DFT/SCF",
+                    )
+                )
+        except ValueError:
+            pass
+
+        # Check EPS_SCF
+        eps_scf_str = self._get_keyword_value(scf, "eps_scf", "1.0E-5")
+        try:
+            eps_scf = float(eps_scf_str)
+            if eps_scf > 1.0E-5:
+                line = self._get_section_line(scf)
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"EPS_SCF 设置过松可能导致能量精度不足。\n"
+                        f"  - 当前值：{eps_scf_str}\n"
+                        f"  - 建议值：≤ 1.0E-5（默认 1.0E-5）\n"
+                        f"建议：减小 EPS_SCF 以提高精度",
+                        severity="warning",
+                        code="LOOSE_EPS_SCF",
+                        section="FORCE_EVAL/DFT/SCF",
+                    )
+                )
+        except ValueError:
+            pass
+
+        # Check for IGNORE_CONVERGENCE_FAILURE
+        ignore = self._get_keyword_value(scf, "ignore_convergence_failure", "false")
+        if ignore.lower() in ("true", "yes", "1"):
+            line = self._get_section_line(scf)
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message="IGNORE_CONVERGENCE_FAILURE 已启用。\n"
+                    f"  - SCF 不收敛时程序将继续运行\n"
+                    f"  - 结果可能不可靠\n"
+                    f"建议：仅在调试时使用，生产计算请确保 SCF 收敛",
+                    severity="warning",
+                    code="IGNORE_SCF_FAILURE",
+                    section="FORCE_EVAL/DFT/SCF",
+                )
+            )
+
+    def _validate_coordinates(self, coord: Dict):
+        """Validate coordinate section."""
+        if not coord:
+            return
+
+        coord_lines = coord.get("*", [])
+        if isinstance(coord_lines, str):
+            coord_lines = [coord_lines]
+
+        line_num = self._get_section_line(coord)
+        unknown_elements = []
+
+        for line in coord_lines:
+            if isinstance(line, str):
+                parts = line.split()
+                if parts:
+                    element = parts[0].capitalize()
+                    # Check if valid element
+                    if element not in self.ELEMENT_Z:
+                        unknown_elements.append(element)
+
+        if unknown_elements:
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line_num,
+                    message=f"检测到未知元素符号。\n"
+                    f"  - 未知元素：{', '.join(set(unknown_elements))}\n"
+                    f"  - 支持的元素：H-U (1-92)\n"
+                    f"建议：检查坐标中的元素符号是否正确",
+                    severity="error",
+                    code="UNKNOWN_ELEMENT",
+                    section="FORCE_EVAL/SUBSYS/COORD",
+                )
+            )
+
+    def _validate_xc_functional(self, dft: Dict):
+        """Validate XC functional configuration."""
+        xc = dft.get("xc", {})
+        if isinstance(xc, list):
+            xc = xc[0] if xc else {}
+
+        # If no XC section at all, skip (QS method requires it but that's caught elsewhere)
+        # Note: {} means XC section exists but is empty - we should check it
+        if xc is None:
+            return
+
+        # Get xc_functional section
+        xc_functional = xc.get("xc_functional")
+
+        # If xc_functional key doesn't exist (empty XC section or missing XC_FUNCTIONAL)
+        if xc_functional is None:
+            line = self._get_section_line(xc) if xc else 1
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message="未指定 XC 泛函。\n"
+                    f"  - &XC 截面存在但未定义 &XC_FUNCTIONAL\n"
+                    f"建议：添加泛函定义如 `&XC_FUNCTIONAL PBE`",
+                    severity="warning",
+                    code="NO_XC_FUNCTIONAL",
+                    section="FORCE_EVAL/DFT/XC",
+                )
+            )
+            return
+
+        if isinstance(xc_functional, list):
+            xc_functional = xc_functional[0] if xc_functional else {}
+
+        # Check if xc_functional is empty
+        has_functional = False
+
+        # Check for shortcut form like XC_FUNCTIONAL PBE
+        if xc_functional and xc_functional.get("_"):
+            has_functional = True
+        else:
+            # Check for subsection form like &PBE, &B3LYP
+            for key in xc_functional.keys():
+                if not key.startswith("_"):
+                    has_functional = True
+                    break
+
+        if not has_functional:
+            line = self._get_section_line(xc_functional) if xc_functional else self._get_section_line(xc)
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message="未指定 XC 泛函。\n"
+                    f"  - &XC_FUNCTIONAL 截面为空或未定义\n"
+                    f"建议：添加泛函定义如 `&XC_FUNCTIONAL PBE` 或 `&PBE` 子截面",
+                    severity="warning",
+                    code="NO_XC_FUNCTIONAL",
+                    section="FORCE_EVAL/DFT/XC/XC_FUNCTIONAL",
                 )
             )
 
