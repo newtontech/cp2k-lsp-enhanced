@@ -128,3 +128,4 @@ jobs:
         assert CP2KInputParser() is not None
         PY
         /tmp/cp2k-input-tools-wheel-smoke/bin/cp2klint --help
+        /tmp/cp2k-input-tools-wheel-smoke/bin/cp2k-language-server --help

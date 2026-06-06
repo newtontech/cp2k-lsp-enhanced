@@ -56,12 +56,8 @@ Small, low-risk PRs with green checks and no blockers should use
 `rebase and merge` by default. Larger multi-commit feature PRs may use squash
 when the commit history does not carry useful review context.
 
-## Current PR Decisions
+## Decision Records
 
-- PR #12, `fix/lsp-cli-import-safe`: merge-ready after checks; prefer
-  `rebase and merge`. The CLI behavior tests cover import, help, and the missing
-  `lsp` extra failure path.
-- PR #4, `feat/issue-3-semantic-validation`: do not merge while conflicting.
-  Resolve `cp2k_input_tools/ls.py` and `tests/test_basic.py`, clarify the LSP
-  parser-to-validator contract, add LSP semantic diagnostic tests, and rerun the
-  full gate before review.
+Keep point-in-time PR decisions in the PR description, review comments, or a
+dated maintenance note. This document should stay limited to reusable gate
+criteria so it does not go stale after a PR is merged, rebased, or closed.
