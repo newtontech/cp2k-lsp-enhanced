@@ -1,6 +1,7 @@
 """Hover Provider."""
 
 from typing import Optional
+
 from lsprotocol import types as lsp
 
 

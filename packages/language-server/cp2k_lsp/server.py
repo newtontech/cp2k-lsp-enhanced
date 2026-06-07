@@ -1,20 +1,17 @@
 """CP2K Language Server."""
 
-import asyncio
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Dict, List, Optional
 
 from lsprotocol import types as lsp
 from pygls.server import LanguageServer
-from pygls.workspace import TextDocument
 
-from cp2k_lsp.parser import CP2KParser, CP2KInput
-from cp2k_lsp.features.diagnostics import DiagnosticsProvider
-from cp2k_lsp.features.completion import CompletionProvider
-from cp2k_lsp.features.hover import HoverProvider
-from cp2k_lsp.features.formatting import FormattingProvider
 from cp2k_lsp.features.code_action import CodeActionProvider
-
+from cp2k_lsp.features.completion import CompletionProvider
+from cp2k_lsp.features.diagnostics import DiagnosticsProvider
+from cp2k_lsp.features.formatting import FormattingProvider
+from cp2k_lsp.features.hover import HoverProvider
+from cp2k_lsp.parser import CP2KInput, CP2KParser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("cp2k-lsp")

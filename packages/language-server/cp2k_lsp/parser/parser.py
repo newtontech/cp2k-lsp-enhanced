@@ -1,12 +1,10 @@
 """CP2K Input Parser."""
 
-from typing import List, Optional, Dict, Any
-from cp2k_lsp.parser.lexer import Lexer, Token, TokenType
-from cp2k_lsp.parser.ast import (
-    CP2KInput, Section, Keyword, Value, Comment,
-    ValueType
-)
+from typing import List, Optional
+
+from cp2k_lsp.parser.ast import Comment, CP2KInput, Keyword, Section, Value, ValueType
 from cp2k_lsp.parser.errors import ParseError, SyntaxError
+from cp2k_lsp.parser.lexer import Lexer, Token, TokenType
 
 
 class CP2KParser:

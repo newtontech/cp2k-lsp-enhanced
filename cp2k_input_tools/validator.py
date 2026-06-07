@@ -7,7 +7,7 @@ Supports CP2K versions: 2022.x, 2023.x, 2024.1, 2024.2
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -280,7 +280,8 @@ class CP2KSemanticValidator:
                     f"  - 当前设置：RUN_TYPE={run_type}\n"
                     f"  - 检测到：&{section_name} 截面\n"
                     f"建议：\n"
-                    f"  - 若需{'几何优化' if section_name == 'GEO_OPT' else '分子动力学' if section_name == 'MD' else section_name}，请将 RUN_TYPE 改为 `{section_name}`\n"
+                    f"  - 若需{'几何优化' if section_name == 'GEO_OPT' else '分子动力学' if section_name == 'MD' else section_name}"
+                    f"，请将 RUN_TYPE 改为 `{section_name}`\n"
                     f"  - 若需静态计算，请删除 &MOTION / &{section_name} 截面",
                     severity="error",
                     code="RUN_TYPE_MOTION_MISMATCH",
@@ -643,9 +644,9 @@ class CP2KSemanticValidator:
                 SemanticDiagnostic(
                     line=line,
                     message="IGNORE_CONVERGENCE_FAILURE 已启用。\n"
-                    f"  - SCF 不收敛时程序将继续运行\n"
-                    f"  - 结果可能不可靠\n"
-                    f"建议：仅在调试时使用，生产计算请确保 SCF 收敛",
+                    "  - SCF 不收敛时程序将继续运行\n"
+                    "  - 结果可能不可靠\n"
+                    "建议：仅在调试时使用，生产计算请确保 SCF 收敛",
                     severity="warning",
                     code="IGNORE_SCF_FAILURE",
                     section="FORCE_EVAL/DFT/SCF",
@@ -708,8 +709,8 @@ class CP2KSemanticValidator:
                 SemanticDiagnostic(
                     line=line,
                     message="未指定 XC 泛函。\n"
-                    f"  - &XC 截面存在但未定义 &XC_FUNCTIONAL\n"
-                    f"建议：添加泛函定义如 `&XC_FUNCTIONAL PBE`",
+                    "  - &XC 截面存在但未定义 &XC_FUNCTIONAL\n"
+                    "建议：添加泛函定义如 `&XC_FUNCTIONAL PBE`",
                     severity="warning",
                     code="NO_XC_FUNCTIONAL",
                     section="FORCE_EVAL/DFT/XC",
@@ -739,8 +740,8 @@ class CP2KSemanticValidator:
                 SemanticDiagnostic(
                     line=line,
                     message="未指定 XC 泛函。\n"
-                    f"  - &XC_FUNCTIONAL 截面为空或未定义\n"
-                    f"建议：添加泛函定义如 `&XC_FUNCTIONAL PBE` 或 `&PBE` 子截面",
+                    "  - &XC_FUNCTIONAL 截面为空或未定义\n"
+                    "建议：添加泛函定义如 `&XC_FUNCTIONAL PBE` 或 `&PBE` 子截面",
                     severity="warning",
                     code="NO_XC_FUNCTIONAL",
                     section="FORCE_EVAL/DFT/XC/XC_FUNCTIONAL",

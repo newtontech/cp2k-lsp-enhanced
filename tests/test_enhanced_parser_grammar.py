@@ -2,7 +2,6 @@
 
 import pytest
 
-
 # =============================================================================
 # Issue #8: Package importability tests
 # =============================================================================
@@ -28,7 +27,7 @@ class TestPackageImportability:
 
     def test_import_parser(self):
         """Parser classes should be importable."""
-        from cp2k_lsp import CP2KParser, Lexer, CP2KInput
+        from cp2k_lsp import CP2KInput, CP2KParser, Lexer
         assert CP2KParser is not None
         assert Lexer is not None
         assert CP2KInput is not None
@@ -40,15 +39,13 @@ class TestPackageImportability:
 
     def test_import_parser_subpackage(self):
         """Parser subpackage should be importable."""
-        from cp2k_lsp.parser import CP2KParser, Lexer, TokenType
-        from cp2k_lsp.parser import CP2KInput, Section, Keyword, Value
-        from cp2k_lsp.parser import ParseError, SyntaxError
+        from cp2k_lsp.parser import CP2KInput, CP2KParser, Keyword, Lexer, ParseError, Section, SyntaxError, TokenType, Value
         assert all([CP2KParser, Lexer, TokenType, CP2KInput, Section,
                      Keyword, Value, ParseError, SyntaxError])
 
     def test_import_lexer_module(self):
         """Lexer module should be importable directly."""
-        from cp2k_lsp.parser.lexer import Lexer, TokenType, Token
+        from cp2k_lsp.parser.lexer import Lexer, TokenType
         assert Lexer is not None
         assert TokenType is not None
 
@@ -59,7 +56,7 @@ class TestPackageImportability:
 
     def test_import_ast_module(self):
         """AST module should be importable directly."""
-        from cp2k_lsp.parser.ast import CP2KInput, Section, Keyword, Value
+        from cp2k_lsp.parser.ast import CP2KInput
         assert CP2KInput is not None
 
     def test_import_errors_module(self):
@@ -374,7 +371,6 @@ class TestOpenQCContract:
 
     def test_lsp_package_startup(self):
         """LSP package should start without import errors."""
-        import cp2k_lsp
         from cp2k_lsp import CP2KLanguageServer
         server = CP2KLanguageServer()
         assert server is not None
@@ -390,7 +386,7 @@ class TestOpenQCContract:
     def test_lsp_can_parse_document(self):
         """LSP server should parse a document and store AST."""
         from cp2k_lsp import CP2KLanguageServer
-        server = CP2KLanguageServer()
+        _server = CP2KLanguageServer()
 
         # Simulate document parsing
         from cp2k_lsp.parser import CP2KParser

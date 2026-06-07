@@ -2,8 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Iterator, Optional, List
-import re
+from typing import List, Optional
 
 
 class TokenType(Enum):

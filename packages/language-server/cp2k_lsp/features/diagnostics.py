@@ -1,6 +1,7 @@
 """Diagnostics Provider."""
 
 from typing import List
+
 from lsprotocol import types as lsp
 
 

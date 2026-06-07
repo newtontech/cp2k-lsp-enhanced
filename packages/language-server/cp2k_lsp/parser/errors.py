@@ -1,6 +1,5 @@
 """Error types for the enhanced CP2K parser."""
 
-from dataclasses import dataclass
 from typing import Optional
 
 

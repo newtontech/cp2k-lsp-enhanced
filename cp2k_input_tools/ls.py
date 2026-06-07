@@ -14,7 +14,7 @@ from lsprotocol.types import (
 )
 from pygls.server import LanguageServer
 
-from .parser import CP2KInputParser, CP2KInputParserSimplified
+from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
 from .tokenizer import TokenizerError
 from .validator import validate_semantics

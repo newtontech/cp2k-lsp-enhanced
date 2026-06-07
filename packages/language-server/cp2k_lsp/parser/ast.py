@@ -1,8 +1,8 @@
 """AST (Abstract Syntax Tree) for CP2K input."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Any, Dict
 from enum import Enum
+from typing import Any, List, Optional
 
 
 class ValueType(Enum):

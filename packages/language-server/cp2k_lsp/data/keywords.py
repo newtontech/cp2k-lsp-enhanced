@@ -1,8 +1,8 @@
 """CP2K Keyword definitions."""
 
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class KeywordType(Enum):

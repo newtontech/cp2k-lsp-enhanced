@@ -1,6 +1,7 @@
 """Code Action Provider (Quick Fix)."""
 
-from typing import Optional, List
+from typing import List, Optional
+
 from lsprotocol import types as lsp
 
 
