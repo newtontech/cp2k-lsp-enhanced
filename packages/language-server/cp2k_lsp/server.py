@@ -24,7 +24,7 @@ class CP2KLanguageServer(LanguageServer):
     
     def __init__(self, *args, **kwargs):
         super().__init__("cp2k-lsp", "0.1.0", *args, **kwargs)
-        self.parsed_documents: Dict[str, CP2KInput] = {}
+        self.parsed_documents: Dict[str, Optional[CP2KInput]] = {}
         self.parser_errors: Dict[str, List] = {}
         
         # Feature providers

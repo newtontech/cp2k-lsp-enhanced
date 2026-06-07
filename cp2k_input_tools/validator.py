@@ -257,8 +257,8 @@ class CP2KSemanticValidator:
             return
 
         rules = self.RUN_TYPE_MOTION_MAP[run_type]
-        required = rules["required"]
-        forbidden = rules["forbidden"]
+        required: set[str] = set(rules["required"])  # type: ignore[assignment]
+        forbidden: set[str] = set(rules["forbidden"])  # type: ignore[assignment]
 
         # Get present MOTION subsections
         present_motion_sections = set()
@@ -316,8 +316,8 @@ class CP2KSemanticValidator:
             return
 
         rules = self.METHOD_SECTION_MAP[method]
-        required = rules["required"]
-        forbidden = rules["forbidden"]
+        required: set[str] = set(rules["required"])  # type: ignore[assignment]
+        forbidden: set[str] = set(rules["forbidden"])  # type: ignore[assignment]
 
         # Get present sections in FORCE_EVAL
         present_sections = set()

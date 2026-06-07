@@ -15,6 +15,7 @@ class CP2KParser:
         self.source = source
         self.pos = 0
         self.errors: List[ParseError] = []
+        self.ast: Optional[CP2KInput] = None
         
     def current(self) -> Token:
         if self.pos < len(self.tokens):
@@ -51,7 +52,7 @@ class CP2KParser:
         while self.match(TokenType.EOL, TokenType.COMMENT):
             if self.match(TokenType.COMMENT):
                 token = self.advance()
-                comments.append(Comment(token.value, token.line, token.column))
+                comments.append(Comment(text=token.value, line=token.line, column=token.column))
             else:
                 self.advance()
         return comments
@@ -70,7 +71,7 @@ class CP2KParser:
                     root.sections.append(section)
             elif self.match(TokenType.COMMENT):
                 token = self.advance()
-                root.comments.append(Comment(token.value, token.line, token.column))
+                root.comments.append(Comment(text=token.value, line=token.line, column=token.column))
             elif self.match(TokenType.EOL):
                 self.advance()
             else:
@@ -114,7 +115,7 @@ class CP2KParser:
                     section.keywords.append(keyword)
             elif self.match(TokenType.COMMENT):
                 token = self.advance()
-                section.comments.append(Comment(token.value, token.line, token.column))
+                section.comments.append(Comment(text=token.value, line=token.line, column=token.column))
             elif self.match(TokenType.EOL):
                 self.advance()
             elif self.match(TokenType.EOF):
