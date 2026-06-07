@@ -26,6 +26,12 @@ For a description of the JSON/YAML formats used, see below.
 
 For development: https://poetry.eustace.io/ https://pytest.org/
 
+## OpenQC Alignment
+
+This repository is part of the newtontech computational chemistry LSP family. `newtontech/OpenQC-VSCode` is the VS Code-facing integration layer for CP2K language support.
+
+When changing CP2K language-server behavior, parser validation, command names, file detection, or fixtures, also update or open an alignment issue in `OpenQC-VSCode` so the extension behavior stays consistent with `cp2k-lsp-enhanced`.
+
 ## Idea
 
 * have a pure-python CP2K input file linter with proper syntax error reporting (context, etc.)
