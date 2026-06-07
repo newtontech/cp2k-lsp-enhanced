@@ -145,22 +145,39 @@ class CP2KParser:
         return section
     
     def parse_keyword(self) -> Optional[Keyword]:
-        """Parse a keyword assignment."""
+        """Parse a keyword assignment.
+
+        Supports both CP2K grammar forms:
+        - KEYWORD = VALUE  (explicit assignment)
+        - KEYWORD VALUE    (whitespace-separated, CP2K-native)
+        """
         name_token = self.expect(TokenType.KEYWORD)
-        
+
         self.skip_eol_and_comments()
-        
+
         if not self.match(TokenType.ASSIGN):
-            # Keyword without value
+            # Check for whitespace-separated value (CP2K grammar)
+            # In CP2K, keywords can be followed directly by a value token
+            # without an equals sign: e.g., "RUN_TYPE ENERGY"
+            if self.match(TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN,
+                          TokenType.KEYWORD, TokenType.UNIT):
+                value = self.parse_value()
+                return Keyword(
+                    name=name_token.value,
+                    value=value,
+                    line=name_token.line,
+                    column=name_token.column
+                )
+            # Keyword without value (boolean flag or section parameter)
             return Keyword(
                 name=name_token.value,
                 line=name_token.line,
                 column=name_token.column
             )
-        
+
         self.expect(TokenType.ASSIGN)
         self.skip_eol_and_comments()
-        
+
         value = self.parse_value()
         return Keyword(
             name=name_token.value,
