@@ -3,18 +3,10 @@ import sys
 
 import click
 
-try:
-    import pygls  # noqa: F401
-
-    from cp2k_input_tools.ls import cp2k_server
-except ImportError:
-    print(
-        """Could not import the pygls package. You have to install the cp2k-input-tools with the 'lsp' extra:
+LSP_EXTRA_ERROR = """Could not import the pygls package. You have to install the cp2k-input-tools with the 'lsp' extra:
 
 pip install cp2k-input-tools[lsp]
     """
-    )
-    sys.exit(1)
 
 
 @click.command()
@@ -24,6 +16,14 @@ pip install cp2k-input-tools[lsp]
 @click.option("--debug", is_flag=True, default=False, help="write a cp2kls.log file")
 def cp2k_language_server(tcp, host, port, debug):
     """Language Server Protocol (LSP) implementation for CP2K input files"""
+    try:
+        import pygls  # noqa: F401
+
+        from cp2k_input_tools.ls import cp2k_server
+    except ImportError:
+        print(LSP_EXTRA_ERROR)
+        sys.exit(1)
+
     if debug:
         logging.basicConfig(filename="cp2kls.log", level=logging.DEBUG, filemode="w")
 
