@@ -4,12 +4,8 @@ import pathlib
 
 import pytest
 
-from cp2k_input_tools.parser import CP2KInputParser
-from cp2k_input_tools.parser_errors import InvalidNameError, InvalidParameterError, InvalidSectionError, ParserError
-from cp2k_input_tools.tokenizer import TokenizerError
-from tests.validation.accuracy_runner import AccuracyReport, TestResult, calculate_accuracy, run_validation_suite, run_validation_test
-
-from . import TEST_DIR
+from tests import TEST_DIR
+from tests.validation.accuracy_runner import AccuracyReport, calculate_accuracy, run_validation_suite, run_validation_test
 
 
 class TestAccuracyRunner:
