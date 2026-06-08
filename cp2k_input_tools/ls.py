@@ -20,6 +20,11 @@ from lsprotocol.types import (
     CodeAction,
     CodeActionKind,
     CodeActionParams,
+    CompletionItem,
+    CompletionItemKind,
+    CompletionList,
+    CompletionOptions,
+    CompletionParams,
     DefinitionParams,
     Diagnostic,
     DiagnosticSeverity,
@@ -51,7 +56,7 @@ from lsprotocol.types import (
 from pygls.server import LanguageServer
 
 from .formatter import format_document as _format_doc, format_range as _format_range
-from .parser import CP2KInputParser
+from .parser import CP2KInputParser, Section
 from .parser_errors import ParserError
 from .preprocessor import CP2KPreprocessor
 from .tokenizer import TokenizerError
@@ -364,6 +369,50 @@ def setup_cp2k_ls_server(server):
     @server.feature(TEXT_DOCUMENT_DID_OPEN)
     async def did_open(ls, params: DidOpenTextDocumentParams):
         _validate(ls, params)
+
+    # === Completion (#10) ===
+
+    @server.feature(
+        TEXT_DOCUMENT_COMPLETION,
+        CompletionOptions(trigger_characters=["&"]),
+    )
+    def completion(ls: LanguageServer, params: CompletionParams):
+        """Text document completion notification."""
+        text_doc = ls.workspace.get_document(params.text_document.uri)
+        lines = text_doc.source.splitlines()
+        cursor_line = params.position.line
+        cursor_char = params.position.character
+
+        # Get the text up to the cursor position to determine context
+        prefix = lines[cursor_line][:cursor_char] if cursor_line < len(lines) else ""
+
+        # If we're typing a section (starts with &), provide section completions
+        if prefix.strip().startswith("&") and not prefix.strip().startswith("&END"):
+            # Parse up to the current line to get the parent section
+            parser = CP2KInputParser()
+            context = _get_section_context(lines, cursor_line, parser)
+
+            if context:
+                items = []
+                for name_node in context.node.iterfind("./SECTION/NAME"):
+                    if name_node.text:
+                        items.append(
+                            CompletionItem(
+                                label=f"&{name_node.text}",
+                                kind=CompletionItemKind.Class,
+                                detail=f"Section in {context.name if context.name != '/' else 'root'}",
+                            )
+                        )
+                return CompletionList(is_incomplete=False, items=items)
+
+        # Otherwise, provide keyword/section completions for the current section
+        parser = CP2KInputParser()
+        context = _get_section_context(lines, cursor_line + 1, parser)
+
+        if context:
+            return CompletionList(is_incomplete=False, items=_get_completions_for_section(context))
+
+        return CompletionList(is_incomplete=False, items=[])
 
     # === Formatting (#14) ===
 
