@@ -134,6 +134,32 @@ class TestDuplicates:
         assert len(diagnostics) >= 1
         assert "COORD" in diagnostics[0].message
 
+    def test_repeated_kind_sections_are_allowed(self):
+        """KIND sections can repeat under SUBSYS."""
+        text = """&FORCE_EVAL
+  &SUBSYS
+    &KIND O
+    &END KIND
+    &KIND H
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL"""
+        diagnostics = lint_duplicates(text)
+        assert not any(d.code == "lint/duplicate-section" for d in diagnostics)
+
+    def test_repeated_coord_labels_are_data_records(self):
+        """Repeated atom labels in COORD are coordinate rows, not duplicate keywords."""
+        text = """&FORCE_EVAL
+  &SUBSYS
+    &COORD
+      H 0.0 0.0 0.0
+      H 0.0 0.0 1.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL"""
+        diagnostics = lint_duplicates(text)
+        assert not any(d.code == "lint/duplicate-keyword" for d in diagnostics)
+
 
 class TestConfigSmells:
     """Tests for configuration smell detection."""
