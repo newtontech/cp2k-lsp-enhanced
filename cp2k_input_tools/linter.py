@@ -40,6 +40,18 @@ ACCEPTED_KEYWORD_ALIASES = {
     "COORD_FILE",
 }
 
+# Sections whose child records are data rows rather than ordinary keywords.
+DATA_RECORD_SECTIONS = {
+    "COORD",
+}
+
+# Common CP2K sections that are expected to appear multiple times under one parent.
+REPEATABLE_SECTIONS = {
+    "FORCE_EVAL",
+    "KIND",
+    "PRINT",
+}
+
 # Section parent-child validity map (common sections)
 VALID_SECTION_PARENTS = {
     "GLOBAL": {"/"},
@@ -249,26 +261,27 @@ def lint_duplicates(text: str) -> List[Diagnostic]:
 
     def check_duplicates(node: SectionNode):
         # Check for duplicate keywords
-        kw_names = [kw[0] for kw in node.keywords]
-        kw_counts = Counter(kw_names)
-        for kw_name, count in kw_counts.items():
-            if count > 1:
-                # Find the line of the second occurrence
-                lines = [kw[2] for kw in node.keywords if kw[0] == kw_name]
-                diagnostics.append(Diagnostic(
-                    severity="warning",
-                    source="cp2k-lint",
-                    code=RULE_DUPLICATE_KEYWORD,
-                    message=f"Keyword '{kw_name}' appears {count} times in section '&{node.name}'. "
-                            f"This may be unintended.",
-                    line=lines[1] if len(lines) > 1 else lines[0],
-                ))
+        if node.name not in DATA_RECORD_SECTIONS:
+            kw_names = [kw[0] for kw in node.keywords]
+            kw_counts = Counter(kw_names)
+            for kw_name, count in kw_counts.items():
+                if count > 1:
+                    # Find the line of the second occurrence
+                    lines = [kw[2] for kw in node.keywords if kw[0] == kw_name]
+                    diagnostics.append(Diagnostic(
+                        severity="warning",
+                        source="cp2k-lint",
+                        code=RULE_DUPLICATE_KEYWORD,
+                        message=f"Keyword '{kw_name}' appears {count} times in section '&{node.name}'. "
+                                f"This may be unintended.",
+                        line=lines[1] if len(lines) > 1 else lines[0],
+                    ))
 
         # Check for duplicate non-repeating sections
         sec_names = [sub.name for sub in node.subsections]
         sec_counts = Counter(sec_names)
         for sec_name, count in sec_counts.items():
-            if count > 1:
+            if count > 1 and sec_name not in REPEATABLE_SECTIONS:
                 # Find the line of the second occurrence
                 lines = [sub.line for sub in node.subsections if sub.name == sec_name]
                 diagnostics.append(Diagnostic(
