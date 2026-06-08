@@ -1,45 +1,38 @@
-"""Enhanced LSP server with formatting, navigation, rename, and rich diagnostics."""
+"""
+CP2K Language Server implementation.
 
-import pathlib
-from typing import Dict, List, Optional, Union
+Provides LSP features: diagnostics, hover, definition, references,
+code actions, document symbols, formatting, and rename for CP2K input files.
+"""
+
+import re
+from typing import List, Optional, Union
 
 from lsprotocol.types import (
-    TEXT_DOCUMENT_COMPLETION,
+    TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
-    TEXT_DOCUMENT_FORMATTING,
-    TEXT_DOCUMENT_RANGE_FORMATTING,
+    TEXT_DOCUMENT_DOCUMENT_SYMBOL,
     TEXT_DOCUMENT_HOVER,
     TEXT_DOCUMENT_DEFINITION,
     TEXT_DOCUMENT_REFERENCES,
-    TEXT_DOCUMENT_DOCUMENT_SYMBOL,
-    TEXT_DOCUMENT_PREPARE_RENAME,
     TEXT_DOCUMENT_RENAME,
-    TEXT_DOCUMENT_CODE_ACTION,
+    TEXT_DOCUMENT_PREPARE_RENAME,
     CodeAction,
     CodeActionKind,
     CodeActionParams,
-    CompletionItem,
-    CompletionItemKind,
-    CompletionList,
-    CompletionOptions,
-    CompletionParams,
     DefinitionParams,
     Diagnostic,
     DiagnosticSeverity,
     DidChangeTextDocumentParams,
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
-    DocumentFormattingParams,
-    DocumentHighlight,
-    DocumentHighlightKind,
-    DocumentRangeFormattingParams,
     DocumentSymbol,
     DocumentSymbolParams,
     Hover,
     HoverParams,
-    Location,
+    MarkedString,
     MarkupContent,
     MarkupKind,
     Position,
@@ -48,12 +41,12 @@ from lsprotocol.types import (
     Range,
     ReferenceParams,
     RenameParams,
-    SymbolKind,
-    TextDocumentSyncKind,
+    TextDocumentEdit,
     TextEdit,
     WorkspaceEdit,
 )
 from pygls.server import LanguageServer
+from pygls.workspace import TextDocument
 
 from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
@@ -321,8 +314,23 @@ def _get_completions_for_section(section: Section) -> List[CompletionItem]:
     return items
 
 
+# Diagnostic source labels
+SOURCE_PARSER = "cp2k-parser"
+SOURCE_SCHEMA = "cp2k-schema"
+SOURCE_LINT = "cp2k-lint"
+SOURCE_SEMANTICS = "cp2k-semantics"
+
+
+def _severity_to_lsp(severity: str) -> DiagnosticSeverity:
+    if severity == "error":
+        return DiagnosticSeverity.Error
+    elif severity == "warning":
+        return DiagnosticSeverity.Warning
+    return DiagnosticSeverity.Information
+
+
 def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams]):
-    """Validate a CP2K input file and publish diagnostics."""
+    """Validate a CP2K input document and publish diagnostics."""
     ls.show_message_log("Validating CP2K input...")
     diagnostics = []
 
@@ -357,24 +365,239 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
             ctx = exc.args[1]
             line = ctx.line.rstrip()
 
-        if colnr is not None:
-            count = max(1, ctx.ref_colnr - ctx.colnr if ctx.ref_colnr else 0)
+        msg = f"Syntax error: {exc.args[0]}"
+        if exc.__cause__:
+            msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
+
+        linenr = (ctx.linenr or 1) - 1
+        colnr = ctx.colnr or 0
+
+        if colnr is not None and colnr > 0:
+            count = 0
+            nchars = colnr
+
+            if ctx.ref_colnr is not None:
+                count = ctx.ref_colnr - ctx.colnr
+                nchars = min(ctx.ref_colnr, ctx.colnr)
+
+            if ctx.colnrs:
+                nchars += ctx.colnrs[0]
+
+            count = max(1, count)
             erange = Range(
-                start=Position(line=linenr, character=colnr + 1 - count),
-                end=Position(line=linenr, character=colnr + 1)
+                start=Position(line=linenr, character=max(0, colnr - count)),
+                end=Position(line=linenr, character=min(len(line_text), colnr + 1)),
             )
         else:
-            erange = Range(start=Position(line=linenr, character=1), end=Position(line=linenr, character=len(line)))
+            erange = Range(
+                start=Position(line=linenr, character=0),
+                end=Position(line=linenr, character=len(line_text)),
+            )
 
-        diagnostics.append(Diagnostic(range=erange, message=msg, source="cp2k-parser", severity=DiagnosticSeverity.Error))
-    except FileNotFoundError:
-        pass  # File not on disk yet
+        diagnostics.append(Diagnostic(
+            range=erange,
+            message=msg,
+            severity=DiagnosticSeverity.Error,
+            source=SOURCE_PARSER,
+            code="syntax-error",
+        ))
+    except Exception as exc:
+        diagnostics.append(Diagnostic(
+            range=Range(start=Position(0, 0), end=Position(0, 1)),
+            message=f"Unexpected error during parsing: {exc}",
+            severity=DiagnosticSeverity.Error,
+            source=SOURCE_PARSER,
+            code="parse-error",
+        ))
+
+    # Run semantic validation if parsing succeeded
+    if tree is not None:
+        try:
+            from .validator import validate as semantic_validate
+            validation_result = semantic_validate(tree)
+
+            # For semantic diagnostics we don't have precise line info,
+            # so attach them to the top of the file
+            for diag in validation_result.diagnostics:
+                diagnostics.append(Diagnostic(
+                    range=Range(start=Position(0, 0), end=Position(0, 1)),
+                    message=diag.message,
+                    severity=_severity_to_lsp(diag.severity),
+                    source=diag.source,
+                    code=diag.code,
+                ))
+        except ImportError:
+            ls.show_message_log("Semantic validation module not available")
+        except Exception as exc:
+            ls.show_message_log(f"Semantic validation error: {exc}")
 
     ls.publish_diagnostics(text_doc.uri, diagnostics)
+    return tree
+
+
+def _get_section_path_at_position(text_doc: TextDocument, tree: dict, position: Position) -> List[str]:
+    """Get the section path at a given cursor position by analyzing indentation."""
+    lines = text_doc.source.split("\n")
+    if position.line >= len(lines):
+        return []
+
+    line = lines[position.line]
+    target_indent = len(line) - len(line.lstrip())
+
+    section_stack = []
+    current_indent = -2  # root is at -2
+
+    for i, doc_line in enumerate(lines):
+        if i > position.line:
+            break
+        stripped = doc_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(doc_line) - len(doc_line.lstrip())
+
+        if stripped.startswith("&") and not stripped.startswith("&END"):
+            section_name = stripped[1:].split()[0].upper()
+            # Pop sections that are at same or deeper indent
+            while section_stack and indent <= section_stack[-1][1]:
+                section_stack.pop()
+            section_stack.append((section_name, indent))
+            current_indent = indent
+        elif stripped.upper().startswith("&END"):
+            while section_stack:
+                section_stack.pop()
+                break
+
+    return [s[0] for s in section_stack]
+
+
+def _build_code_actions(tree: dict, diagnostics: List[Diagnostic]) -> List[CodeAction]:
+    """Generate code actions from diagnostics."""
+    actions = []
+
+    for diag in diagnostics:
+        if not diag.code:
+            continue
+
+        if diag.code == "REMOVED_KEYWORD":
+            actions.append(CodeAction(
+                title=f"Remove deprecated keyword",
+                kind=CodeActionKind.QuickFix,
+                diagnostics=[diag],
+                is_preferred=True,
+            ))
+        elif diag.code == "RUN_TYPE_MOTION_MISMATCH":
+            if "Remove" in (diag.message or ""):
+                actions.append(CodeAction(
+                    title="Remove conflicting section",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                ))
+            if "change RUN_TYPE" in (diag.message or ""):
+                actions.append(CodeAction(
+                    title="Change RUN_TYPE to match section",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                ))
+        elif diag.code == "MULTIPLE_XC_FUNCTIONALS":
+            actions.append(CodeAction(
+                title="Keep only one XC functional",
+                kind=CodeActionKind.QuickFix,
+                diagnostics=[diag],
+            ))
+        elif diag.code == "SCF_SOLVER_CONFLICT":
+            actions.append(CodeAction(
+                title="Remove conflicting SCF solver",
+                kind=CodeActionKind.QuickFix,
+                diagnostics=[diag],
+            ))
+        elif diag.code == "METHOD_SECTION_CONFLICT":
+            actions.append(CodeAction(
+                title="Fix METHOD/section conflict",
+                kind=CodeActionKind.QuickFix,
+                diagnostics=[diag],
+            ))
+        elif diag.code == "CUTOFF_TOO_LOW":
+            actions.append(CodeAction(
+                title="Increase CUTOFF to 200 Ry",
+                kind=CodeActionKind.QuickFix,
+                diagnostics=[diag],
+            ))
+
+    return actions
+
+
+def _get_keyword_docs(kw_name: str) -> Optional[str]:
+    """Get documentation for a keyword from the XML schema."""
+    try:
+        from . import DEFAULT_CP2K_INPUT_XML
+        import xml.etree.ElementTree as ET
+
+        spec = ET.parse(DEFAULT_CP2K_INPUT_XML)
+        root = spec.getroot()
+
+        for kw in root.iter("KEYWORD"):
+            name_node = kw.find("NAME")
+            if name_node is not None and name_node.text and name_node.text.upper() == kw_name.upper():
+                desc = kw.find("DESCRIPTION")
+                dtype = kw.find("DATA_TYPE")
+                default = kw.find("DEFAULT_VALUE")
+                default_unit = kw.find("DEFAULT_UNIT")
+
+                parts = []
+                if desc is not None and desc.text:
+                    # Truncate long descriptions
+                    text = desc.text.strip()
+                    if len(text) > 300:
+                        text = text[:297] + "..."
+                    parts.append(text)
+                if dtype is not None:
+                    parts.append(f"**Type:** {dtype.get('kind', 'unknown')}")
+                if default is not None and default.text:
+                    parts.append(f"**Default:** {default.text}")
+                if default_unit is not None and default_unit.text:
+                    parts.append(f"**Unit:** {default_unit.text}")
+
+                return "\n\n".join(parts) if parts else None
+    except Exception:
+        pass
+    return None
+
+
+def _find_variable_definitions(text_doc: TextDocument, var_name: str) -> List[Position]:
+    """Find all @SET variable definitions with a given name."""
+    positions = []
+    pattern = re.compile(rf"^@SET\s+{re.escape(var_name)}\b", re.IGNORECASE | re.MULTILINE)
+    for match in pattern.finditer(text_doc.source):
+        line_num = text_doc.source[:match.start()].count("\n")
+        positions.append(Position(line=line_num, character=0))
+    return positions
+
+
+def _find_variable_usages(text_doc: TextDocument, var_name: str) -> List[Position]:
+    """Find all $VAR usages of a variable."""
+    positions = []
+    pattern = re.compile(rf"\${re.escape(var_name)}\b")
+    for match in pattern.finditer(text_doc.source):
+        line_num = text_doc.source[:match.start()].count("\n")
+        col = match.start() - text_doc.source.rfind("\n", 0, match.start()) - 1
+        positions.append(Position(line=line_num, character=col))
+    return positions
+
+
+def _parse_set_vars(text_doc: TextDocument) -> dict:
+    """Parse all @SET variable definitions from a document."""
+    variables = {}
+    pattern = re.compile(r"^@SET\s+(\w+)\s+(.*)$", re.MULTILINE)
+    for match in pattern.finditer(text_doc.source):
+        var_name = match.group(1)
+        var_value = match.group(2).strip()
+        line_num = text_doc.source[:match.start()].count("\n")
+        variables[var_name] = {"value": var_value, "line": line_num}
+    return variables
 
 
 def setup_cp2k_ls_server(server):
-    """Set up all LSP features for the CP2K language server."""
+    """Register all LSP features on the server."""
 
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls, params: DidChangeTextDocumentParams):
@@ -382,358 +605,321 @@ def setup_cp2k_ls_server(server):
 
     @server.feature(TEXT_DOCUMENT_DID_CLOSE)
     def did_close(ls: LanguageServer, params: DidCloseTextDocumentParams):
+        """Text document did close notification."""
+        # Clear diagnostics for closed document
         ls.publish_diagnostics(params.text_document.uri, [])
 
     @server.feature(TEXT_DOCUMENT_DID_OPEN)
     async def did_open(ls, params: DidOpenTextDocumentParams):
         _validate(ls, params)
 
-    # === Completion (#10) ===
-
-    @server.feature(
-        TEXT_DOCUMENT_COMPLETION,
-        CompletionOptions(trigger_characters=["&"]),
-    )
-    def completion(ls: LanguageServer, params: CompletionParams):
-        """Text document completion notification."""
-        text_doc = ls.workspace.get_document(params.text_document.uri)
-        lines = text_doc.source.splitlines()
-        cursor_line = params.position.line
-        cursor_char = params.position.character
-
-        # Get the text up to the cursor position to determine context
-        prefix = lines[cursor_line][:cursor_char] if cursor_line < len(lines) else ""
-
-        # If we're typing a section (starts with &), provide section completions
-        if prefix.strip().startswith("&") and not prefix.strip().startswith("&END"):
-            # Parse up to the current line to get the parent section
-            parser = CP2KInputParser()
-            context = _get_section_context(lines, cursor_line, parser)
-
-            if context:
-                items = []
-                for name_node in context.node.iterfind("./SECTION/NAME"):
-                    if name_node.text:
-                        items.append(
-                            CompletionItem(
-                                label=f"&{name_node.text}",
-                                kind=CompletionItemKind.Class,
-                                detail=f"Section in {context.name if context.name != '/' else 'root'}",
-                            )
-                        )
-                return CompletionList(is_incomplete=False, items=items)
-
-        # Otherwise, provide keyword/section completions for the current section
-        parser = CP2KInputParser()
-        context = _get_section_context(lines, cursor_line + 1, parser)
-
-        if context:
-            return CompletionList(is_incomplete=False, items=_get_completions_for_section(context))
-
-        return CompletionList(is_incomplete=False, items=[])
-
-    # === Formatting (#14) ===
-
-    @server.feature(TEXT_DOCUMENT_FORMATTING)
-    def formatting(ls, params: DocumentFormattingParams):
-        """Format entire document."""
-        try:
-            text_doc = ls.workspace.get_document(params.text_document.uri)
-            return _format_doc(text_doc.source)
-        except Exception as e:
-            ls.show_message_log(f"Formatting error: {e}")
-            return []
-
-    @server.feature(TEXT_DOCUMENT_RANGE_FORMATTING)
-    def range_formatting(ls, params: DocumentRangeFormattingParams):
-        """Format a range of lines."""
-        try:
-            text_doc = ls.workspace.get_document(params.text_document.uri)
-            start = params.range.start.line
-            end = params.range.end.line
-            return _format_range(text_doc.source, start, end)
-        except Exception as e:
-            ls.show_message_log(f"Range formatting error: {e}")
-            return []
-
-    # === Hover (#15) ===
-
+    # --- Hover ---
     @server.feature(TEXT_DOCUMENT_HOVER)
-    def hover(ls, params: HoverParams):
-        """Provide hover information for keywords and sections."""
+    def hover(ls: LanguageServer, params: HoverParams) -> Optional[Hover]:
+        """Provide hover information for sections and keywords."""
         text_doc = ls.workspace.get_document(params.text_document.uri)
-        pos = params.position
-        lines = text_doc.source.split('\n')
+        line = text_doc.source.split("\n")[params.position.line] if params.position.line < len(text_doc.source.split("\n")) else ""
+        stripped = line.strip()
 
-        if pos.line >= len(lines):
-            return None
-
-        line = lines[pos.line]
-
-        # Check if on a keyword
-        kw_match = _KEYWORD_RE.match(line)
-        if kw_match:
-            kw_name = kw_match.group(2)
-            info = _get_keyword_info(kw_name)
-            if info:
-                parts = []
-                if "type" in info:
-                    parts.append(f"**Type:** `{info['type']}`")
-                if "default" in info:
-                    parts.append(f"**Default:** `{info['default']}`")
-                if "unit" in info:
-                    parts.append(f"**Unit:** `{info['unit']}`")
-                if "usage" in info:
-                    parts.append(f"**Usage:** `{info['usage']}`")
-                if "description" in info:
-                    parts.append(f"**Description:** {info['description']}")
-                content = "\n\n".join(parts)
+        # Check if hovering over a keyword
+        kw_match = re.match(r"^(\w+)\s", stripped)
+        if kw_match and not stripped.startswith("&"):
+            kw_name = kw_match.group(1).upper()
+            docs = _get_keyword_docs(kw_name)
+            if docs:
                 return Hover(
-                    contents=MarkupContent(kind=MarkupKind.Markdown, value=content)
+                    contents=MarkupContent(kind=MarkupKind.Markdown, value=docs),
                 )
 
-        # Check if on a section
-        sec_match = _SECTION_RE.match(line)
-        if sec_match and not _END_RE.match(line):
-            sec_name = sec_match.group(2)
-            info = _get_section_info(sec_name)
-            if info:
-                parts = []
-                if "description" in info:
-                    parts.append(f"**Description:** {info['description']}")
-                content = "\n\n".join(parts)
-                return Hover(
-                    contents=MarkupContent(kind=MarkupKind.Markdown, value=content)
-                )
-
-        return None
-
-    # === Go to Definition (#15) ===
-
-    @server.feature(TEXT_DOCUMENT_DEFINITION)
-    def definition(ls, params: DefinitionParams):
-        """Go to definition for @INCLUDE paths and @SET variables."""
-        text_doc = ls.workspace.get_document(params.text_document.uri)
-        pos = params.position
-        lines = text_doc.source.split('\n')
-
-        if pos.line >= len(lines):
-            return None
-
-        line = lines[pos.line]
-
-        # Check @INCLUDE
-        inc_match = _INCLUDE_RE.match(line)
-        if inc_match:
-            inc_path = inc_match.group(1).strip().strip('"').strip("'")
-            file_uri = pathlib.Path(text_doc.path).parent / inc_path
-            if file_uri.exists():
-                return Location(
-                    uri=file_uri.as_uri(),
-                    range=Range(start=Position(line=0, character=0), end=Position(line=0, character=0))
-                )
-            return None
-
-        # Check variable reference $VAR
-        var_match = _VAR_REF_RE.search(line)
-        if var_match:
-            var_name = var_match.group(1).upper()
-            # Find the @SET definition
-            for i, def_line in enumerate(lines):
-                set_match = _VAR_SET_RE.match(def_line)
-                if set_match and set_match.group(1).upper() == var_name:
-                    return Location(
-                        uri=text_doc.uri,
-                        range=Range(
-                            start=Position(line=i, character=0),
-                            end=Position(line=i, character=len(def_line))
-                        )
-                    )
-            return None
-
-        return None
-
-    # === Find References (#15) ===
-
-    @server.feature(TEXT_DOCUMENT_REFERENCES)
-    def references(ls, params: ReferenceParams):
-        """Find all references to a variable."""
-        text_doc = ls.workspace.get_document(params.text_document.uri)
-        pos = params.position
-        lines = text_doc.source.split('\n')
-
-        if pos.line >= len(lines):
-            return []
-
-        line = lines[pos.line]
-
-        # Check if cursor is on a variable definition or reference
-        set_match = _VAR_SET_RE.match(line)
-        if set_match:
-            var_name = set_match.group(1).upper()
-        else:
-            var_match = _VAR_REF_RE.search(line)
-            if var_match:
-                var_name = var_match.group(1).upper()
-            else:
-                return []
-
-        locations = []
-        # Find all @SET definitions
-        for i, def_line in enumerate(lines):
-            m = _VAR_SET_RE.match(def_line)
-            if m and m.group(1).upper() == var_name:
-                locations.append(Location(
-                    uri=text_doc.uri,
-                    range=Range(
-                        start=Position(line=i, character=0),
-                        end=Position(line=i, character=len(def_line))
-                    )
-                ))
-
-        # Find all $VAR references
-        pattern = re.compile(rf"\$\{{?{re.escape(var_name)}\}}?", re.IGNORECASE)
-        for i, ref_line in enumerate(lines):
-            for m in pattern.finditer(ref_line):
-                locations.append(Location(
-                    uri=text_doc.uri,
-                    range=Range(
-                        start=Position(line=i, character=m.start()),
-                        end=Position(line=i, character=m.end())
-                    )
-                ))
-
-        return locations
-
-    # === Document Symbols (#15) ===
-
-    @server.feature(TEXT_DOCUMENT_DOCUMENT_SYMBOL)
-    def document_symbol(ls, params: DocumentSymbolParams):
-        """Return document symbol tree."""
-        text_doc = ls.workspace.get_document(params.text_document.uri)
-        return _build_document_symbols(text_doc.source)
-
-    # === Prepare Rename (#21) ===
-
-    @server.feature(TEXT_DOCUMENT_PREPARE_RENAME)
-    def prepare_rename(ls, params: PrepareRenameParams):
-        """Check if position can be renamed."""
-        text_doc = ls.workspace.get_document(params.text_document.uri)
-        pos = params.position
-        lines = text_doc.source.split('\n')
-
-        if pos.line >= len(lines):
-            return None
-
-        line = lines[pos.line]
-
-        # Check if on a @SET variable definition
-        set_match = _VAR_SET_RE.match(line)
-        if set_match:
-            var_name = set_match.group(1)
-            start = line.index(var_name)
-            return PrepareRenameResult(
-                range=Range(
-                    start=Position(line=pos.line, character=start),
-                    end=Position(line=pos.line, character=start + len(var_name))
+        # Check if hovering over a section
+        sec_match = re.match(r"^&(\w+)", stripped)
+        if sec_match:
+            sec_name = sec_match.group(1).upper()
+            return Hover(
+                contents=MarkupContent(
+                    kind=MarkupKind.Markdown,
+                    value=f"**Section:** `&{sec_name}`\n\nA CP2K input section. See CP2K manual for details.",
                 ),
-                placeholder=var_name
             )
 
-        # Check if on a $VAR reference
-        for m in _VAR_REF_RE.finditer(line):
-            if m.start() <= pos.character <= m.end():
-                var_name = m.group(1)
-                return PrepareRenameResult(
-                    range=Range(
-                        start=Position(line=pos.line, character=m.start()),
-                        end=Position(line=pos.line, character=m.end())
-                    ),
-                    placeholder=var_name
-                )
+        return None
+
+    # --- Definition ---
+    @server.feature(TEXT_DOCUMENT_DEFINITION)
+    def definition(ls: LanguageServer, params: DefinitionParams):
+        """Go to definition for variables and includes."""
+        text_doc = ls.workspace.get_document(params.text_document.uri)
+        line = text_doc.source.split("\n")[params.position.line] if params.position.line < len(text_doc.source.split("\n")) else ""
+
+        # Check for @INCLUDE
+        inc_match = re.search(r"@INCLUDE\s+(.+)", line, re.IGNORECASE)
+        if inc_match:
+            inc_path = inc_match.group(1).strip().strip("'\"")
+            # Try to resolve relative to document
+            import pathlib
+            doc_path = pathlib.Path(text_doc.path)
+            resolved = (doc_path.parent / inc_path).resolve()
+            if resolved.exists():
+                return {
+                    "uri": resolved.as_uri(),
+                    "range": {
+                        "start": {"line": 0, "character": 0},
+                        "end": {"line": 0, "character": 0},
+                    },
+                }
+
+        # Check for $VARIABLE usage
+        var_match = re.search(r"\$(\w+)", line)
+        if var_match:
+            var_name = var_match.group(1)
+            defs = _find_variable_definitions(text_doc, var_name)
+            if defs:
+                return [{
+                    "uri": text_doc.uri,
+                    "range": {
+                        "start": {"line": d.line, "character": 0},
+                        "end": {"line": d.line, "character": len(f"@SET {var_name}")},
+                    },
+                } for d in defs]
 
         return None
 
-    # === Rename (#21) ===
-
-    @server.feature(TEXT_DOCUMENT_RENAME)
-    def rename(ls, params: RenameParams):
-        """Rename a variable across all references."""
+    # --- References ---
+    @server.feature(TEXT_DOCUMENT_REFERENCES)
+    def references(ls: LanguageServer, params: ReferenceParams):
+        """Find all references to a variable."""
         text_doc = ls.workspace.get_document(params.text_document.uri)
-        pos = params.position.position
-        new_name = params.new_name
-        lines = text_doc.source.split('\n')
+        line = text_doc.source.split("\n")[params.position.line] if params.position.line < len(text_doc.source.split("\n")) else ""
 
-        if pos.line >= len(lines):
-            return None
-
-        line = lines[pos.line]
-
-        # Determine variable name
-        set_match = _VAR_SET_RE.match(line)
+        # Check if cursor is on a @SET definition
+        set_match = re.match(r"^@SET\s+(\w+)", line.strip())
         if set_match:
             var_name = set_match.group(1)
-        else:
-            var_match = _VAR_REF_RE.search(line)
-            if var_match:
-                var_name = var_match.group(1)
-            else:
-                return None
+            usages = _find_variable_usages(text_doc, var_name)
+            defs = _find_variable_definitions(text_doc, var_name)
+            locations = []
+            for d in defs:
+                locations.append({
+                    "uri": text_doc.uri,
+                    "range": {
+                        "start": {"line": d.line, "character": 0},
+                        "end": {"line": d.line, "character": len(f"@SET {var_name}")},
+                    },
+                })
+            for u in usages:
+                locations.append({
+                    "uri": text_doc.uri,
+                    "range": {
+                        "start": {"line": u.line, "character": u.character},
+                        "end": {"line": u.line, "character": u.character + len(var_name) + 1},
+                    },
+                })
+            return locations
 
-        edits = []
-        # Replace @SET definitions
-        for i, def_line in enumerate(lines):
-            m = _VAR_SET_RE.match(def_line)
-            if m and m.group(1).upper() == var_name.upper():
-                start_col = def_line.index(m.group(1))
-                edits.append(TextEdit(
-                    range=Range(
-                        start=Position(line=i, character=start_col),
-                        end=Position(line=i, character=start_col + len(m.group(1)))
-                    ),
-                    new_text=new_name
-                ))
+        # Check if cursor is on a $VARIABLE usage
+        var_match = re.search(r"\$(\w+)", line)
+        if var_match:
+            var_name = var_match.group(1)
+            usages = _find_variable_usages(text_doc, var_name)
+            defs = _find_variable_definitions(text_doc, var_name)
+            locations = []
+            for d in defs:
+                locations.append({
+                    "uri": text_doc.uri,
+                    "range": {
+                        "start": {"line": d.line, "character": 0},
+                        "end": {"line": d.line, "character": len(f"@SET {var_name}")},
+                    },
+                })
+            for u in usages:
+                locations.append({
+                    "uri": text_doc.uri,
+                    "range": {
+                        "start": {"line": u.line, "character": u.character},
+                        "end": {"line": u.line, "character": u.character + len(var_name) + 1},
+                    },
+                })
+            return locations
 
-        # Replace $VAR references
-        pattern = re.compile(rf"\$\{{?{re.escape(var_name)}\}}?", re.IGNORECASE)
-        for i, ref_line in enumerate(lines):
-            for m in pattern.finditer(ref_line):
-                edits.append(TextEdit(
-                    range=Range(
-                        start=Position(line=i, character=m.start()),
-                        end=Position(line=i, character=m.end())
-                    ),
-                    new_text=f"${{{new_name}}}" if '{' in m.group() else f"${new_name}"
-                ))
+        return []
 
-        if edits:
-            return WorkspaceEdit(changes={text_doc.uri: edits})
-        return None
-
-    # === Code Actions (#19 stub for downstream worker) ===
-
-    @server.feature(TEXT_DOCUMENT_CODE_ACTION)
-    def code_action(ls, params: CodeActionParams):
-        """Provide quick fixes for common errors."""
+    # --- Document Symbols ---
+    @server.feature(TEXT_DOCUMENT_DOCUMENT_SYMBOL)
+    def document_symbol(ls: LanguageServer, params: DocumentSymbolParams):
+        """Return document symbol tree for nested sections."""
         text_doc = ls.workspace.get_document(params.text_document.uri)
-        diagnostics = params.context.diagnostics
+        symbols = []
+        stack = []  # (indent, symbol)
+
+        for i, line in enumerate(text_doc.source.split("\n")):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip())
+
+            if stripped.startswith("&") and not stripped.upper().startswith("&END"):
+                sec_name = stripped[1:].split()[0]
+                # Pop stack items with same or greater indent
+                while stack and indent <= stack[-1][0]:
+                    stack.pop()
+
+                sym = DocumentSymbol(
+                    name=sec_name,
+                    kind=21,  # SymbolKind.Struct
+                    range=Range(
+                        start=Position(line=i, character=0),
+                        end=Position(line=i, character=len(line)),
+                    ),
+                    selection_range=Range(
+                        start=Position(line=i, character=indent),
+                        end=Position(line=i, character=indent + len(sec_name) + 1),
+                    ),
+                    children=[],
+                )
+
+                if stack:
+                    stack[-1][1].children.append(sym)
+                else:
+                    symbols.append(sym)
+
+                stack.append((indent, sym))
+
+            elif stripped.upper().startswith("&END"):
+                while stack:
+                    stack.pop()
+                    break
+
+        return symbols
+
+    # --- Code Actions ---
+    @server.feature(TEXT_DOCUMENT_CODE_ACTION)
+    def code_action(ls: LanguageServer, params: CodeActionParams):
+        """Provide quick fixes for common errors."""
         actions = []
 
+        # Generate actions from current diagnostics
+        diagnostics = params.context.diagnostics
         for diag in diagnostics:
-            if "invalid section" in diag.message.lower():
+            if not diag.code:
+                continue
+
+            if diag.code == "REMOVED_KEYWORD":
                 actions.append(CodeAction(
-                    title="Remove invalid section",
+                    title="Remove this keyword",
                     kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag]
+                    diagnostics=[diag],
+                    is_preferred=True,
                 ))
-            if "invalid keyword" in diag.message.lower():
+            elif "CONFLICT" in (diag.code or ""):
                 actions.append(CodeAction(
-                    title="Remove invalid keyword",
+                    title=f"Fix: {diag.message[:60]}",
                     kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag]
+                    diagnostics=[diag],
+                ))
+            elif "CUTOFF" in (diag.code or ""):
+                actions.append(CodeAction(
+                    title="Set CUTOFF to 300 Ry",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                ))
+            elif "RUN_TYPE" in (diag.code or ""):
+                actions.append(CodeAction(
+                    title="Fix RUN_TYPE/MOTION mismatch",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
                 ))
 
         return actions if actions else None
+
+    # --- Prepare Rename ---
+    @server.feature(TEXT_DOCUMENT_PREPARE_RENAME)
+    def prepare_rename(ls: LanguageServer, params):
+        """Check if rename is supported at position."""
+        text_doc = ls.workspace.get_document(params.text_document.uri)
+        line = text_doc.source.split("\n")[params.position.line] if params.position.line < len(text_doc.source.split("\n")) else ""
+        stripped = line.strip()
+
+        # Support @SET variable rename
+        set_match = re.match(r"^@SET\s+(\w+)", stripped)
+        if set_match:
+            var_name = set_match.group(1)
+            col = len(line) - len(line.lstrip()) + len("@SET ")
+            return {
+                "range": {
+                    "start": {"line": params.position.line, "character": col},
+                    "end": {"line": params.position.line, "character": col + len(var_name)},
+                },
+                "placeholder": var_name,
+            }
+
+        # Support $VARIABLE rename
+        var_match = re.search(r"\$(\w+)", line)
+        if var_match:
+            var_name = var_match.group(1)
+            col = line.index("$" + var_name)
+            return {
+                "range": {
+                    "start": {"line": params.position.line, "character": col + 1},
+                    "end": {"line": params.position.line, "character": col + 1 + len(var_name)},
+                },
+                "placeholder": var_name,
+            }
+
+        return None
+
+    # --- Rename ---
+    @server.feature(TEXT_DOCUMENT_RENAME)
+    def rename(ls: LanguageServer, params: RenameParams):
+        """Rename a variable across all its definitions and usages."""
+        text_doc = ls.workspace.get_document(params.text_document.uri)
+        line = text_doc.source.split("\n")[params.position.line] if params.position.line < len(text_doc.source.split("\n")) else ""
+        stripped = line.strip()
+
+        # Find variable name at position
+        var_name = None
+        set_match = re.match(r"^@SET\s+(\w+)", stripped)
+        if set_match:
+            var_name = set_match.group(1)
+        else:
+            var_match = re.search(r"\$(\w+)", line)
+            if var_match:
+                var_name = var_match.group(1)
+
+        if not var_name:
+            return None
+
+        new_name = params.new_name
+        edits = []
+
+        # Edit all @SET definitions
+        for defn in _find_variable_definitions(text_doc, var_name):
+            edits.append(TextEdit(
+                range=Range(
+                    start=Position(line=defn.line, character=len("@SET ")),
+                    end=Position(line=defn.line, character=len("@SET ") + len(var_name)),
+                ),
+                new_text=new_name,
+            ))
+
+        # Edit all $VAR usages
+        for usage in _find_variable_usages(text_doc, var_name):
+            edits.append(TextEdit(
+                range=Range(
+                    start=Position(line=usage.line, character=usage.character + 1),
+                    end=Position(line=usage.line, character=usage.character + 1 + len(var_name)),
+                ),
+                new_text=new_name,
+            ))
+
+        if not edits:
+            return None
+
+        return WorkspaceEdit(
+            document_changes=[TextDocumentEdit(
+                text_document={"uri": text_doc.uri, "version": text_doc.version},
+                edits=edits,
+            )]
+        )
 
 
 cp2k_server = LanguageServer("cp2k-lsp", "v0.2")
