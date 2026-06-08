@@ -2,15 +2,15 @@
   "items": [
     {
       "code": "syntax-error",
-      "message": "Syntax error: invalid section 'B3LYP'",
+      "message": "Syntax error: unterminated string detected",
       "range": {
         "start": {
-          "line": 14,
-          "character": 0
+          "line": 1,
+          "character": 12
         },
         "end": {
-          "line": 14,
-          "character": 6
+          "line": 1,
+          "character": 14
         }
       },
       "severity": 1,
