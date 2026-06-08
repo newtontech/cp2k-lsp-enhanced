@@ -14,7 +14,15 @@ if hasattr(sys, "pypy_version_info"):
 pygls = pytest.importorskip("pygls")
 
 
-from lsprotocol.types import TEXT_DOCUMENT_DID_OPEN, DidOpenTextDocumentParams, TextDocumentItem  # noqa: E402
+from lsprotocol.types import (  # noqa: E402
+    TEXT_DOCUMENT_COMPLETION,
+    TEXT_DOCUMENT_DID_OPEN,
+    CompletionParams,
+    DidOpenTextDocumentParams,
+    Position,
+    TextDocumentIdentifier,
+    TextDocumentItem,
+)
 
 CALL_TIMEOUT = 5
 
@@ -68,3 +76,64 @@ def test_cli(script_runner):
 
     assert ret.stderr == ""
     assert ret.success
+
+
+def test_completion_sections(client_server):
+    """Check that completion returns sections when typing &"""
+    client, server = client_server
+
+    testpath = TEST_DIR / "inputs" / "test01.inp"
+    with testpath.open("r") as fhandle:
+        content = fhandle.read()
+
+    client.lsp.notify(
+        TEXT_DOCUMENT_DID_OPEN,
+        DidOpenTextDocumentParams(text_document=TextDocumentItem(uri=str(testpath), language_id="cp2k", version=1, text=content)),
+    )
+    sleep(CALL_TIMEOUT)
+
+    # Request completion at the start of the file (should give root-level sections)
+    result = client.lsp.send_request(
+        TEXT_DOCUMENT_COMPLETION,
+        CompletionParams(
+            text_document=TextDocumentIdentifier(uri=str(testpath)),
+            position=Position(line=0, character=1),
+        ),
+    ).result(timeout=CALL_TIMEOUT)
+
+    # Should return a completion list
+    assert result is not None
+    items = result.items if hasattr(result, "items") else result
+    assert len(items) > 0, "Expected completion items for root section"
+
+
+def test_completion_keywords(client_server):
+    """Check that completion returns keywords within a section"""
+    client, server = client_server
+
+    # Create a simple input with a FORCE_EVAL section
+    content = "&FORCE_EVAL\n\n&END FORCE_EVAL\n"
+
+    testpath = TEST_DIR / "inputs" / "completion_test.inp"
+    with open(testpath, "w") as f:
+        f.write(content)
+
+    client.lsp.notify(
+        TEXT_DOCUMENT_DID_OPEN,
+        DidOpenTextDocumentParams(text_document=TextDocumentItem(uri=str(testpath), language_id="cp2k", version=1, text=content)),
+    )
+    sleep(CALL_TIMEOUT)
+
+    # Request completion inside FORCE_EVAL section (line 1, empty line)
+    result = client.lsp.send_request(
+        TEXT_DOCUMENT_COMPLETION,
+        CompletionParams(
+            text_document=TextDocumentIdentifier(uri=str(testpath)),
+            position=Position(line=1, character=0),
+        ),
+    ).result(timeout=CALL_TIMEOUT)
+
+    assert result is not None
+    items = result.items if hasattr(result, "items") else result
+    # Should have keywords available in FORCE_EVAL section
+    assert len(items) > 0, "Expected completion items inside FORCE_EVAL"
