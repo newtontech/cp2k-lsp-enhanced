@@ -61,7 +61,7 @@ class AccuracyReport:
             return 1.0
         return (self.true_positives + self.true_negatives) / self.total
 
-    def add_result(self, result: TestResult):
+    def add_result(self, result: TestResult, track_category: bool = True):
         self.total += 1
         self.results.append(result)
 
@@ -74,24 +74,11 @@ class AccuracyReport:
         else:
             self.true_negatives += 1
 
-        # Also track by category (use _track to avoid recursion)
-        if result.category not in self.by_category:
-            self.by_category[result.category] = AccuracyReport()
-        self.by_category[result.category]._track(result)
-
-    def _track(self, result: TestResult):
-        """Track a result without recursing into categories."""
-        self.total += 1
-        self.results.append(result)
-
-        if result.expected_error and result.actual_error:
-            self.true_positives += 1
-        elif result.expected_error and not result.actual_error:
-            self.false_negatives += 1
-        elif not result.expected_error and result.actual_error:
-            self.false_positives += 1
-        else:
-            self.true_negatives += 1
+        # Also track by category (only at top level to avoid recursion)
+        if track_category:
+            if result.category not in self.by_category:
+                self.by_category[result.category] = AccuracyReport()
+            self.by_category[result.category].add_result(result, track_category=False)
 
     def summary(self) -> str:
         lines = [
