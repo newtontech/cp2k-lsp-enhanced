@@ -1,9 +1,10 @@
 """Formatting Provider."""
 
-from typing import Optional, List
+from typing import List, Optional
+
 from lsprotocol import types as lsp
 
-from cp2k_lsp.parser import CP2KParser, CP2KInput, Section, Keyword
+from cp2k_lsp.parser import CP2KInput, CP2KParser, Section
 
 
 class FormattingProvider:
@@ -33,7 +34,7 @@ class FormattingProvider:
                         new_text=formatted
                     )
                 ]
-        except Exception as e:
+        except Exception:
             pass
         
         return None

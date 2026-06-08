@@ -1,10 +1,8 @@
 """Completion Provider."""
 
-from typing import Optional, List
-from lsprotocol import types as lsp
+from typing import List, Optional
 
-from cp2k_lsp.data.sections import CP2K_SECTIONS
-from cp2k_lsp.data.keywords import CP2K_KEYWORDS
+from lsprotocol import types as lsp
 
 
 class CompletionProvider:

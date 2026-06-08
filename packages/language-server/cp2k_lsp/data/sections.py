@@ -1,7 +1,7 @@
 """CP2K Section definitions."""
 
-from typing import Dict, List, Set, Optional
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 
 @dataclass

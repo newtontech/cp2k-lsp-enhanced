@@ -1,12 +1,10 @@
 """CP2K Input Parser."""
 
-from typing import List, Optional, Dict, Any
-from cp2k_lsp.parser.lexer import Lexer, Token, TokenType
-from cp2k_lsp.parser.ast import (
-    CP2KInput, Section, Keyword, Value, Comment,
-    ValueType
-)
+from typing import List, Optional
+
+from cp2k_lsp.parser.ast import Comment, CP2KInput, Keyword, Section, Value, ValueType
 from cp2k_lsp.parser.errors import ParseError, SyntaxError
+from cp2k_lsp.parser.lexer import Lexer, Token, TokenType
 
 
 class CP2KParser:
@@ -17,6 +15,7 @@ class CP2KParser:
         self.source = source
         self.pos = 0
         self.errors: List[ParseError] = []
+        self.ast: Optional[CP2KInput] = None
         
     def current(self) -> Token:
         if self.pos < len(self.tokens):
@@ -53,7 +52,7 @@ class CP2KParser:
         while self.match(TokenType.EOL, TokenType.COMMENT):
             if self.match(TokenType.COMMENT):
                 token = self.advance()
-                comments.append(Comment(token.value, token.line, token.column))
+                comments.append(Comment(text=token.value, line=token.line, column=token.column))
             else:
                 self.advance()
         return comments
@@ -72,7 +71,7 @@ class CP2KParser:
                     root.sections.append(section)
             elif self.match(TokenType.COMMENT):
                 token = self.advance()
-                root.comments.append(Comment(token.value, token.line, token.column))
+                root.comments.append(Comment(text=token.value, line=token.line, column=token.column))
             elif self.match(TokenType.EOL):
                 self.advance()
             else:
@@ -116,7 +115,7 @@ class CP2KParser:
                     section.keywords.append(keyword)
             elif self.match(TokenType.COMMENT):
                 token = self.advance()
-                section.comments.append(Comment(token.value, token.line, token.column))
+                section.comments.append(Comment(text=token.value, line=token.line, column=token.column))
             elif self.match(TokenType.EOL):
                 self.advance()
             elif self.match(TokenType.EOF):
@@ -145,22 +144,39 @@ class CP2KParser:
         return section
     
     def parse_keyword(self) -> Optional[Keyword]:
-        """Parse a keyword assignment."""
+        """Parse a keyword assignment.
+
+        Supports both CP2K grammar forms:
+        - KEYWORD = VALUE  (explicit assignment)
+        - KEYWORD VALUE    (whitespace-separated, CP2K-native)
+        """
         name_token = self.expect(TokenType.KEYWORD)
-        
+
         self.skip_eol_and_comments()
-        
+
         if not self.match(TokenType.ASSIGN):
-            # Keyword without value
+            # Check for whitespace-separated value (CP2K grammar)
+            # In CP2K, keywords can be followed directly by a value token
+            # without an equals sign: e.g., "RUN_TYPE ENERGY"
+            if self.match(TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN,
+                          TokenType.KEYWORD, TokenType.UNIT):
+                value = self.parse_value()
+                return Keyword(
+                    name=name_token.value,
+                    value=value,
+                    line=name_token.line,
+                    column=name_token.column
+                )
+            # Keyword without value (boolean flag or section parameter)
             return Keyword(
                 name=name_token.value,
                 line=name_token.line,
                 column=name_token.column
             )
-        
+
         self.expect(TokenType.ASSIGN)
         self.skip_eol_and_comments()
-        
+
         value = self.parse_value()
         return Keyword(
             name=name_token.value,

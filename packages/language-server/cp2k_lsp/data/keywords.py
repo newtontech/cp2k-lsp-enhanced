@@ -1,8 +1,8 @@
 """CP2K Keyword definitions."""
 
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class KeywordType(Enum):
@@ -24,8 +24,8 @@ class KeywordInfo:
     keyword_type: KeywordType = KeywordType.STRING
     default: Any = None
     required: bool = False
-    enum_values: List[str] = None
-    units: List[str] = None
+    enum_values: Optional[List[str]] = None
+    units: Optional[List[str]] = None
 
 
 # CP2K Keyword definitions

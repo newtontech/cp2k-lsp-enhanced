@@ -14,6 +14,10 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 readme = "README.md"
+packages = [
+    { include = "cp2k_input_tools" },
+    { include = "cp2k_lsp", from = "packages/language-server" },
+]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4"
@@ -48,6 +52,7 @@ cp2kgen = 'cp2k_input_tools.cli.cp2kgen:cp2kgen'
 cp2kget = 'cp2k_input_tools.cli.cp2kget:cp2kget'
 cp2k-language-server = 'cp2k_input_tools.cli.lsp:cp2k_language_server'
 cp2k-datafile-lint = 'cp2k_input_tools.cli.datafile_lint:cp2k_datafile_lint'
+cp2k-lsp = 'cp2k_lsp:server_main'
 
 [tool.black]
 line-length = 132
@@ -55,7 +60,6 @@ target_version = ['py310']
 
 [tool.ruff]
 line-length = 136
-exclude = ["packages/language-server"]
 
 [tool.ruff.lint]
 # Enable flake8-bugbear (`B`) and isort (`I`) rules.

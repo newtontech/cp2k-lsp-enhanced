@@ -5,6 +5,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     Diagnostic,
+    DiagnosticSeverity,
     DidChangeTextDocumentParams,
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
@@ -13,9 +14,10 @@ from lsprotocol.types import (
 )
 from pygls.server import LanguageServer
 
-from .parser import CP2KInputParser
+from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
 from .tokenizer import TokenizerError
+from .validator import validate_semantics
 
 
 def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams]):
@@ -24,11 +26,32 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
     diagnostics = []
 
     text_doc = ls.workspace.get_text_document(params.text_document.uri)
-    parser = CP2KInputParser()
+    parser = CP2KInputParserSimplified()
 
     with open(text_doc.path, "r") as fhandle:
         try:
-            parser.parse(fhandle)
+            tree = parser.parse(fhandle)
+
+            # Syntax validation passed, now do semantic validation
+            semantic_diagnostics = validate_semantics(tree)
+            for diag in semantic_diagnostics:
+                severity = DiagnosticSeverity.Warning
+                if diag.severity == "error":
+                    severity = DiagnosticSeverity.Error
+
+                line = diag.line - 1 if diag.line > 0 else 0
+                diagnostics.append(
+                    Diagnostic(
+                        range=Range(
+                            start=Position(line=line, character=0), end=Position(line=line, character=100)
+                        ),
+                        message=diag.message,
+                        severity=severity,
+                        source="cp2k-lsp",
+                        code=diag.code,
+                    )
+                )
+
         except (TokenizerError, ParserError) as exc:
             ctx = exc.args[1]
             line = ctx.line.rstrip()

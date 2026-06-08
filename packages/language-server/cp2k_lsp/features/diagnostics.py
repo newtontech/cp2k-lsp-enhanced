@@ -1,6 +1,7 @@
 """Diagnostics Provider."""
 
 from typing import List
+
 from lsprotocol import types as lsp
 
 
@@ -12,7 +13,7 @@ class DiagnosticsProvider:
     
     def get_diagnostics(self, uri: str) -> List[lsp.Diagnostic]:
         """Get diagnostics for a document."""
-        diagnostics = []
+        diagnostics: List[lsp.Diagnostic] = []
         
         # Get parser errors
         errors = self.server.get_errors(uri)
@@ -37,7 +38,7 @@ class DiagnosticsProvider:
     
     def _validate_ast(self, ast) -> List[lsp.Diagnostic]:
         """Validate AST and return diagnostics."""
-        diagnostics = []
+        diagnostics: List[lsp.Diagnostic] = []
         
         # Check for unclosed sections is done in parser
         # Additional semantic validation can be added here
