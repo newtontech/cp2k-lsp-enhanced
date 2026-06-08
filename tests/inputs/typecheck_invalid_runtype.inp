@@ -1,0 +1,5 @@
+! Test input with invalid RUN_TYPE enum value
+&GLOBAL
+  RUN_TYPE INVALID_TYPE
+  PROJECT test
+&END GLOBAL
