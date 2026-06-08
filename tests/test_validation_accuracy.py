@@ -4,8 +4,8 @@ import pathlib
 
 import pytest
 
-from .validation.accuracy_runner import AccuracyReport, calculate_accuracy, run_validation_suite, run_validation_test
-from .. import TEST_DIR
+from tests import TEST_DIR
+from tests.validation.accuracy_runner import AccuracyReport, calculate_accuracy, run_validation_suite, run_validation_test
 
 
 class TestAccuracyRunner:
