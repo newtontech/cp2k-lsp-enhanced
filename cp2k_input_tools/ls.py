@@ -451,6 +451,31 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
     except Exception as exc:
         ls.show_message_log(f"Typecheck error: {exc}")
 
+    # Run static lint checks (always run, even if parsing failed partially)
+    try:
+        from .linter import lint as static_lint
+        lint_diagnostics = static_lint(text_doc.source)
+
+        for diag in lint_diagnostics:
+            line_nr = diag.line if diag.line is not None else 0
+            col_nr = diag.column if diag.column is not None else 0
+            line_text = text_doc.source.split('\n')[line_nr] if line_nr < len(text_doc.source.split('\n')) else ""
+
+            diagnostics.append(Diagnostic(
+                range=Range(
+                    start=Position(line=line_nr, character=col_nr),
+                    end=Position(line=line_nr, character=len(line_text)),
+                ),
+                message=diag.message,
+                severity=_severity_to_lsp(diag.severity),
+                source=diag.source,
+                code=diag.code,
+            ))
+    except ImportError:
+        ls.show_message_log("Static lint module not available")
+    except Exception as exc:
+        ls.show_message_log(f"Static lint error: {exc}")
+
     ls.publish_diagnostics(text_doc.uri, diagnostics)
     return tree
 
