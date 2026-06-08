@@ -74,10 +74,24 @@ class AccuracyReport:
         else:
             self.true_negatives += 1
 
-        # Also track by category
+        # Also track by category (use _track to avoid recursion)
         if result.category not in self.by_category:
             self.by_category[result.category] = AccuracyReport()
-        self.by_category[result.category].add_result(result)
+        self.by_category[result.category]._track(result)
+
+    def _track(self, result: TestResult):
+        """Track a result without recursing into categories."""
+        self.total += 1
+        self.results.append(result)
+
+        if result.expected_error and result.actual_error:
+            self.true_positives += 1
+        elif result.expected_error and not result.actual_error:
+            self.false_negatives += 1
+        elif not result.expected_error and result.actual_error:
+            self.false_positives += 1
+        else:
+            self.true_negatives += 1
 
     def summary(self) -> str:
         lines = [
