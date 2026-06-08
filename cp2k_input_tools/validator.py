@@ -313,7 +313,7 @@ def validate_dft_section(tree: dict, result: ValidationResult):
 
     # Check cutoff values
     mgrid = dft.get("+mgrid")
-    if mgrid:
+    if mgrid is not None:
         cutoff = mgrid.get("cutoff")
         if cutoff is not None:
             try:
@@ -347,10 +347,10 @@ def validate_dft_section(tree: dict, result: ValidationResult):
 
     # Check KPOINTS for molecular (non-periodic) systems
     kpoints = dft.get("+kpoints")
-    if kpoints:
+    if kpoints is not None:
         poisson = dft.get("+poisson")
         periodic = None
-        if poisson:
+        if poisson is not None:
             periodic = poisson.get("periodic")
             if isinstance(periodic, list):
                 periodic = periodic[0]
@@ -401,7 +401,7 @@ def validate_coordinates(tree: dict, result: ValidationResult):
 
     # Check KIND definitions match coordinate atoms
     kinds = subsys.get("+kind")
-    if kinds:
+    if kinds is not None:
         if isinstance(kinds, dict):
             kind_names = set(k.upper() for k in kinds.keys() if k != "_")
         elif isinstance(kinds, list):

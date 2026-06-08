@@ -345,9 +345,9 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
         ctx = exc.args[1]
         line_text = ctx.line.rstrip() if ctx.line else ""
 
-        msg = f"{exc.args[0]}"
+        msg = f"Syntax error: {exc.args[0]}"
         if exc.__cause__:
-            msg = f"{exc.args[0]} ({exc.__cause__})"
+            msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
 
         linenr = (ctx.linenr or 1) - 1
         colnr = ctx.colnr or 0

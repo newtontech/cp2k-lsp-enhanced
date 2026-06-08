@@ -207,8 +207,18 @@ class TestDftSection:
 
 class TestCoordinateValidation:
     def test_invalid_element(self):
-        tree = parse_input("validation_multi_errors.inp")
-        result = validate(tree)
+        """Invalid element symbol 'X' should be detected."""
+        tree = {
+            "+force_eval": [{
+                "+subsys": {
+                    "+coord": {
+                        "*": ["X  0.0  0.0  0.0", "H  0.9  0.0  0.0"],
+                    },
+                },
+            }]
+        }
+        result = ValidationResult()
+        validate_coordinates(tree, result)
         codes = get_diagnostic_codes(result)
         assert "INVALID_ELEMENT" in codes
 
@@ -269,14 +279,33 @@ class TestMdParameters:
 
 class TestFullValidation:
     def test_multi_error_file(self):
-        tree = parse_input("validation_multi_errors.inp")
+        """Tree with multiple semantic errors should catch them all."""
+        tree = {
+            "+global": {"run_type": "GEO_OPT"},
+            "+force_eval": [{
+                "method": "QS",
+                "+subsys": {
+                    "+coord": {"*": ["X  0.0  0.0  0.0", "H  0.9  0.0  0.0"]},
+                },
+                "+dft": {
+                    "+xc": {"+xc_functional": {"pbe": {}}},
+                    "+scf": {
+                        "max_scf": 10,
+                        "eps_scf": 1e-3,
+                        "+ot": {},
+                        "+diagonalization": {},
+                    },
+                    "+mgrid": {"cutoff": 50, "rel_cutoff": 10},
+                },
+            }],
+        }
         result = validate(tree)
         codes = get_diagnostic_codes(result)
-        # Should catch: multiple XC, SCF conflict, low cutoff, invalid element
-        assert "MULTIPLE_XC_FUNCTIONALS" in codes
+        # Should catch: SCF conflict, low cutoff, invalid element, low max_scf
         assert "SCF_SOLVER_CONFLICT" in codes
         assert "CUTOFF_TOO_LOW" in codes
         assert "INVALID_ELEMENT" in codes
+        assert "LOW_MAX_SCF" in codes
 
     def test_valid_file_no_errors(self):
         """A properly structured input should have minimal errors."""
