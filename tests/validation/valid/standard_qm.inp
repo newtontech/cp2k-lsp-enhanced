@@ -1,0 +1,9 @@
+# Valid QS calculation
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+  &END DFT
+&END FORCE_EVAL
