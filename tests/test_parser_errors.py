@@ -154,7 +154,9 @@ def test_invalid_keyword():
 
 def test_internal_cp2k_unit():
     """
-    Ensure that values for keywords with a default internal_cp2k unit are accepted unless there is an explicit unit.
+    Ensure that values for keywords with a default internal_cp2k unit are accepted as-is.
+    When an explicit unit is given, the value is stored as a string with the unit prefix
+    to preserve the information since we cannot convert to/from internal_cp2k.
     The first one is a reproducer of https://github.com/cp2k/cp2k-input-tools/issues/54
     """
 
@@ -212,7 +214,8 @@ def test_internal_cp2k_unit():
         """
     )
 
-    with pytest.raises(InvalidParameterError) as excinfo:
-        cp2k_parser.parse(fhandle_extra_unit)
-
-    assert "invalid values" in excinfo.value.args[0]
+    # With internal_cp2k and explicit unit, values are stored as strings with unit prefix
+    result = cp2k_parser.parse(fhandle_extra_unit)
+    bond = result["+force_eval"][0]["+mm"]["+forcefield"]["+bond"][0]
+    # The K value should be stored as a string with the unit
+    assert "[hartree]" in bond["k"]

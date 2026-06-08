@@ -62,6 +62,21 @@ def check_deprecated(keyword_name: str, section_name: str) -> bool:
     return False
 
 
+def register_deprecated_section(section: str, parent_section: str, replacement: str | None = None):
+    """Register a section as deprecated."""
+    DEPRECATED_SECTIONS[f"{parent_section.upper()}::{section.upper()}"] = replacement
+
+
+def check_deprecated_section(section_name: str, parent_section: str) -> bool:
+    """Check if a section is deprecated and emit a warning. Returns True if deprecated."""
+    key = f"{parent_section.upper()}::{section_name.upper()}"
+    replacement = DEPRECATED_SECTIONS.get(key)
+    if replacement is not None or key in DEPRECATED_SECTIONS:
+        warnings.warn(DeprecatedSectionWarning(section_name, replacement, parent_section), stacklevel=4)
+        return True
+    return False
+
+
 def kw_converter_bool(string):
     string = string.upper()
 
