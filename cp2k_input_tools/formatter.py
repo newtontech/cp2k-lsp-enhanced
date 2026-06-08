@@ -9,7 +9,7 @@ from lsprotocol.types import Position, Range, TextEdit
 _SECTION_START_RE = re.compile(r"^(\s*)&([\w\-_]+)\s*(.*)")
 _SECTION_END_RE = re.compile(r"^(\s*)&(END)\s+([\w\-_]+)(.*)", re.IGNORECASE)
 _DIRECTIVE_RE = re.compile(r"^(\s*)(@INCLUDE|@XCTYPE|@SET|@IF|@ENDIF)\b\s*(.*)", re.IGNORECASE)
-_COMMENT_RE = re.compile(r"^(\s*)(!.*)$")
+_COMMENT_RE = re.compile(r"^(\s*)([!#].*)$")
 _BLANK_LINE_RE = re.compile(r"^\s*$")
 
 

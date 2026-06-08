@@ -7,13 +7,21 @@ from cp2k_input_tools.formatter import format_document, format_range
 
 def _apply_edits(text, edits):
     """Apply TextEdit list to text and return result."""
+    if not edits:
+        return text
     for edit in edits:
         start = edit.range.start
         end = edit.range.end
         lines = text.split('\n')
-        # For full document edits, just replace
+        # For full document edits (start=0,0 to end=last,0), replace entire text
         if start.line == 0 and end.line >= len(lines):
             return edit.new_text
+        # For range edits, replace the specific lines
+        if start.line < len(lines):
+            before = lines[:start.line]
+            after = lines[end.line:] if end.line < len(lines) else []
+            new_lines = edit.new_text.split('\n')
+            return '\n'.join(before + new_lines + after)
     return text
 
 
