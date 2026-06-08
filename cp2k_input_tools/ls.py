@@ -411,6 +411,26 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
         except Exception as exc:
             ls.show_message_log(f"Semantic validation error: {exc}")
 
+    # Run type-checking validation (keyword types, enums, units)
+    try:
+        from .typecheck import validate_text as tc_validate
+        type_diags = tc_validate(text_doc.source)
+        for td in type_diags:
+            diagnostics.append(Diagnostic(
+                range=Range(
+                    start=Position(line=td.line - 1, character=td.col),
+                    end=Position(line=td.line - 1, character=td.col + 1),
+                ),
+                message=td.message,
+                severity=DiagnosticSeverity.Error if td.severity == "error" else DiagnosticSeverity.Warning,
+                source=td.source,
+                code=td.code,
+            ))
+    except ImportError:
+        ls.show_message_log("Typecheck module not available")
+    except Exception as exc:
+        ls.show_message_log(f"Typecheck error: {exc}")
+
     ls.publish_diagnostics(text_doc.uri, diagnostics)
     return tree
 
