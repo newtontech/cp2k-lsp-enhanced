@@ -1,0 +1,3 @@
+&GLOBAL
+  PROJECT test # Another comment with "double quotes" and 'single quotes'
+&END GLOBAL

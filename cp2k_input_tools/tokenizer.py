@@ -106,6 +106,8 @@ class CP2KInputTokenizer(transitions.Machine):
                 {"trigger": "ws_char", "source": ["lookout", "string_token", "comment"], "dest": None},
                 # single/double quotes are not allowed in a basic token:
                 {"trigger": "quote_char", "source": "basic_token", "before": "invalid_token_char", "dest": None},
+                # quotes inside comments are consumed (CP2K allows this)
+                {"trigger": "quote_char", "source": "comment", "dest": None},
                 {"trigger": "nl_char", "source": ["basic_token", "comment"], "dest": "lookout"},
                 {"trigger": "nl_char", "source": "lookout", "dest": None},
                 {"trigger": "nl_char", "source": "string_token", "before": "unterminated_string", "dest": None},
