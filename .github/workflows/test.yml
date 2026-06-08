@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v4
@@ -27,7 +27,8 @@ jobs:
       run: poetry run pytest --cov-report=xml --cov-report=term-missing --cov-append --cov=cp2k_input_tools tests/
 
     - uses: codecov/codecov-action@v4.0.1
+      if: ${{ secrets.CODECOV_TOKEN != '' }}
       with:
         files: ./coverage.xml
-        fail_ci_if_error: true
+        fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}

@@ -169,3 +169,25 @@ def test_fractional_values():
 
     assert tree
     assert tree["+force_eval"][0]["+subsys"]["+cell"]["a"][0] == 4.0  # specified as 8/2
+
+
+def test_quotes_in_comment():
+    """Regression test for issues #111 and #105: quotes inside comments should not crash the tokenizer."""
+    cp2k_parser = CP2KInputParserSimplified(DEFAULT_CP2K_INPUT_XML)
+
+    with open(TEST_DIR.joinpath("inputs/quotes_in_comment.inp"), "r") as fhandle:
+        tree = cp2k_parser.parse(fhandle)
+
+    assert tree
+    assert tree["global"]["project_name"] == "test"
+
+
+def test_quotes_in_hash_comment():
+    """Regression test for issues #111 and #105: quotes inside # comments should not crash."""
+    cp2k_parser = CP2KInputParserSimplified(DEFAULT_CP2K_INPUT_XML)
+
+    with open(TEST_DIR.joinpath("inputs/quotes_in_hash_comment.inp"), "r") as fhandle:
+        tree = cp2k_parser.parse(fhandle)
+
+    assert tree
+    assert tree["global"]["project_name"] == "test"
