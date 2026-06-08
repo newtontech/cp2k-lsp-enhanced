@@ -1,0 +1,24 @@
+# Missing basis set for element
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+  &END DFT
+  &SUBSYS
+    &CELL
+      A 10.0 0.0 0.0
+      B 0.0 10.0 0.0
+      C 0.0 0.0 10.0
+    &END CELL
+    &COORD
+      O  0.0 0.0 0.0
+      H  0.9 0.0 0.0
+      H -0.9 0.0 0.0
+    &END COORD
+    &KIND UNK
+      BASIS_SET FAKE_SET
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL
