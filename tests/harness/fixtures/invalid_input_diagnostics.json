@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "code": "syntax-error",
+      "message": "Syntax error: invalid section 'B3LYP'",
+      "range": {
+        "start": {
+          "line": 14,
+          "character": 0
+        },
+        "end": {
+          "line": 14,
+          "character": 6
+        }
+      },
+      "severity": 1,
+      "source": "cp2k-parser"
+    }
+  ]
+}
