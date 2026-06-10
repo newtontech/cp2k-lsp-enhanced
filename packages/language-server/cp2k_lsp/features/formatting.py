@@ -62,7 +62,10 @@ class FormattingProvider:
         current_indent = indent * level
         
         # Section start
-        lines.append(f"{current_indent}&{section.name}")
+        if section.parameter:
+            lines.append(f"{current_indent}&{section.name} {section.parameter}")
+        else:
+            lines.append(f"{current_indent}&{section.name}")
         
         # Comments
         for comment in section.comments:
@@ -90,11 +93,13 @@ class FormattingProvider:
         """Format a value."""
         if value.value is None:
             return ""
-        
+
         from cp2k_lsp.parser.ast import ValueType
-        
+
         if value.value_type == ValueType.BOOLEAN:
             return ".TRUE." if value.value else ".FALSE."
+        elif value.value_type == ValueType.ARRAY:
+            return " ".join(str(v) for v in value.value)
         elif value.value_type == ValueType.STRING:
             if " " in str(value.value):
                 return f'"{value.value}"'

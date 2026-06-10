@@ -113,6 +113,18 @@ class Lexer:
         while self.peek() not in '\n\0':
             value += self.advance()
         return Token(TokenType.COMMENT, value, start_line, start_col)
+
+    def read_unit(self) -> Token:
+        """Read a unit literal like [angstrom], [Bohr], [K], [fs]."""
+        start_line = self.line
+        start_col = self.column
+        value = ""
+        self.advance()  # skip '['
+        while self.peek() not in ']\n\0':
+            value += self.advance()
+        if self.peek() == ']':
+            self.advance()  # skip ']'
+        return Token(TokenType.UNIT, value, start_line, start_col)
         
     def tokenize(self) -> List[Token]:
         while self.pos < len(self.text):
@@ -136,6 +148,13 @@ class Lexer:
                 start_col = self.column
                 self.advance()
                 if self.text[self.pos:self.pos+3].upper() == 'END':
+                    # Skip "END" keyword itself
+                    for _ in range(3):
+                        self.advance()
+                    # Skip optional whitespace between END and section name
+                    while self.peek() in ' \t':
+                        self.advance()
+                    # Read the section name (e.g., GLOBAL in &END GLOBAL)
                     name = ""
                     while self.peek().isalnum() or self.peek() == '_':
                         name += self.advance()
@@ -161,6 +180,9 @@ class Lexer:
                     self.advance()
             elif char in '!#':
                 self.tokens.append(self.read_comment())
+            elif char == '[':
+                # Unit notation: [angstrom], [Bohr], [K], etc.
+                self.tokens.append(self.read_unit())
             elif char.isalpha() or char == '_':
                 self.tokens.append(self.read_keyword())
             else:

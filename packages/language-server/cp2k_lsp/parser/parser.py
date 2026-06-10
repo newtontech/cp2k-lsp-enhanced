@@ -101,11 +101,25 @@ class CP2KParser:
             line=start_token.line,
             column=start_token.column
         )
-        
+
+        # Check for section parameter on the same line (e.g., &KIND H, &XC_FUNCTIONAL PBE)
+        # A section parameter is a token on the same line as the section start,
+        # before any EOL or comment. It can be a KEYWORD or STRING token.
+        if (self.match(TokenType.KEYWORD, TokenType.STRING, TokenType.NUMBER)
+                and self.current().line == start_token.line):
+            param_token = self.advance()
+            section.parameter = param_token.value
+
         section.comments = self.skip_eol_and_comments()
         
-        while not self.match(TokenType.SECTION_END, TokenType.EOF):
-            if self.match(TokenType.SECTION_START):
+        while not self.match(TokenType.SECTION_END):
+            if self.match(TokenType.EOF):
+                self.errors.append(SyntaxError(
+                    f"Unclosed section &{section.name}",
+                    start_token.line, start_token.column, self.source
+                ))
+                break
+            elif self.match(TokenType.SECTION_START):
                 # Nested subsection
                 subsection = self.parse_section()
                 section.subsections.append(subsection)
@@ -118,26 +132,20 @@ class CP2KParser:
                 section.comments.append(Comment(text=token.value, line=token.line, column=token.column))
             elif self.match(TokenType.EOL):
                 self.advance()
-            elif self.match(TokenType.EOF):
-                self.errors.append(SyntaxError(
-                    f"Unclosed section &{section.name}",
-                    start_token.line, start_token.column, self.source
-                ))
-                break
             else:
                 self.errors.append(SyntaxError(
                     f"Unexpected token in section &{section.name}: {self.current().value}",
                     self.current().line, self.current().column, self.source
                 ))
                 self.advance()
-        
+
         # Expect end of section
         if self.match(TokenType.SECTION_END):
             end_token = self.advance()
-            end_name = end_token.value[3:] if end_token.value.upper().startswith("END") else ""
+            end_name = end_token.value
             if end_name and end_name.upper() != section.name.upper():
                 self.errors.append(SyntaxError(
-                    f"Section name mismatch: &{section.name} closed with &{end_token.value}",
+                    f"Section name mismatch: &{section.name} closed with &END {end_token.value}",
                     end_token.line, end_token.column, self.source
                 ))
         
@@ -149,18 +157,35 @@ class CP2KParser:
         Supports both CP2K grammar forms:
         - KEYWORD = VALUE  (explicit assignment)
         - KEYWORD VALUE    (whitespace-separated, CP2K-native)
+        - KEYWORD VALUE1 VALUE2 VALUE3  (multi-value, e.g., ABC 10.0 10.0 10.0)
         """
         name_token = self.expect(TokenType.KEYWORD)
 
         self.skip_eol_and_comments()
 
         if not self.match(TokenType.ASSIGN):
-            # Check for whitespace-separated value (CP2K grammar)
-            # In CP2K, keywords can be followed directly by a value token
-            # without an equals sign: e.g., "RUN_TYPE ENERGY"
-            if self.match(TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN,
-                          TokenType.KEYWORD, TokenType.UNIT):
+            # Check for whitespace-separated value(s) (CP2K grammar)
+            value_types = (TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN,
+                           TokenType.KEYWORD, TokenType.UNIT)
+            if self.match(*value_types):
                 value = self.parse_value()
+                # Consume additional values (multi-value keywords like ABC 10.0 10.0 10.0)
+                # or coordinate lines like: O  0.0  0.0  0.0
+                additional_values = []
+                while self.match(*value_types):
+                    additional_values.append(self.parse_value())
+
+                if additional_values:
+                    # Store as array value
+                    from cp2k_lsp.parser.ast import ValueType
+                    all_values = [value.value] + [v.value for v in additional_values]
+                    value = Value(
+                        value=all_values,
+                        value_type=ValueType.ARRAY,
+                        line=value.line,
+                        column=value.column
+                    )
+
                 return Keyword(
                     name=name_token.value,
                     value=value,

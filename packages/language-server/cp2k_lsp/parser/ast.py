@@ -66,6 +66,7 @@ class Comment(ASTNode):
 class Section(ASTNode):
     """Section node."""
     name: str = ""
+    parameter: Optional[str] = None
     keywords: List[Keyword] = field(default_factory=list)
     subsections: List['Section'] = field(default_factory=list)
     comments: List[Comment] = field(default_factory=list)
