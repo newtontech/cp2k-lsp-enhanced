@@ -1,8 +1,8 @@
 """Tests using real .inp fixture files for LSP parse/diagnostic stability."""
 
-import pytest
 from pathlib import Path
 
+import pytest
 from cp2k_lsp.parser import CP2KParser
 
 INPUTS_DIR = Path(__file__).resolve().parent / "inputs"

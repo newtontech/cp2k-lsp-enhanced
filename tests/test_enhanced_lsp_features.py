@@ -1,22 +1,19 @@
 """Tests for enhanced LSP features: document symbols, navigation, data-driven diagnostics/completion."""
 
 import pytest
-
-from cp2k_lsp.parser import CP2KParser, CP2KInput, Section, Keyword
-from cp2k_lsp.parser.lexer import Lexer, TokenType
+from cp2k_lsp.data.keywords import (
+    KeywordType,
+    get_enum_values,
+    get_keyword_info,
+)
 from cp2k_lsp.data.sections import (
     CP2K_SECTIONS,
     get_section_info,
-    get_valid_subsections,
     get_valid_keywords,
+    get_valid_subsections,
 )
-from cp2k_lsp.data.keywords import (
-    CP2K_KEYWORDS,
-    get_keyword_info,
-    get_enum_values,
-    KeywordType,
-)
-
+from cp2k_lsp.parser import CP2KInput, CP2KParser
+from cp2k_lsp.parser.lexer import Lexer, TokenType
 
 # =============================================================================
 # Helper
@@ -572,9 +569,8 @@ CUTOFF 400
         formatted = provider._format_ast(parser.ast)
         lines = formatted.split("\n")
         # Check that nested sections are indented
-        force_eval_idx = next(i for i, l in enumerate(lines) if "&FORCE_EVAL" in l)
-        dft_idx = next(i for i, l in enumerate(lines) if "&DFT" in l)
-        mgrid_idx = next(i for i, l in enumerate(lines) if "&MGRID" in l)
+        dft_idx = next(i for i, line in enumerate(lines) if "&DFT" in line)
+        mgrid_idx = next(i for i, line in enumerate(lines) if "&MGRID" in line)
         # DFT should be indented more than FORCE_EVAL
         assert lines[dft_idx].startswith("  ")
         # MGRID should be indented more than DFT

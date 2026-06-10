@@ -1,10 +1,7 @@
 """Tests for LSP navigation features: document symbols, go-to-definition, rename preparation."""
 
-import pytest
 
-from cp2k_lsp.parser import CP2KParser, CP2KInput, Section, Keyword
-from cp2k_lsp.parser.lexer import Lexer, TokenType
-
+from cp2k_lsp.parser import CP2KInput, CP2KParser
 
 # =============================================================================
 # Helper

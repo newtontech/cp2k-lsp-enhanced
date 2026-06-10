@@ -1,11 +1,9 @@
 """Tests for data-driven diagnostics using the cp2k_lsp data layer."""
 
-import pytest
 
+from cp2k_lsp.data.keywords import KeywordType, get_enum_values, get_keyword_info
+from cp2k_lsp.data.sections import get_section_info
 from cp2k_lsp.parser import CP2KParser
-from cp2k_lsp.data.sections import get_section_info, get_valid_keywords, get_valid_subsections
-from cp2k_lsp.data.keywords import get_keyword_info, get_enum_values, KeywordType
-
 
 # =============================================================================
 # Helper

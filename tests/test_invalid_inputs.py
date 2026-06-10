@@ -1,10 +1,9 @@
 """Tests for common invalid CP2K input patterns and error handling."""
 
 import pytest
-
 from cp2k_lsp.parser import CP2KParser
 from cp2k_lsp.parser.errors import SyntaxError as ParserSyntaxError
-from cp2k_lsp.parser.lexer import Lexer, TokenType
+from cp2k_lsp.parser.lexer import Lexer
 
 
 def _parse(text: str):
