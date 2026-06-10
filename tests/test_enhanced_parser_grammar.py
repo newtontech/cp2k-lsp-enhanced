@@ -410,3 +410,98 @@ class TestOpenQCContract:
         assert hasattr(parser, 'ast')
         assert hasattr(parser, 'errors')
         assert isinstance(parser.errors, list)
+
+
+# =============================================================================
+# Section parameter parsing
+# =============================================================================
+
+
+class TestSectionParameterParsing:
+    """Tests for section parameter parsing (e.g., &KIND H, &XC_FUNCTIONAL PBE)."""
+
+    def _parse(self, text: str):
+        """Helper to parse text and return (ast, errors)."""
+        from cp2k_lsp.parser import CP2KParser
+        parser = CP2KParser.parse_text(text)
+        return parser.ast, parser.errors
+
+    def test_kind_section_parameter(self):
+        """&KIND H should parse H as section parameter."""
+        inp = """\
+&FORCE_EVAL
+  &SUBSYS
+    &KIND H
+      BASIS_SET DZVP
+      POTENTIAL GTH-PBE
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL
+"""
+        ast, errors = self._parse(inp)
+        assert len(errors) == 0
+        subsys = ast.sections[0].get_subsection("SUBSYS")
+        kind = subsys.get_subsection("KIND")
+        assert kind is not None
+        assert kind.parameter == "H"
+        # Keywords should still be correct
+        bs = kind.get_keyword("BASIS_SET")
+        assert bs is not None
+        assert bs.value.value == "DZVP"
+        pot = kind.get_keyword("POTENTIAL")
+        assert pot is not None
+        assert pot.value.value == "GTH-PBE"
+
+    def test_xc_functional_section_parameter(self):
+        """&XC_FUNCTIONAL PBE should parse PBE as section parameter."""
+        inp = """\
+&FORCE_EVAL
+  &DFT
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+&END FORCE_EVAL
+"""
+        ast, errors = self._parse(inp)
+        assert len(errors) == 0
+        dft = ast.sections[0].get_subsection("DFT")
+        xc = dft.get_subsection("XC")
+        xcf = xc.get_subsection("XC_FUNCTIONAL")
+        assert xcf is not None
+        assert xcf.parameter == "PBE"
+
+    def test_section_without_parameter(self):
+        """Section without parameter should have None parameter."""
+        inp = """\
+&GLOBAL
+  RUN_TYPE ENERGY
+&END GLOBAL
+"""
+        ast, errors = self._parse(inp)
+        assert len(errors) == 0
+        assert ast.global_section.parameter is None
+
+    def test_multiple_kinds_with_different_parameters(self):
+        """Multiple KIND sections with different parameters should parse correctly."""
+        inp = """\
+&FORCE_EVAL
+  &SUBSYS
+    &KIND H
+      BASIS_SET DZVP
+    &END KIND
+    &KIND O
+      BASIS_SET TZVP
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL
+"""
+        ast, errors = self._parse(inp)
+        assert len(errors) == 0
+        subsys = ast.sections[0].get_subsection("SUBSYS")
+        kinds = [s for s in subsys.subsections if s.name.upper() == "KIND"]
+        assert len(kinds) == 2
+        params = [k.parameter for k in kinds]
+        assert "H" in params
+        assert "O" in params
