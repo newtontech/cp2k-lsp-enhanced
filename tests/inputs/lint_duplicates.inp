@@ -1,0 +1,22 @@
+&GLOBAL
+  PROJECT test
+  RUN_TYPE ENERGY
+&END GLOBAL
+&FORCE_EVAL
+  METHOD QS
+  METHOD QS
+  &DFT
+    &SCF
+      MAX_SCF 50
+      MAX_SCF 100
+    &END SCF
+  &END DFT
+  &SUBSYS
+    &CELL
+      A 10.0 0.0 0.0
+    &END CELL
+    &COORD
+      O 0.0 0.0 0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL

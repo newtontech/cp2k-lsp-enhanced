@@ -1,6 +1,7 @@
 import collections
 import pathlib
 import re
+import warnings
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from fractions import Fraction
@@ -13,6 +14,67 @@ from .tokenizer import COMMENT_CHARS, tokenize
 
 UREG = pint.UnitRegistry()
 UREG.load_definitions(str(pathlib.Path(__file__).resolve().parent.joinpath("pint_units.txt")))
+
+
+# Built-in registry of deprecated CP2K keywords mapped to their replacements.
+# Since the upstream CP2K XML schema does not include deprecation markers,
+# this registry captures known deprecations from CP2K release notes and docs.
+DEPRECATED_KEYWORDS: dict[str, str | None] = {}
+
+# Built-in registry of deprecated CP2K sections mapped to their replacements.
+DEPRECATED_SECTIONS: dict[str, str | None] = {}
+
+
+class DeprecatedKeywordWarning(UserWarning):
+    """Warning emitted when a deprecated keyword is encountered during parsing."""
+
+    def __init__(self, keyword: str, replacement: str | None, section: str):
+        if replacement:
+            msg = f"Keyword '{keyword}' is deprecated in section '{section}'. Use '{replacement}' instead."
+        else:
+            msg = f"Keyword '{keyword}' is deprecated in section '{section}' and will be removed in a future CP2K version."
+        super().__init__(msg)
+
+
+class DeprecatedSectionWarning(UserWarning):
+    """Warning emitted when a deprecated section is encountered during parsing."""
+
+    def __init__(self, section: str, replacement: str | None, parent_section: str):
+        if replacement:
+            msg = f"Section '{section}' is deprecated under '{parent_section}'. Use '{replacement}' instead."
+        else:
+            msg = f"Section '{section}' under '{parent_section}' is deprecated and will be removed in a future CP2K version."
+        super().__init__(msg)
+
+
+def register_deprecated(keyword: str, section: str, replacement: str | None = None):
+    """Register a keyword as deprecated."""
+    DEPRECATED_KEYWORDS[f"{section.upper()}::{keyword.upper()}"] = replacement
+
+
+def check_deprecated(keyword_name: str, section_name: str) -> bool:
+    """Check if a keyword is deprecated and emit a warning. Returns True if deprecated."""
+    key = f"{section_name.upper()}::{keyword_name.upper()}"
+    replacement = DEPRECATED_KEYWORDS.get(key)
+    if replacement is not None or key in DEPRECATED_KEYWORDS:
+        warnings.warn(DeprecatedKeywordWarning(keyword_name, replacement, section_name), stacklevel=4)
+        return True
+    return False
+
+
+def register_deprecated_section(section: str, parent_section: str, replacement: str | None = None):
+    """Register a section as deprecated."""
+    DEPRECATED_SECTIONS[f"{parent_section.upper()}::{section.upper()}"] = replacement
+
+
+def check_deprecated_section(section_name: str, parent_section: str) -> bool:
+    """Check if a section is deprecated and emit a warning. Returns True if deprecated."""
+    key = f"{parent_section.upper()}::{section_name.upper()}"
+    replacement = DEPRECATED_SECTIONS.get(key)
+    if replacement is not None or key in DEPRECATED_SECTIONS:
+        warnings.warn(DeprecatedSectionWarning(section_name, replacement, parent_section), stacklevel=4)
+        return True
+    return False
 
 
 def kw_converter_bool(string):
@@ -118,13 +180,18 @@ class Keyword:
             tokens = lone_keyword_value
 
         default_unit = None
+        is_internal_cp2k = False
         try:
             default_unit = kw_node.find("./DEFAULT_UNIT").text
         except AttributeError:
             pass
 
+        # For internal_cp2k units, we cannot convert to/from the abstract unit.
+        # Store values as-is when no explicit unit is given; when an explicit unit
+        # is given, store the value with the unit as a string to preserve information.
         if default_unit and default_unit == "internal_cp2k":
-            default_unit = None  # we can't do any conversion for hat
+            is_internal_cp2k = True
+            default_unit = None
 
         if default_unit:
             default_unit = UREG.parse_expression(default_unit)
@@ -135,6 +202,11 @@ class Keyword:
 
         for token in tokens:
             if token.startswith("["):
+                if is_internal_cp2k:
+                    # We can't convert to/from internal_cp2k. Store subsequent
+                    # values as "[unit] value" strings to preserve the unit info.
+                    current_unit = token.strip("[]")
+                    continue
                 if not default_unit:
                     raise InvalidParameterError(
                         "unit specified for value in keyword, but no default unit available or default unit is 'internal_cp2k'"
@@ -145,6 +217,11 @@ class Keyword:
             if token.startswith(COMMENT_CHARS):
                 assert token == tokens[-1], "found inline comment which is not the last token"
                 continue  # ignore inline comments
+
+            # For internal_cp2k with explicit unit, store as string with unit
+            if is_internal_cp2k and current_unit and isinstance(current_unit, str):
+                values += [f"[{current_unit}] {token}"]
+                continue
 
             value = datatype.parser(token)
 

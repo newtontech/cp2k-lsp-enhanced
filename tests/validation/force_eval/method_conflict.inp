@@ -1,0 +1,10 @@
+# Method conflict: QS and FIST in same FORCE_EVAL
+&FORCE_EVAL
+  METHOD QS
+  METHOD FIST
+  &DFT
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+  &END DFT
+&END FORCE_EVAL

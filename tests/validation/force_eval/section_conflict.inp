@@ -1,0 +1,13 @@
+# Section conflict: DFT and FIST in same FORCE_EVAL
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+  &END DFT
+  &FIST
+    &SPLINE
+    &END SPLINE
+  &END FIST
+&END FORCE_EVAL

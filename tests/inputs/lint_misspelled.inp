@@ -1,0 +1,20 @@
+&GLOBAL
+  PROJECT test
+  RUN_TYPE ENRGY
+&END GLOBAL
+&FORCE_EVAL
+  METHD QS
+  &DFT
+    &MGRID
+      CUTTOF 400
+    &END MGRID
+  &END DFT
+  &SUBSYS
+    &CELL
+      A 10.0 0.0 0.0
+    &END CELL
+    &COORD
+      O 0.0 0.0 0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL

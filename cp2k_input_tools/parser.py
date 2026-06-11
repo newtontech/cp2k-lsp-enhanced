@@ -7,7 +7,7 @@ from fractions import Fraction
 from typing import Iterator, List, Optional, Tuple, Union
 
 from . import DEFAULT_CP2K_INPUT_XML
-from .keyword_helpers import UREG, Keyword
+from .keyword_helpers import UREG, Keyword, check_deprecated
 from .parser_errors import (
     InvalidNameError,
     InvalidParameterError,
@@ -147,6 +147,11 @@ class CP2KInputParser:
 
         if kw_node is None:
             raise InvalidNameError(f"invalid keyword '{kw_name}' specified and no default keyword for this section", Context())
+
+        # Check if keyword is deprecated and emit warning
+        # Walk up the tree to get the current section path for deprecation context
+        section_path = "/".join(s.name for s in self._treerefs if s.name != "/")
+        check_deprecated(kw_name, section_path)
 
         try:
             kw = Keyword.from_string(kw_node, kw_value, self._key_trafo)  # the key_trafo is needed to mangle keywords

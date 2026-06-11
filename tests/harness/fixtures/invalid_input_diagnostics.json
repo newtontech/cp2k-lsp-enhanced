@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "message": "Syntax error: unterminated string detected (None)",
+      "range": {
+        "start": {
+          "line": 1,
+          "character": 13
+        },
+        "end": {
+          "line": 1,
+          "character": 14
+        }
+      },
+      "source": "LanguageServer"
+    }
+  ]
+}

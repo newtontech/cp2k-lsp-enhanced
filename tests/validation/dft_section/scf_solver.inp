@@ -1,0 +1,15 @@
+# Dual SCF solver conflict
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+    &SCF
+      &OT
+      &END OT
+      &DIAGONALIZATION
+      &END DIAGONALIZATION
+    &END SCF
+  &END DFT
+&END FORCE_EVAL
