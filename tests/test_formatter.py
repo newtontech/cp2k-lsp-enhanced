@@ -1,6 +1,5 @@
 """Tests for CP2K input file formatter."""
 
-import pytest
 
 from cp2k_input_tools.formatter import format_document, format_range
 

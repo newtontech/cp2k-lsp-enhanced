@@ -19,10 +19,10 @@ UREG.load_definitions(str(pathlib.Path(__file__).resolve().parent.joinpath("pint
 # Built-in registry of deprecated CP2K keywords mapped to their replacements.
 # Since the upstream CP2K XML schema does not include deprecation markers,
 # this registry captures known deprecations from CP2K release notes and docs.
-DEPRECATED_KEYWORDS: dict[str, str] = {}
+DEPRECATED_KEYWORDS: dict[str, str | None] = {}
 
 # Built-in registry of deprecated CP2K sections mapped to their replacements.
-DEPRECATED_SECTIONS: dict[str, str] = {}
+DEPRECATED_SECTIONS: dict[str, str | None] = {}
 
 
 class DeprecatedKeywordWarning(UserWarning):

@@ -2,17 +2,14 @@
 
 import pathlib
 
-import pytest
-
 from cp2k_input_tools.typecheck import (
+    _get_schema_metadata,
+    check_required_sections,
+    extract_run_type,
     validate_enum,
     validate_text,
     validate_type,
     validate_unit_syntax,
-    check_keyword_type,
-    extract_run_type,
-    check_required_sections,
-    _get_schema_metadata,
 )
 
 TEST_DIR = pathlib.Path(__file__).resolve().parent

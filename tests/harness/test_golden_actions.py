@@ -1,23 +1,19 @@
 """Golden tests for LSP code actions."""
 
-import pathlib
 from time import sleep
 
 import pytest
 
-from tests.harness.golden import FIXTURES_DIR, normalize_diagnostics
+from tests.harness.golden import FIXTURES_DIR
 
 pytest.importorskip("pygls")
 
 from lsprotocol.types import (  # noqa: E402
     TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_DID_OPEN,
-    CodeActionParams,
     CodeActionContext,
-    Diagnostic,
+    CodeActionParams,
     DidOpenTextDocumentParams,
-    Position,
-    Range,
     TextDocumentIdentifier,
     TextDocumentItem,
 )

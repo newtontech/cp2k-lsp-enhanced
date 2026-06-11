@@ -1,7 +1,7 @@
 """CP2K input file formatter using parser/AST-based approach with regex fallback."""
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from lsprotocol.types import Position, Range, TextEdit
@@ -36,9 +36,9 @@ def _parse_line(line: str) -> FormatLine:
         fl.is_blank = True
         return fl
 
-    if _COMMENT_RE.match(line):
+    match = _COMMENT_RE.match(line)
+    if match:
         fl.is_comment = True
-        match = _COMMENT_RE.match(line)
         fl.content = match.group(2)
         return fl
 
@@ -92,10 +92,10 @@ def _extract_inline_comment(content: str) -> Tuple[str, Optional[str]]:
 def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
     """Format a CP2K input document. Returns TextEdit list for full document replacement."""
     lines = text.split('\n')
-    formatted_lines = []
+    formatted_lines: List[str] = []
     indent_level = 0
     pending_blank_lines = 0
-    section_stack = []  # Stack of section names for &END matching
+    section_stack: List[str] = []  # Stack of section names for &END matching
 
     for line in lines:
         fl = _parse_line(line)
@@ -141,7 +141,8 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
             else:
                 formatted_lines.append(indent + content)
             indent_level += 1
-            section_stack.append(fl.section_name)
+            if fl.section_name is not None:
+                section_stack.append(fl.section_name)
         elif fl.is_section_end:
             # Format: &END SECTIONNAME
             end_match = _SECTION_END_RE.match(fl.content)

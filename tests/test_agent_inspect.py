@@ -2,14 +2,12 @@
 
 import json
 import os
-import pathlib
 import tempfile
 
 import pytest
 from click.testing import CliRunner
 
 from cp2k_input_tools.cli.agent_inspect import cli as agent_cli
-
 
 # Minimal valid CP2K input
 VALID_INPUT = """\

@@ -1,6 +1,5 @@
 """Tests for validation accuracy framework."""
 
-import pathlib
 
 import pytest
 

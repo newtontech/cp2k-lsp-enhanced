@@ -9,7 +9,6 @@ from click.testing import CliRunner
 
 from cp2k_input_tools.cli.validate import cp2k_validate
 
-
 # Minimal valid CP2K input
 VALID_INPUT = """\
 &GLOBAL

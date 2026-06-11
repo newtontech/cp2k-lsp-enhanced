@@ -118,14 +118,13 @@ def get_hover_info(file_path: str, line: int, character: int) -> Optional[Dict[s
 
     try:
         with open(file_path, "r") as fhandle:
-            tree = parser.parse(fhandle)
+            parser.parse(fhandle)
     except (TokenizerError, ParserError):
         return None
 
     # Walk the section tree to find the section containing the line
     def find_section_at_line(section: Section, target_line: int, lines: List[str]) -> Optional[Section]:
         # Approximate: find deepest section whose start is before the line
-        result = None
         for sub in section.subsections:
             candidate = find_section_at_line(sub, target_line, lines)
             if candidate:
@@ -169,9 +168,9 @@ def get_references(file_path: str, line: int, character: int) -> List[Dict[str, 
         if set_match:
             var_name = set_match.group(1)
             refs = []
-            for i, l in enumerate(lines, 1):
-                if f"${var_name}" in l or f"@SET {var_name}" in l:
-                    refs.append({"file": file_path, "line": i, "text": l.strip()})
+            for i, line_text in enumerate(lines, 1):
+                if f"${var_name}" in line_text or f"@SET {var_name}" in line_text:
+                    refs.append({"file": file_path, "line": i, "text": line_text.strip()})
             return refs
 
         # Check if cursor is on a $VAR usage
@@ -180,9 +179,9 @@ def get_references(file_path: str, line: int, character: int) -> List[Dict[str, 
             # Find the variable at the cursor position
             for var_name in var_match:
                 refs = []
-                for i, l in enumerate(lines, 1):
-                    if f"${var_name}" in l or f"@SET {var_name}" in l:
-                        refs.append({"file": file_path, "line": i, "text": l.strip()})
+                for i, line_text in enumerate(lines, 1):
+                    if f"${var_name}" in line_text or f"@SET {var_name}" in line_text:
+                        refs.append({"file": file_path, "line": i, "text": line_text.strip()})
                 return refs
 
     return []
@@ -220,7 +219,7 @@ def format_preview(file_path: str) -> str:
 
 def get_code_actions(file_path: str, line: int, character: int) -> List[Dict[str, Any]]:
     """Return suggested code actions for the given position."""
-    actions = []
+    actions: List[Dict[str, Any]] = []
     try:
         with open(file_path, "r") as fhandle:
             lines = fhandle.readlines()

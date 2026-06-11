@@ -8,7 +8,7 @@ and list types. Also checks unit syntax and required sections.
 
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from . import DEFAULT_CP2K_INPUT_XML

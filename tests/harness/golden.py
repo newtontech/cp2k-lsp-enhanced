@@ -2,7 +2,7 @@
 
 import json
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 FIXTURES_DIR = pathlib.Path(__file__).resolve().parent / "fixtures"
 
@@ -83,8 +83,8 @@ def assert_golden(name: str, actual: List[Any], *, update: bool = False) -> None
     golden = load_golden(name)
     golden_items = golden.get("items", [])
     if normalized != golden_items:
-        import json
         import difflib
+        import json
         actual_str = json.dumps(normalized, indent=2, sort_keys=True)
         golden_str = json.dumps(golden_items, indent=2, sort_keys=True)
         diff = '\n'.join(difflib.unified_diff(

@@ -1,11 +1,10 @@
 """Golden tests for LSP diagnostics."""
 
-import pathlib
 from time import sleep
 
 import pytest
 
-from tests.harness.golden import FIXTURES_DIR, assert_golden, normalize_diagnostics
+from tests.harness.golden import FIXTURES_DIR, assert_golden
 
 pytest.importorskip("pygls")
 

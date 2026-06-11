@@ -8,7 +8,7 @@ import json
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from typing import List, Optional
+from typing import List
 
 import click
 

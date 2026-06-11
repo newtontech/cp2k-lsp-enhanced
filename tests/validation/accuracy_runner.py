@@ -3,12 +3,9 @@
 Calculates precision, recall, and F1 score for validation rules.
 """
 
-import json
 import pathlib
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
-
-import pytest
+from typing import Dict, List, Optional
 
 from cp2k_input_tools.parser import CP2KInputParser
 from cp2k_input_tools.parser_errors import InvalidNameError, InvalidParameterError, InvalidSectionError, ParserError
@@ -94,7 +91,10 @@ class AccuracyReport:
         if self.by_category:
             lines.append("\nBy category:")
             for cat, report in self.by_category.items():
-                lines.append(f"  {cat}: acc={report.accuracy:.2%} p={report.precision:.2%} r={report.recall:.2%} f1={report.f1:.2%} ({report.total} tests)")
+                lines.append(
+                    f"  {cat}: acc={report.accuracy:.2%} p={report.precision:.2%} "
+                    f"r={report.recall:.2%} f1={report.f1:.2%} ({report.total} tests)"
+                )
         return "\n".join(lines)
 
     def to_dict(self) -> dict:

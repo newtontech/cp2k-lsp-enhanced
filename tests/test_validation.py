@@ -2,11 +2,8 @@
 
 import pathlib
 
-import pytest
-
 from cp2k_input_tools.parser import CP2KInputParser
 from cp2k_input_tools.validator import (
-    ELEMENTS,
     ValidationResult,
     validate,
     validate_coordinates,

@@ -11,13 +11,13 @@ Provides lint checks that go beyond syntax and semantic validation:
 import difflib
 import re
 import xml.etree.ElementTree as ET
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 from . import DEFAULT_CP2K_INPUT_XML
-from .validator import Diagnostic, ValidationResult
+from .validator import Diagnostic
 
 # Lint rule codes
 RULE_MISSPELLED_KEYWORD = "lint/misspelled-keyword"
@@ -349,7 +349,10 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                             severity="warning",
                             source="cp2k-lint",
                             code=RULE_LOW_CUTOFF,
-                            message=f"CUTOFF {cutoff_val} Ry is very low. Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy.",
+                            message=(
+                                f"CUTOFF {cutoff_val} Ry is very low. Consider "
+                                f"≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy."
+                            ),
                             line=i,
                         ))
                 except (ValueError, IndexError):

@@ -6,18 +6,18 @@ import warnings
 import pytest
 
 from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
-from cp2k_input_tools.parser import CP2KInputParser
 from cp2k_input_tools.keyword_helpers import (
     DEPRECATED_KEYWORDS,
     DEPRECATED_SECTIONS,
     DeprecatedKeywordWarning,
     DeprecatedSectionWarning,
-    register_deprecated,
-    register_deprecated_section,
+    Keyword,
     check_deprecated,
     check_deprecated_section,
-    Keyword,
+    register_deprecated,
+    register_deprecated_section,
 )
+from cp2k_input_tools.parser import CP2KInputParser
 
 
 class TestIssue69PrintAtomKind:

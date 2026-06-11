@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from typing import Any, Iterable
 
-
 DIAGNOSTIC_ENGINE_VERSION = "1.0"
 DIAGNOSTIC_CATEGORIES = (
     "syntax",
@@ -76,7 +75,7 @@ def _legacy_payload(obj: Any) -> dict[str, Any]:
     if isinstance(obj, dict):
         return dict(obj)
     if is_dataclass(obj):
-        return asdict(obj)
+        return asdict(obj)  # type: ignore[arg-type]
     to_json = getattr(obj, "to_json", None)
     if callable(to_json):
         try:

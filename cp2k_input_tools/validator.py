@@ -6,8 +6,84 @@ syntax checking to detect semantically incorrect but syntactically valid inputs.
 Supports CP2K versions: 2022.x, 2023.x, 2024.1, 2024.2
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class Diagnostic:
+    """Compatibility diagnostic used by lint and validation helpers."""
+
+    severity: str
+    source: str
+    code: str
+    message: str
+    line: Optional[int] = None
+    column: Optional[int] = None
+    end_line: Optional[int] = None
+    end_column: Optional[int] = None
+    suggested_fix: Optional[str] = None
+
+
+@dataclass
+class ValidationResult:
+    """Compatibility collection for function-style validators."""
+
+    diagnostics: List[Diagnostic] = field(default_factory=list)
+
+    @property
+    def errors(self) -> List[Diagnostic]:
+        return [item for item in self.diagnostics if item.severity == "error"]
+
+    @property
+    def warnings(self) -> List[Diagnostic]:
+        return [item for item in self.diagnostics if item.severity == "warning"]
+
+    @property
+    def has_errors(self) -> bool:
+        return bool(self.errors)
+
+    def add_error(
+        self,
+        source: str,
+        code: str,
+        message: str,
+        line: Optional[int] = None,
+        column: Optional[int] = None,
+        suggested_fix: Optional[str] = None,
+    ) -> None:
+        self.diagnostics.append(
+            Diagnostic(
+                severity="error",
+                source=source,
+                code=code,
+                message=message,
+                line=line,
+                column=column,
+                suggested_fix=suggested_fix,
+            )
+        )
+
+    def add_warning(
+        self,
+        source: str,
+        code: str,
+        message: str,
+        line: Optional[int] = None,
+        column: Optional[int] = None,
+        suggested_fix: Optional[str] = None,
+    ) -> None:
+        self.diagnostics.append(
+            Diagnostic(
+                severity="warning",
+                source=source,
+                code=code,
+                message=message,
+                line=line,
+                column=column,
+                suggested_fix=suggested_fix,
+            )
+        )
 
 
 @dataclass
@@ -753,3 +829,282 @@ def validate_semantics(tree: Any) -> List[SemanticDiagnostic]:
     """Convenience function to validate semantics."""
     validator = CP2KSemanticValidator()
     return validator.validate(tree)
+
+
+ELEMENTS = set(CP2KSemanticValidator.ELEMENT_Z)
+STATIC_RUN_TYPES = {
+    "ENERGY",
+    "ENERGY_FORCE",
+    "WAVEFUNCTION",
+    "ELECTRONIC_SPECTRA",
+    "ELASTIC_CONSTANT",
+}
+FORBIDDEN_MOTION_FOR_STATIC = {"GEO_OPT", "MD", "CELL_OPT", "BAND", "MC", "VIBRATIONAL_ANALYSIS"}
+
+
+def _normalize_section_name(name: str) -> tuple[str, ...]:
+    lower = name.lower()
+    return (f"+{lower}", lower, name, name.upper())
+
+
+def _first_mapping(value: Any) -> Optional[dict]:
+    if isinstance(value, list):
+        return value[0] if value and isinstance(value[0], dict) else None
+    return value if isinstance(value, dict) else None
+
+
+def _find_section(tree: dict, *path: str) -> Optional[dict]:
+    current: Optional[dict] = tree
+    for name in path:
+        if current is None:
+            return None
+        found = None
+        for key in _normalize_section_name(name):
+            if key in current:
+                found = current[key]
+                break
+        current = _first_mapping(found)
+    return current
+
+
+def _keyword_value(section: Optional[dict], key: str, default: Any = None) -> Any:
+    if section is None:
+        return default
+    for candidate in _normalize_section_name(key):
+        if candidate in section:
+            value = section[candidate]
+            if isinstance(value, list):
+                return value[0] if value else default
+            if isinstance(value, dict):
+                return value.get("_", default)
+            return value
+    return default
+
+
+def _force_eval_sections(tree: dict) -> list[dict]:
+    force_evals = None
+    for key in _normalize_section_name("FORCE_EVAL"):
+        if key in tree:
+            force_evals = tree[key]
+            break
+    if force_evals is None:
+        return []
+    if isinstance(force_evals, list):
+        return [item for item in force_evals if isinstance(item, dict)]
+    return [force_evals] if isinstance(force_evals, dict) else []
+
+
+def validate_run_type_motion_consistency(tree: dict, result: ValidationResult) -> None:
+    """Compatibility check for RUN_TYPE and MOTION section consistency."""
+    global_section = _find_section(tree, "GLOBAL")
+    run_type = str(_keyword_value(global_section, "run_type", "")).upper()
+    if not run_type:
+        return
+
+    motion_section = _find_section(tree, "MOTION")
+    if run_type in STATIC_RUN_TYPES and motion_section is not None:
+        for forbidden in FORBIDDEN_MOTION_FOR_STATIC:
+            if any(key in motion_section for key in _normalize_section_name(forbidden)):
+                result.add_error(
+                    "cp2k-semantics",
+                    "RUN_TYPE_MOTION_MISMATCH",
+                    f"RUN_TYPE={run_type} is static but &{forbidden} was found.",
+                    suggested_fix=f"Remove &{forbidden} or change RUN_TYPE.",
+                )
+    elif run_type in CP2KSemanticValidator.RUN_TYPE_MOTION_MAP:
+        required = CP2KSemanticValidator.RUN_TYPE_MOTION_MAP[run_type]["required"]
+        if required and motion_section is None:
+            section = next(iter(required))
+            result.add_error(
+                "cp2k-semantics",
+                "RUN_TYPE_MISSING_MOTION",
+                f"RUN_TYPE={run_type} requires &{section} under &MOTION.",
+            )
+        elif motion_section is not None:
+            for section in required:
+                if not any(key in motion_section for key in _normalize_section_name(section)):
+                    result.add_warning(
+                        "cp2k-semantics",
+                        "RUN_TYPE_MISSING_MOTION_SECTION",
+                        f"RUN_TYPE={run_type} requires &{section} under &MOTION.",
+                    )
+
+
+def validate_force_eval_method(tree: dict, result: ValidationResult) -> None:
+    """Compatibility check for FORCE_EVAL METHOD and mutually exclusive sections."""
+    for force_eval in _force_eval_sections(tree):
+        method = str(_keyword_value(force_eval, "method", "")).upper()
+        has_dft = _find_section({"force_eval": force_eval}, "FORCE_EVAL", "DFT") is not None
+        has_fist = _find_section({"force_eval": force_eval}, "FORCE_EVAL", "FIST") is not None
+        has_mm = _find_section({"force_eval": force_eval}, "FORCE_EVAL", "MM") is not None
+        has_nnp = _find_section({"force_eval": force_eval}, "FORCE_EVAL", "NNP") is not None
+        if method in {"QS", "QUICKSTEP"} and (has_fist or has_mm):
+            result.add_error(
+                "cp2k-semantics",
+                "METHOD_SECTION_CONFLICT",
+                "METHOD=QS conflicts with classical force-field sections.",
+            )
+        elif method == "FIST" and has_dft:
+            result.add_error(
+                "cp2k-semantics",
+                "METHOD_SECTION_CONFLICT",
+                "METHOD=FIST conflicts with &DFT.",
+            )
+        elif method == "NNP":
+            if not has_nnp:
+                result.add_warning(
+                    "cp2k-semantics",
+                    "METHOD_MISSING_SECTION",
+                    "METHOD=NNP requires an &NNP section.",
+                )
+            if has_dft:
+                result.add_error(
+                    "cp2k-semantics",
+                    "METHOD_SECTION_CONFLICT",
+                    "METHOD=NNP conflicts with &DFT.",
+                )
+
+
+def validate_dft_section(tree: dict, result: ValidationResult) -> None:
+    """Compatibility DFT checks used by legacy tests."""
+    for force_eval in _force_eval_sections(tree):
+        dft = _find_section({"force_eval": force_eval}, "FORCE_EVAL", "DFT")
+        if dft is None:
+            continue
+
+        xc = _find_section({"dft": dft}, "DFT", "XC")
+        xcf = _find_section({"xc": xc or {}}, "XC", "XC_FUNCTIONAL") if xc is not None else None
+        if xcf is not None:
+            functionals = [key for key in xcf if not key.startswith("_")]
+            if len(functionals) > 1:
+                result.add_error(
+                    "cp2k-semantics",
+                    "MULTIPLE_XC_FUNCTIONALS",
+                    "Multiple XC functionals were specified.",
+                )
+
+        scf = _find_section({"dft": dft}, "DFT", "SCF")
+        if scf is not None:
+            has_ot = _find_section({"scf": scf}, "SCF", "OT") is not None
+            has_diag = _find_section({"scf": scf}, "SCF", "DIAGONALIZATION") is not None
+            if has_ot and has_diag:
+                result.add_error(
+                    "cp2k-semantics",
+                    "SCF_SOLVER_CONFLICT",
+                    "&OT and &DIAGONALIZATION cannot both be active.",
+                )
+            try:
+                max_scf = int(float(_keyword_value(scf, "max_scf", 50)))
+                if max_scf < 20:
+                    result.add_warning(
+                        "cp2k-semantics",
+                        "LOW_MAX_SCF",
+                        "MAX_SCF is likely too low for robust convergence.",
+                    )
+            except (TypeError, ValueError):
+                pass
+
+        mgrid = _find_section({"dft": dft}, "DFT", "MGRID")
+        try:
+            cutoff = float(_keyword_value(mgrid, "cutoff", 400))
+            if cutoff < 100:
+                result.add_warning(
+                    "cp2k-semantics",
+                    "CUTOFF_TOO_LOW",
+                    "MGRID CUTOFF is likely too low.",
+                )
+        except (TypeError, ValueError):
+            pass
+
+
+def validate_coordinates(tree: dict, result: ValidationResult) -> None:
+    """Compatibility coordinate validation."""
+    for force_eval in _force_eval_sections(tree):
+        subsys = _find_section({"force_eval": force_eval}, "FORCE_EVAL", "SUBSYS")
+        coord = _find_section({"subsys": subsys or {}}, "SUBSYS", "COORD")
+        if coord is None:
+            continue
+        lines = coord.get("*", [])
+        if isinstance(lines, str):
+            lines = [lines]
+        for line in lines:
+            if not isinstance(line, str) or not line.split():
+                continue
+            element = line.split()[0].capitalize()
+            if element not in ELEMENTS:
+                result.add_error(
+                    "cp2k-semantics",
+                    "INVALID_ELEMENT",
+                    f"Invalid element symbol: {element}",
+                )
+
+
+def _walk_keys(value: Any) -> list[str]:
+    keys: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            keys.append(str(key).lstrip("+").upper())
+            keys.extend(_walk_keys(child))
+    elif isinstance(value, list):
+        for child in value:
+            keys.extend(_walk_keys(child))
+    return keys
+
+
+def validate_removed_deprecated_keywords(tree: dict, result: ValidationResult) -> None:
+    """Compatibility version-aware removed/deprecated keyword check."""
+    for key in _walk_keys(tree):
+        if key in REMOVED_KEYWORDS:
+            result.add_error(
+                "cp2k-semantics",
+                "REMOVED_KEYWORD",
+                f"{key} was removed in recent CP2K versions.",
+            )
+        if key in DEPRECATED_KEYWORDS:
+            result.add_warning(
+                "cp2k-semantics",
+                "DEPRECATED_KEYWORD",
+                f"{key} is deprecated in recent CP2K versions.",
+            )
+
+
+def validate_md_parameters(tree: dict, result: ValidationResult) -> None:
+    """Compatibility MD ensemble parameter checks."""
+    md = _find_section(tree, "MOTION", "MD")
+    if md is None:
+        return
+    ensemble = str(_keyword_value(md, "ensemble", "")).upper()
+    if ensemble == "NVT" and _find_section({"md": md}, "MD", "THERMOSTAT") is None:
+        result.add_warning(
+            "cp2k-semantics",
+            "MD_NO_THERMOSTAT",
+            "NVT ensemble should define a thermostat.",
+        )
+    if ensemble.startswith("NPT") and _find_section({"md": md}, "MD", "BAROSTAT") is None:
+        result.add_warning(
+            "cp2k-semantics",
+            "NPT_NO_BAROSTAT",
+            "NPT ensemble should define a barostat.",
+        )
+    try:
+        timestep = float(_keyword_value(md, "timestep", 1.0))
+        if timestep <= 0 or timestep > 2.0:
+            result.add_warning(
+                "cp2k-semantics",
+                "TIMESTEP_OUT_OF_RANGE",
+                "MD timestep is outside the recommended range.",
+            )
+    except (TypeError, ValueError):
+        pass
+
+
+def validate(tree: dict) -> ValidationResult:
+    """Run compatibility semantic validators and return a legacy result object."""
+    result = ValidationResult()
+    validate_run_type_motion_consistency(tree, result)
+    validate_force_eval_method(tree, result)
+    validate_dft_section(tree, result)
+    validate_coordinates(tree, result)
+    validate_removed_deprecated_keywords(tree, result)
+    validate_md_parameters(tree, result)
+    return result
