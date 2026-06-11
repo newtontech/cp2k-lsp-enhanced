@@ -1,0 +1,130 @@
+{
+  "cursor_positions": [
+    {
+      "line": 0,
+      "character": 0,
+      "description": "Cursor at '&' of FORCE_EVAL section start",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 0,
+        "character": 0,
+        "section_path": [],
+        "current_section": null,
+        "current_keyword": null,
+        "is_section_start": true,
+        "is_section_end": false,
+        "is_keyword_position": false,
+        "is_value_position": false,
+        "prefix": "&"
+      }
+    },
+    {
+      "line": 1,
+      "character": 2,
+      "description": "Cursor at '&' of DFT section start",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 1,
+        "character": 2,
+        "section_path": ["FORCE_EVAL"],
+        "current_section": "FORCE_EVAL",
+        "current_keyword": null,
+        "is_section_start": true,
+        "is_section_end": false,
+        "is_keyword_position": false,
+        "is_value_position": false,
+        "prefix": "&"
+      }
+    },
+    {
+      "line": 2,
+      "character": 4,
+      "description": "Cursor at '&' of QS section start",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 2,
+        "character": 4,
+        "section_path": ["FORCE_EVAL", "DFT"],
+        "current_section": "DFT",
+        "current_keyword": null,
+        "is_section_start": true,
+        "is_section_end": false,
+        "is_keyword_position": false,
+        "is_value_position": false,
+        "prefix": "&"
+      }
+    },
+    {
+      "line": 3,
+      "character": 12,
+      "description": "Cursor after 'METHOD ' keyword under QS",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 3,
+        "character": 12,
+        "section_path": ["FORCE_EVAL", "DFT", "QS"],
+        "current_section": "QS",
+        "current_keyword": "METHOD",
+        "is_section_start": false,
+        "is_section_end": false,
+        "is_keyword_position": false,
+        "is_value_position": true,
+        "prefix": ""
+      }
+    },
+    {
+      "line": 4,
+      "character": 4,
+      "description": "Cursor at '&END' of QS section",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 4,
+        "character": 4,
+        "section_path": ["FORCE_EVAL", "DFT", "QS"],
+        "current_section": "QS",
+        "current_keyword": null,
+        "is_section_start": false,
+        "is_section_end": true,
+        "is_keyword_position": false,
+        "is_value_position": false,
+        "prefix": "&END"
+      }
+    },
+    {
+      "line": 5,
+      "character": 4,
+      "description": "Cursor at '&' of SCF section start",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 5,
+        "character": 4,
+        "section_path": ["FORCE_EVAL", "DFT"],
+        "current_section": "DFT",
+        "current_keyword": null,
+        "is_section_start": true,
+        "is_section_end": false,
+        "is_keyword_position": false,
+        "is_value_position": false,
+        "prefix": "&"
+      }
+    },
+    {
+      "line": 6,
+      "character": 15,
+      "description": "Cursor after 'SCF_GUESS ' keyword under SCF",
+      "expected_context": {
+        "uri": "nested_sections.inp",
+        "line": 6,
+        "character": 15,
+        "section_path": ["FORCE_EVAL", "DFT", "SCF"],
+        "current_section": "SCF",
+        "current_keyword": "SCF_GUESS",
+        "is_section_start": false,
+        "is_section_end": false,
+        "is_keyword_position": false,
+        "is_value_position": true,
+        "prefix": ""
+      }
+    }
+  ]
+}
