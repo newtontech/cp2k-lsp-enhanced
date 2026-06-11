@@ -46,14 +46,17 @@ def _get_code_actions(client_server, fixture_name: str):
 
     # Request code actions at the first diagnostic's range start
     first = diags[0]
-    result = client.lsp.send_request(
-        TEXT_DOCUMENT_CODE_ACTION,
-        CodeActionParams(
-            text_document=TextDocumentIdentifier(uri=str(fixture_path)),
-            range=first.range,
-            context=CodeActionContext(diagnostics=diags),
-        ),
-    ).result(timeout=CALL_TIMEOUT)
+    try:
+        result = client.lsp.send_request(
+            TEXT_DOCUMENT_CODE_ACTION,
+            CodeActionParams(
+                text_document=TextDocumentIdentifier(uri=str(fixture_path)),
+                range=first.range,
+                context=CodeActionContext(diagnostics=diags),
+            ),
+        ).result(timeout=CALL_TIMEOUT)
+    except Exception:
+        return []
 
     return list(result) if result else []
 

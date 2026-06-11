@@ -58,7 +58,7 @@ class AccuracyReport:
             return 1.0
         return (self.true_positives + self.true_negatives) / self.total
 
-    def add_result(self, result: TestResult):
+    def _track(self, result: TestResult):
         self.total += 1
         self.results.append(result)
 
@@ -71,10 +71,13 @@ class AccuracyReport:
         else:
             self.true_negatives += 1
 
-        # Also track by category
+    def add_result(self, result: TestResult):
+        self._track(result)
+
+        # Also track by category (no recursion)
         if result.category not in self.by_category:
             self.by_category[result.category] = AccuracyReport()
-        self.by_category[result.category].add_result(result)
+        self.by_category[result.category]._track(result)
 
     def summary(self) -> str:
         lines = [
