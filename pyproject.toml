@@ -49,6 +49,7 @@ cp2k-language-server = 'cp2k_input_tools.cli.lsp:cp2k_language_server'
 cp2k-datafile-lint = 'cp2k_input_tools.cli.datafile_lint:cp2k_datafile_lint'
 cp2k-lsp = 'cp2k_input_tools.cli.main:cp2k_lsp'
 cp2k-validate = 'cp2k_input_tools.cli.validate:cp2k_validate'
+cp2k-lsp-tool = 'cp2k_input_tools.tool:main'
 
 [tool.black]
 line-length = 132
@@ -68,3 +69,4 @@ html_docs = "make html -C docs"
 [build-system]
 requires = ["poetry>=1"]
 build-backend = "poetry.masonry.api"
+

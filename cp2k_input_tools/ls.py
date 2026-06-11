@@ -6,7 +6,7 @@ code actions, document symbols, formatting, and rename for CP2K input files.
 """
 
 import re
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from lsprotocol.types import (
     TEXT_DOCUMENT_CODE_ACTION,
@@ -22,6 +22,8 @@ from lsprotocol.types import (
     CodeAction,
     CodeActionKind,
     CodeActionParams,
+    CompletionItem,
+    CompletionItemKind,
     DefinitionParams,
     Diagnostic,
     DiagnosticSeverity,
@@ -41,6 +43,7 @@ from lsprotocol.types import (
     Range,
     ReferenceParams,
     RenameParams,
+    SymbolKind,
     TextDocumentEdit,
     TextEdit,
     WorkspaceEdit,
