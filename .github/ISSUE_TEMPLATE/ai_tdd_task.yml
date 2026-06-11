@@ -1,0 +1,85 @@
+name: AI-native TDD task
+description: Create an implementation-ready task for Codex, Copilot, Claude Code, or another coding agent.
+title: "[agent]: "
+labels:
+  - ai-native
+  - tdd
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for issues that should be implementable by an AI coding agent through a test-first pull request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is broken, missing, or confusing?
+      placeholder: Describe the user-visible behavior or developer-facing problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired_behavior
+    attributes:
+      label: Desired behavior
+      description: What should be true after the PR lands?
+      placeholder: List concrete expected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: failing_test
+    attributes:
+      label: Expected failing test first
+      description: Name the test file, fixture, or assertion the agent should add before editing production code.
+      placeholder: |
+        Example:
+        - Add tests/test_lsp_completion.py::test_qs_method_value_completion_includes_gpw
+        - It should fail before the implementation because METHOD values fall back to booleans.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checklist for a complete PR.
+      value: |
+        - [ ] Failing test added or updated before production changes.
+        - [ ] Minimal implementation passes the targeted test.
+        - [ ] Relevant ruff/mypy/pytest checks pass or are explained.
+        - [ ] No unexplained skip/xfail or broad rewrite.
+        - [ ] PR links this issue and includes validation evidence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected_files
+    attributes:
+      label: Likely affected files
+      description: Point the agent at the highest-value files to inspect first.
+      placeholder: |
+        - packages/language-server/cp2k_lsp/features/completion.py
+        - tests/test_lsp_completion.py
+
+  - type: textarea
+    id: commands
+    attributes:
+      label: Suggested commands
+      description: Targeted commands the agent should run.
+      value: |
+        poetry install --with dev -E yaml -E lsp
+        poetry run pytest tests/<target_test_file>.py -q
+        poetry run ruff check .
+        poetry run mypy cp2k_input_tools packages/language-server/cp2k_lsp --ignore-missing-imports
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals and constraints
+      description: What should the agent avoid changing?
+      placeholder: |
+        - Do not add new production dependencies.
+        - Do not require external CP2K solver execution in default tests.
+        - Do not rewrite unrelated parser or LSP code.
