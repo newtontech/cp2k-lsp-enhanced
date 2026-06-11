@@ -27,6 +27,7 @@ from cp2k_lsp.agent_api.guidance import (
     list_available_examples,
 )
 from cp2k_lsp.agent_api.schema import (
+    lookup_keyword_at_path,
     lookup_keyword_schema,
     lookup_section_path,
     lookup_section_schema,
@@ -44,6 +45,7 @@ __all__ = [
     "lookup_section_schema",
     "lookup_keyword_schema",
     "lookup_section_path",
+    "lookup_keyword_at_path",
     "resolve_section_children",
     # #38 – examples & guidance
     "get_minimal_example",

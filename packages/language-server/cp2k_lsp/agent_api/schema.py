@@ -13,6 +13,7 @@ from cp2k_lsp.data.sections import get_section_info
 # Schema lookup – #37
 # ---------------------------------------------------------------------------
 
+
 def lookup_section_schema(name: str) -> Optional[Dict[str, Any]]:
     """Lookup the schema for a named section.
 
@@ -136,3 +137,62 @@ def resolve_section_children(name: str) -> Optional[Dict[str, Any]]:
         "keywords": keyword_schemas,
         "subsections": subsection_schemas,
     }
+
+
+def lookup_keyword_at_path(section_path: str, keyword_name: str) -> Optional[Dict[str, Any]]:
+    """Lookup a keyword schema at a specific section path.
+
+    This is the key function for issue #42: it enables path-based keyword
+    lookup so that LSP features can query context-specific keyword information.
+
+    Example::
+
+        >>> schema = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "METHOD")
+        >>> schema["type"]
+        'enum'
+        >>> schema["default"]
+        'GPW'
+        >>> "GPW" in schema["enum_values"]
+        True
+
+    Parameters
+    ----------
+    section_path:
+        Dot-separated section path (e.g., ``"FORCE_EVAL.DFT.QS"``).
+    keyword_name:
+        Name of the keyword to lookup (e.g., ``"METHOD"``).
+
+    Returns
+    -------
+    A keyword schema dict with the same shape as :func:`lookup_keyword_schema`,
+    or *None* if the path or keyword is invalid.
+
+    Notes
+    -----
+    This function validates that the keyword is actually valid at the given
+    section path, not just that the keyword exists globally. This is important
+    because some keywords may have different meanings or types in different
+    sections.
+    """
+    # First, resolve the section path
+    section_schema = lookup_section_path(section_path)
+    if section_schema is None:
+        return None
+
+    # Get the section info to check if the keyword is valid here
+    parts = [p.strip().upper() for p in section_path.split(".") if p.strip()]
+    if not parts:
+        return None
+
+    section_name = parts[-1]
+    section_info = get_section_info(section_name)
+    if section_info is None:
+        return None
+
+    # Check if the keyword is valid in this section
+    keyword_name_upper = keyword_name.strip().upper()
+    if keyword_name_upper not in [k.upper() for k in section_info.keywords]:
+        return None
+
+    # Return the keyword schema
+    return lookup_keyword_schema(keyword_name)
