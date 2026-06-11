@@ -11,6 +11,7 @@ from cp2k_lsp.agent_api import (
     list_all_keywords,
     list_all_sections,
     list_available_examples,
+    lookup_keyword_at_path,
     lookup_keyword_schema,
     lookup_section_path,
     lookup_section_schema,
@@ -419,3 +420,131 @@ class TestNextTokenGuidance:
         guidance = get_next_token_guidance(inp)
         # After GLOBAL and FORCE_EVAL, suggest MOTION
         assert "MOTION" in guidance["suggested_sections"]
+
+
+# ============================================================================
+# #42 – Schema index for path-based keyword lookup
+# ============================================================================
+
+
+class TestLookupKeywordAtPath:
+    """Tests for lookup_keyword_at_path (issue #42)."""
+
+    def test_lookup_method_at_qs_path(self):
+        """Issue #42 acceptance: FORCE_EVAL/DFT/QS, METHOD -> enum, default GPW."""
+        schema = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "METHOD")
+        assert schema is not None
+        assert schema["name"] == "METHOD"
+        assert schema["type"] == "enum"
+        assert schema["default"] == "GPW"
+        assert "GPW" in schema["enum_values"]
+
+    def test_lookup_method_enum_values_comprehensive(self):
+        """Issue #42: METHOD should include comprehensive enum values from manual."""
+        schema = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "METHOD")
+        assert schema is not None
+
+        # Key values from CP2K manual reference
+        expected_values = ["GPW", "GAPW", "GAPW_XC", "LRIGPW", "RIGPW", "MNDO", "AM1", "PM6", "DFTB", "XTB", "OFGPW"]
+
+        for value in expected_values:
+            assert value in schema["enum_values"], f"Expected {value} in METHOD enum values"
+
+    def test_lookup_extrapolation_at_qs_path(self):
+        """Issue #42 acceptance: FORCE_EVAL/DFT/QS, EXTRAPOLATION -> USE_GUESS."""
+        schema = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "EXTRAPOLATION")
+        assert schema is not None
+        assert schema["name"] == "EXTRAPOLATION"
+        assert schema["type"] == "enum"
+        assert "USE_GUESS" in schema["enum_values"]
+
+    def test_lookup_scf_eps_at_dft_scf_path(self):
+        """Lookup EPS_SCF at FORCE_EVAL.DFT.SCF path."""
+        schema = lookup_keyword_at_path("FORCE_EVAL.DFT.SCF", "EPS_SCF")
+        assert schema is not None
+        assert schema["name"] == "EPS_SCF"
+        assert schema["type"] == "real"
+        assert schema["default"] == 1.0e-7
+
+    def test_lookup_global_keyword_at_root(self):
+        """Lookup PROJECT_NAME at GLOBAL (root level)."""
+        schema = lookup_keyword_at_path("GLOBAL", "PROJECT_NAME")
+        assert schema is not None
+        assert schema["name"] == "PROJECT_NAME"
+        assert schema["type"] == "string"
+        assert schema["default"] == "PROJECT"
+
+    def test_lookup_at_invalid_section_path(self):
+        """Invalid section path should return None."""
+        assert lookup_keyword_at_path("NONEXISTENT.SECTION", "METHOD") is None
+
+    def test_lookup_invalid_keyword_at_valid_path(self):
+        """Invalid keyword at valid path should return None."""
+        assert lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "NOT_A_KEYWORD") is None
+
+    def test_lookup_keyword_case_insensitive(self):
+        """Keyword lookup should be case-insensitive."""
+        schema = lookup_keyword_at_path("force_eval.dft.qs", "method")
+        assert schema is not None
+        assert schema["name"] == "METHOD"
+
+    def test_lookup_keyword_at_path_is_json_serializable(self):
+        """Schema should be JSON-serializable."""
+        schema = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "METHOD")
+        assert schema is not None
+        json.dumps(schema)  # Should not raise
+
+
+class TestCP2KSchemaIndexIntegration:
+    """Integration tests for complete schema index (issue #42)."""
+
+    def test_complete_qs_section_query(self):
+        """Complete query for QS section with all metadata."""
+        # Resolve QS section
+        section = lookup_section_path("FORCE_EVAL.DFT.QS")
+        assert section is not None
+        assert section["name"] == "QS"
+        assert "METHOD" in section["keywords"]
+
+        # Resolve children
+        children = resolve_section_children("QS")
+        assert children is not None
+        kw_names = [k["name"] for k in children["keywords"]]
+        assert "METHOD" in kw_names
+        assert "EXTRAPOLATION" in kw_names
+
+        # Lookup specific keywords at path
+        method = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "METHOD")
+        assert method is not None
+        assert method["type"] == "enum"
+        assert "GPW" in method["enum_values"]
+
+        extrapolation = lookup_keyword_at_path("FORCE_EVAL.DFT.QS", "EXTRAPOLATION")
+        assert extrapolation is not None
+        assert "USE_GUESS" in extrapolation["enum_values"]
+
+    def test_schema_index_replaces_hardcoded_lists(self):
+        """Verify schema index provides all data that completion needs."""
+        # Can get all sections
+        all_sections = list_all_sections()
+        assert len(all_sections) > 0
+
+        # For each section, can get keywords
+        for section_info in all_sections[:3]:  # Check first 3
+            section_name = section_info["name"]
+            children = resolve_section_children(section_name)
+            if children:
+                # Should have keyword list with type info
+                for kw in children["keywords"]:
+                    assert "name" in kw
+                    assert "type" in kw
+
+    def test_no_dependency_on_hardcoded_common_lists(self):
+        """Schema index should work without hardcoded COMMON_SECTIONS/KEYWORDS."""
+        # Can get comprehensive lists from schema
+        sections = list_all_sections()
+        keywords = list_all_keywords()
+
+        # Should have many more entries than hardcoded lists
+        assert len(sections) >= 10  # More than COMMON_SECTIONS
+        assert len(keywords) >= 15  # More than COMMON_KEYWORDS
