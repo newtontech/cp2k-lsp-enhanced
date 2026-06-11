@@ -14,9 +14,13 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 readme = "README.md"
+packages = [
+    { include = "cp2k_input_tools" },
+    { include = "cp2k_lsp", from = "packages/language-server" },
+]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = ">=3.10,<4"
 transitions = ">=0.7,<0.10"
 Pint = ">=0.15,<0.25"
 "ruamel.yaml" = {version = ">=0.16.5,<0.19.0", optional = true}
@@ -31,13 +35,14 @@ lsp = ["pygls"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.0"
-pytest-cov = "^4.0"
+pytest-cov = "^6.0"
 pytest-console-scripts = "^1.4"
 sphinx = "^7.2.6"
 sphinx-rtd-theme = "^2.0.0"
 taskipy = "^1.4"
 mypy = "^1.2.0"
-sphinx-click = "^5.0.1"
+ruff = "^0.9.2"
+sphinx-click = "^6.0.0"
 
 [tool.poetry.scripts]
 cp2klint = 'cp2k_input_tools.cli.lint:cp2klint'
@@ -47,20 +52,21 @@ cp2kgen = 'cp2k_input_tools.cli.cp2kgen:cp2kgen'
 cp2kget = 'cp2k_input_tools.cli.cp2kget:cp2kget'
 cp2k-language-server = 'cp2k_input_tools.cli.lsp:cp2k_language_server'
 cp2k-datafile-lint = 'cp2k_input_tools.cli.datafile_lint:cp2k_datafile_lint'
-cp2k-lsp = 'cp2k_input_tools.cli.main:cp2k_lsp'
-cp2k-validate = 'cp2k_input_tools.cli.validate:cp2k_validate'
+cp2k-lsp = 'cp2k_lsp:server_main'
 cp2k-lsp-tool = 'cp2k_input_tools.tool:main'
 
 [tool.black]
 line-length = 132
-target_version = ['py39']
+target_version = ['py310']
 
 [tool.ruff]
+line-length = 136
+
+[tool.ruff.lint]
 # Enable flake8-bugbear (`B`) and isort (`I`) rules.
 select = ["E", "F", "B", "I"]
-line-length = 136
-# ignore missing strict= argument for zip for py<3.10 compat
-ignore = ["B905"]
+
+
 
 [tool.taskipy.tasks]
 test = "pytest"

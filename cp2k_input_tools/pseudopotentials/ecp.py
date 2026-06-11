@@ -42,7 +42,7 @@ class ECP(BaseModel, extra="forbid"):
         else:
             yield "2     1.000000    0.000000"
 
-        for shelln, shell in zip(self.M[1:], "SPDFG"):
+        for shelln, shell in zip(self.M[1:], "SPDFG", strict=False):
             if not shelln:  # skip empty shells completely
                 continue
             yield f"{sym} {shell}"

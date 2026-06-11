@@ -1,633 +1,755 @@
+"""Semantic validation for CP2K input files.
+
+This module provides physics/chemistry-aware validation that goes beyond
+syntax checking to detect semantically incorrect but syntactically valid inputs.
+
+Supports CP2K versions: 2022.x, 2023.x, 2024.1, 2024.2
 """
-Semantic validation engine for CP2K input files.
 
-Provides validation rules that go beyond syntax/schema checking to catch
-physically or logically inconsistent configurations.
-"""
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-import pathlib
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
-ELEMENTS = {
-    "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
-    "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar",
-    "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Ga", "Ge", "As", "Se", "Br", "Kr",
-    "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "In", "Sn", "Sb", "Te", "I", "Xe",
-    "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy",
-    "Ho", "Er", "Tm", "Yb", "Lu",
-    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn",
-    "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
-    "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og",
-}
+@dataclass
+class SemanticDiagnostic:
+    """A semantic validation diagnostic."""
 
-# CP2K 2024.1 removed/deprecated parameters
+    line: int
+    message: str
+    severity: str  # "error" or "warning"
+    code: str  # Error code for programmatic handling
+    section: Optional[str] = None
+
+
+# Version-specific removed/deprecated keywords
 REMOVED_KEYWORDS = {
-    "SINGLE_PRECISION_MATRICES",
-    "BROYDEN_MIXING_NEW",
-    "KP_RI_EXTENSION_FACTOR",
+    # CP2K 2023.x removed
+    "SINGLE_PRECISION_MATRICES": {
+        "since": "2023.1",
+        "message": "SINGLE_PRECISION_MATRICES 已在 CP2K 2023.x 中移除。\n"
+        "建议：移除此关键字，精度控制现在通过其他参数实现。",
+    },
+    "BROYDEN_MIXING_NEW": {
+        "since": "2024.1",
+        "message": "BROYDEN_MIXING_NEW 已在 CP2K 2024.x 中移除。\n"
+        "建议：使用 BROYDEN_MIXING 或其他混合方法。",
+    },
+    "KP_RI_EXTENSION_FACTOR": {
+        "since": "2024.1",
+        "message": "KP_RI_EXTENSION_FACTOR 已在 CP2K 2024.x 中移除。\n"
+        "建议：使用新的 K 点 RI 参数配置。",
+    },
 }
 
 DEPRECATED_KEYWORDS = {
-    "QUIP": "Use other machine-learning potentials instead.",
-    "PEXSI": "PEXSI support is deprecated in CP2K 2024.1.",
+    # CP2K 2024.x deprecated
+    "QUIP": {
+        "since": "2024.1",
+        "message": "QUIP 支持已在 CP2K 2024.x 中标记为废弃，将在未来版本移除。\n"
+        "建议：迁移到其他机器学习势方法如 DeePMD 或 NequIP。",
+    },
+    "PEXSI": {
+        "since": "2024.1",
+        "message": "PEXSI 支持已在 CP2K 2024.x 中标记为废弃。\n"
+        "建议：考虑使用其他电子结构方法。",
+    },
 }
 
-# RUN_TYPE to required MOTION sections mapping
-RUN_TYPE_MOTION_MAP = {
-    "GEO_OPT": {"GEO_OPT"},
-    "MD": {"MD"},
-    "CELL_OPT": {"CELL_OPT"},
-    "BAND": {"BAND"},
-    "MC": {"MC"},
-    "VIBRATIONAL_ANALYSIS": {"VIBRATIONAL_ANALYSIS"},
-}
 
-# RUN_TYPE that should NOT have motion sections
-STATIC_RUN_TYPES = {"ENERGY", "ENERGY_FORCE", "WAVEFUNCTION", "ELECTRONIC_SPECTRA", "ELASTIC_CONSTANT"}
+class CP2KSemanticValidator:
+    """Validates CP2K input files for semantic correctness."""
 
-# Motion sections that are NOT valid for static calculations
-FORBIDDEN_MOTION_FOR_STATIC = {"GEO_OPT", "MD", "CELL_OPT", "BAND", "MC", "VIBRATIONAL_ANALYSIS"}
+    # Target CP2K version for validation
+    TARGET_VERSION = "2024.1"
 
+    # RUN_TYPE to MOTION section mapping
+    # Format: RUN_TYPE -> (required_sections, forbidden_sections, description)
+    RUN_TYPE_MOTION_MAP = {
+        "ENERGY": {
+            "required": set(),
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT", "BAND", "MC"},
+            "description": "静态单点能计算",
+        },
+        "ENERGY_FORCE": {
+            "required": set(),
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT", "BAND", "MC"},
+            "description": "计算能量和力",
+        },
+        "GEO_OPT": {
+            "required": {"GEO_OPT"},
+            "forbidden": {"MD", "CELL_OPT", "BAND"},
+            "description": "几何优化",
+        },
+        "MD": {
+            "required": {"MD"},
+            "forbidden": {"GEO_OPT", "CELL_OPT", "BAND"},
+            "description": "分子动力学",
+        },
+        "CELL_OPT": {
+            "required": {"CELL_OPT"},
+            "forbidden": {"GEO_OPT", "MD", "BAND"},
+            "description": "晶胞优化",
+        },
+        "BAND": {
+            "required": {"BAND"},
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT"},
+            "description": "能带计算",
+        },
+        "MC": {
+            "required": {"MC"},
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT", "BAND"},
+            "description": "蒙特卡洛",
+        },
+        "VIBRATIONAL_ANALYSIS": {
+            "required": set(),  # Uses VIBRATIONAL_ANALYSIS top-level section
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT"},
+            "description": "振动分析",
+        },
+        "LR": {
+            "required": set(),
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT"},
+            "description": "线性响应",
+        },
+        "SPECTRA": {
+            "required": set(),
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT"},
+            "description": "光谱计算",
+        },
+        "NONE": {
+            "required": set(),
+            "forbidden": {"GEO_OPT", "MD", "CELL_OPT", "BAND", "MC"},
+            "description": "无任务",
+        },
+    }
 
-@dataclass
-class Diagnostic:
-    """A single validation diagnostic."""
+    # FORCE_EVAL METHOD compatibility
+    METHOD_SECTION_MAP = {
+        "QS": {"required": {"DFT"}, "forbidden": {"FIST", "MM"}, "description": "QuickStep DFT"},
+        "QUICKSTEP": {"required": {"DFT"}, "forbidden": {"FIST", "MM"}, "description": "QuickStep DFT"},
+        "FIST": {"required": set(), "forbidden": {"DFT"}, "description": "分子力学"},  # FIST uses MM subsection
+        "QMMM": {"required": set(), "forbidden": set(), "description": "QM/MM"},
+        "EIP": {"required": set(), "forbidden": {"DFT", "FIST"}, "description": "经验势"},
+        "NNP": {"required": {"NNP"}, "forbidden": {"DFT"}, "description": "神经网络势"},
+        "MIXED": {"required": set(), "forbidden": set(), "description": "混合方法"},
+    }
 
-    severity: str  # "error", "warning", "info"
-    source: str  # "cp2k-parser", "cp2k-schema", "cp2k-lint", "cp2k-semantics"
-    code: str
-    message: str
-    line: Optional[int] = None
-    column: Optional[int] = None
-    end_line: Optional[int] = None
-    end_column: Optional[int] = None
-    suggested_fix: Optional[str] = None
+    # SCF solver conflicts
+    SCF_SOLVER_SECTIONS = {"OT", "DIAGONALIZATION"}
 
+    # Element to atomic number (common elements)
+    ELEMENT_Z = {
+        "H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8,
+        "F": 9, "Ne": 10, "Na": 11, "Mg": 12, "Al": 13, "Si": 14, "P": 15,
+        "S": 16, "Cl": 17, "Ar": 18, "K": 19, "Ca": 20, "Sc": 21, "Ti": 22,
+        "V": 23, "Cr": 24, "Mn": 25, "Fe": 26, "Co": 27, "Ni": 28, "Cu": 29,
+        "Zn": 30, "Ga": 31, "Ge": 32, "As": 33, "Se": 34, "Br": 35, "Kr": 36,
+        "Rb": 37, "Sr": 38, "Y": 39, "Zr": 40, "Nb": 41, "Mo": 42, "Tc": 43,
+        "Ru": 44, "Rh": 45, "Pd": 46, "Ag": 47, "Cd": 48, "In": 49, "Sn": 50,
+        "Sb": 51, "Te": 52, "I": 53, "Xe": 54, "Cs": 55, "Ba": 56, "La": 57,
+        "Ce": 58, "Pr": 59, "Nd": 60, "Pm": 61, "Sm": 62, "Eu": 63, "Gd": 64,
+        "Tb": 65, "Dy": 66, "Ho": 67, "Er": 68, "Tm": 69, "Yb": 70, "Lu": 71,
+        "Hf": 72, "Ta": 73, "W": 74, "Re": 75, "Os": 76, "Ir": 77, "Pt": 78,
+        "Au": 79, "Hg": 80, "Tl": 81, "Pb": 82, "Bi": 83, "Po": 84, "At": 85,
+        "Rn": 86, "Fr": 87, "Ra": 88, "Ac": 89, "Th": 90, "Pa": 91, "U": 92,
+    }
 
-@dataclass
-class ValidationResult:
-    """Collection of diagnostics from a validation run."""
+    def __init__(self):
+        self.diagnostics: List[SemanticDiagnostic] = []
 
-    diagnostics: List[Diagnostic] = field(default_factory=list)
+    def validate(self, tree: Any) -> List[SemanticDiagnostic]:
+        """Validate a parsed CP2K input tree.
 
-    @property
-    def errors(self):
-        return [d for d in self.diagnostics if d.severity == "error"]
+        Args:
+            tree: The parsed CP2K input tree (nested dict from parser).
 
-    @property
-    def warnings(self):
-        return [d for d in self.diagnostics if d.severity == "warning"]
+        Returns:
+            List of semantic diagnostics.
+        """
+        self.diagnostics = []
 
-    @property
-    def has_errors(self):
-        return len(self.errors) > 0
+        # Get GLOBAL section
+        global_section = tree.get("global", {})
+        if isinstance(global_section, list):
+            global_section = global_section[0] if global_section else {}
 
-    def add_error(self, source, code, message, line=None, column=None, suggested_fix=None):
-        self.diagnostics.append(Diagnostic(
-            severity="error", source=source, code=code, message=message,
-            line=line, column=column, suggested_fix=suggested_fix,
-        ))
+        # Get RUN_TYPE
+        run_type = self._get_keyword_value(global_section, "run_type", "ENERGY_FORCE").upper()
 
-    def add_warning(self, source, code, message, line=None, column=None, suggested_fix=None):
-        self.diagnostics.append(Diagnostic(
-            severity="warning", source=source, code=code, message=message,
-            line=line, column=column, suggested_fix=suggested_fix,
-        ))
+        # Get MOTION section
+        motion_section = tree.get("motion", {})
+        if isinstance(motion_section, list):
+            motion_section = motion_section[0] if motion_section else {}
 
+        # Get FORCE_EVAL section
+        force_eval_sections = tree.get("force_eval", [])
+        if not isinstance(force_eval_sections, list):
+            force_eval_sections = [force_eval_sections] if force_eval_sections else []
 
-def _find_section(tree: dict, *path: str) -> Optional[dict]:
-    """Navigate nested dict by section path, accounting for '+' prefix on sections."""
-    current = tree
-    for name in path:
-        found = current.get(f"+{name.lower()}")
-        if found is None:
-            # try without prefix
-            found = current.get(name.lower())
-        if found is None:
-            return None
-        if isinstance(found, list):
-            current = found[0]
-        elif isinstance(found, dict):
-            current = found
-        else:
-            return None
-    return current
+        # 1. Validate RUN_TYPE vs MOTION sections
+        self._validate_run_type_motion(run_type, motion_section, global_section)
 
+        # 2. Validate FORCE_EVAL METHOD compatibility
+        for fe in force_eval_sections:
+            self._validate_force_eval_method(fe)
 
-def _get_value(tree: dict, *path: str, default=None):
-    """Get a keyword value from the nested dict."""
-    current = tree
-    for name in path[:-1]:
-        found = current.get(f"+{name.lower()}")
-        if found is None:
-            found = current.get(name.lower())
-        if found is None:
-            return default
-        if isinstance(found, list):
-            current = found[0]
-        elif isinstance(found, dict):
-            current = found
-        else:
-            return default
-    key = path[-1].lower()
-    return current.get(key, default)
+        # 3. Validate electronic structure (for each FORCE_EVAL)
+        for fe in force_eval_sections:
+            self._validate_electronic_structure(fe)
 
+        # 4. Validate SCF solver conflicts
+        for fe in force_eval_sections:
+            dft = fe.get("dft", {})
+            if isinstance(dft, list):
+                dft = dft[0] if dft else {}
+            self._validate_scf_solvers(dft)
 
-def validate_run_type_motion_consistency(tree: dict, result: ValidationResult):
-    """Issue #3: Check RUN_TYPE vs MOTION section consistency."""
-    global_section = _find_section(tree, "GLOBAL")
-    if global_section is None:
-        return
+        # 5. Validate cutoff energy
+        for fe in force_eval_sections:
+            self._validate_cutoff(fe)
 
-    run_type = global_section.get("run_type")
-    if run_type is None:
-        return
+        # 6. Validate removed/deprecated keywords (version-aware)
+        self._validate_removed_keywords(tree)
 
-    if isinstance(run_type, list):
-        run_type = run_type[0]
-    run_type = str(run_type).upper()
+        # 7. Validate SCF parameters
+        for fe in force_eval_sections:
+            dft = fe.get("dft", {})
+            if isinstance(dft, list):
+                dft = dft[0] if dft else {}
+            scf = dft.get("scf", {})
+            if isinstance(scf, list):
+                scf = scf[0] if scf else {}
+            self._validate_scf_params(scf)
 
-    motion_section = _find_section(tree, "MOTION")
+        # 8. Validate coordinate section
+        for fe in force_eval_sections:
+            subsys = fe.get("subsys", {})
+            if isinstance(subsys, list):
+                subsys = subsys[0] if subsys else {}
+            coord = subsys.get("coord", {})
+            if isinstance(coord, list):
+                coord = coord[0] if coord else {}
+            self._validate_coordinates(coord)
 
-    if run_type in STATIC_RUN_TYPES:
-        if motion_section is None:
+        # 9. Validate XC functional
+        for fe in force_eval_sections:
+            dft = fe.get("dft", {})
+            if isinstance(dft, list):
+                dft = dft[0] if dft else {}
+            self._validate_xc_functional(dft)
+
+        return self.diagnostics
+
+    def _get_keyword_value(self, section: Dict, keyword: str, default: str = "") -> str:
+        """Get keyword value from a section dict."""
+        value = section.get(keyword, default)
+        if isinstance(value, dict):
+            return value.get("_", default)
+        return str(value) if value else default
+
+    def _get_section_line(self, section: Dict, default: int = 1) -> int:
+        """Try to get the line number of a section."""
+        return section.get("_line", default)
+
+    def _validate_run_type_motion(self, run_type: str, motion_section: Dict, global_section: Dict):
+        """Validate RUN_TYPE consistency with MOTION subsections."""
+        if run_type not in self.RUN_TYPE_MOTION_MAP:
+            # Unknown RUN_TYPE, skip validation
             return
-        for forbidden in FORBIDDEN_MOTION_FOR_STATIC:
-            motion_key = f"+{forbidden.lower()}"
-            if motion_key in motion_section:
-                result.add_error(
-                    source="cp2k-semantics",
+
+        rules = self.RUN_TYPE_MOTION_MAP[run_type]
+        required: set[str] = set(rules["required"])  # type: ignore[assignment]
+        forbidden: set[str] = set(rules["forbidden"])  # type: ignore[assignment]
+
+        # Get present MOTION subsections
+        present_motion_sections = set()
+        for name in motion_section.keys():
+            if name.startswith("_"):
+                continue
+            present_motion_sections.add(name.upper())
+
+        # Check for forbidden sections
+        forbidden_present = present_motion_sections & forbidden
+        if forbidden_present:
+            line = self._get_section_line(motion_section)
+            section_name = next(iter(forbidden_present))
+
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"`RUN_TYPE={run_type}` ({rules['description']}) 与 `&MOTION / &{section_name}` 截面矛盾。\n"
+                    f"  - 当前设置：RUN_TYPE={run_type}\n"
+                    f"  - 检测到：&{section_name} 截面\n"
+                    f"建议：\n"
+                    f"  - 若需{'几何优化' if section_name == 'GEO_OPT' else '分子动力学' if section_name == 'MD' else section_name}"
+                    f"，请将 RUN_TYPE 改为 `{section_name}`\n"
+                    f"  - 若需静态计算，请删除 &MOTION / &{section_name} 截面",
+                    severity="error",
                     code="RUN_TYPE_MOTION_MISMATCH",
-                    message=f"RUN_TYPE={run_type} indicates a static calculation, but "
-                            f"&{forbidden} section was found. Remove the &{forbidden} section "
-                            f"or change RUN_TYPE to {forbidden}.",
-                    suggested_fix=f"Remove &{forbidden} section or change RUN_TYPE to {forbidden}",
+                    section=f"MOTION/{section_name}",
                 )
-
-    elif run_type in RUN_TYPE_MOTION_MAP:
-        required_sections = RUN_TYPE_MOTION_MAP[run_type]
-        if motion_section is None:
-            result.add_error(
-                source="cp2k-semantics",
-                code="RUN_TYPE_MISSING_MOTION",
-                message=f"RUN_TYPE={run_type} requires a &{required_sections} section under &MOTION.",
-                suggested_fix=f"Add &{next(iter(required_sections))} section under &MOTION",
-            )
-        else:
-            for required in required_sections:
-                motion_key = f"+{required.lower()}"
-                if motion_key not in motion_section:
-                    result.add_warning(
-                        source="cp2k-semantics",
-                        code="RUN_TYPE_MISSING_MOTION_SECTION",
-                        message=f"RUN_TYPE={run_type} but no &{required} section found under &MOTION.",
-                        suggested_fix=f"Add &{required} section under &MOTION",
-                    )
-
-
-def validate_force_eval_method(tree: dict, result: ValidationResult):
-    """Issue #1: Validate FORCE_EVAL METHOD compatibility."""
-    force_evals = tree.get("+force_eval")
-    if force_evals is None:
-        return
-
-    if not isinstance(force_evals, list):
-        force_evals = [force_evals]
-
-    for i, fe in enumerate(force_evals):
-        method = fe.get("method")
-        if method is None:
-            continue
-        if isinstance(method, list):
-            method = method[0]
-        method = str(method).upper()
-
-        dft_section = fe.get("+dft")
-        fist_section = fe.get("+fist")
-        mm_section = fe.get("+mm")
-        nnp_section = fe.get("+nnp")
-
-        if method == "QS" or method == "QUICKSTEP":
-            if fist_section is not None:
-                result.add_error(
-                    source="cp2k-semantics", code="METHOD_SECTION_CONFLICT",
-                    message=f"METHOD=QS but &FIST section found. QS (Quickstep) and FIST (classical) are mutually exclusive.",
-                    suggested_fix="Remove &FIST section or change METHOD to FIST",
-                )
-            if mm_section is not None:
-                result.add_error(
-                    source="cp2k-semantics", code="METHOD_SECTION_CONFLICT",
-                    message=f"METHOD=QS but &MM section found. QS and MM are mutually exclusive.",
-                )
-        elif method == "FIST":
-            if dft_section is not None:
-                result.add_error(
-                    source="cp2k-semantics", code="METHOD_SECTION_CONFLICT",
-                    message=f"METHOD=FIST but &DFT section found. FIST and DFT are mutually exclusive.",
-                    suggested_fix="Remove &DFT section or change METHOD to QS",
-                )
-        elif method == "NNP":
-            if nnp_section is None:
-                result.add_warning(
-                    source="cp2k-semantics", code="METHOD_MISSING_SECTION",
-                    message=f"METHOD=NNP but no &NNP section found.",
-                    suggested_fix="Add &NNP section under &FORCE_EVAL",
-                )
-            if dft_section is not None:
-                result.add_error(
-                    source="cp2k-semantics", code="METHOD_SECTION_CONFLICT",
-                    message=f"METHOD=NNP but &DFT section found. NNP and DFT are mutually exclusive.",
-                )
-        elif method == "EIP":
-            if dft_section is not None:
-                result.add_error(
-                    source="cp2k-semantics", code="METHOD_SECTION_CONFLICT",
-                    message=f"METHOD=EIP but &DFT section found.",
-                )
-
-
-def validate_dft_section(tree: dict, result: ValidationResult):
-    """Issue #1 & #5: Validate DFT section for XC functional conflicts, SCF solver conflicts."""
-    dft = _find_section(tree, "FORCE_EVAL", "DFT")
-    if dft is None:
-        return
-
-    # Check for multiple XC functionals
-    xc_section = dft.get("+xc")
-    if xc_section is not None:
-        xc_functional = xc_section.get("+xc_functional")
-        if xc_functional is not None:
-            if isinstance(xc_functional, dict):
-                functional_names = list(xc_functional.keys())
-            elif isinstance(xc_functional, list):
-                functional_names = [list(f.keys())[0] if isinstance(f, dict) else str(f) for f in xc_functional]
-            else:
-                functional_names = []
-            if len(functional_names) > 1:
-                result.add_error(
-                    source="cp2k-semantics", code="MULTIPLE_XC_FUNCTIONALS",
-                    message=f"Multiple XC functionals defined: {', '.join(functional_names)}. "
-                            "Only one XC functional should be specified.",
-                    suggested_fix=f"Keep only one functional from: {', '.join(functional_names)}",
-                )
-
-    # Check for SCF solver conflicts (OT + DIAGONALIZATION)
-    scf = dft.get("+scf")
-    if scf is not None:
-        ot = scf.get("+ot")
-        diag = scf.get("+diagonalization")
-        if ot is not None and diag is not None:
-            result.add_error(
-                source="cp2k-semantics", code="SCF_SOLVER_CONFLICT",
-                message="Both &OT and &DIAGONALIZATION SCF solvers are specified. Choose one.",
-                suggested_fix="Remove either &OT or &DIAGONALIZATION",
             )
 
-        # SCF convergence warnings
-        max_scf = scf.get("max_scf")
-        if max_scf is not None:
-            try:
-                max_scf_val = int(str(max_scf).split()[0]) if isinstance(max_scf, (list, tuple)) else int(max_scf)
-                if max_scf_val < 20:
-                    result.add_warning(
-                        source="cp2k-lint", code="LOW_MAX_SCF",
-                        message=f"MAX_SCF={max_scf_val} is low and may cause convergence issues. Consider ≥ 20.",
-                    )
-            except (ValueError, TypeError):
-                pass
+        # Check for missing required sections (warning only)
+        missing_required = required - present_motion_sections
+        if missing_required:
+            line = self._get_section_line(global_section)
+            section_name = next(iter(missing_required))
 
-        eps_scf = scf.get("eps_scf")
-        if eps_scf is not None:
-            try:
-                eps_val = float(str(eps_scf).split()[0]) if isinstance(eps_scf, (list, tuple)) else float(eps_scf)
-                if eps_val > 1.0e-5:
-                    result.add_warning(
-                        source="cp2k-lint", code="LOW_SCF_ACCURACY",
-                        message=f"EPS_SCF={eps_val} is low accuracy. Consider ≤ 1.0E-5 for production runs.",
-                    )
-            except (ValueError, TypeError):
-                pass
-
-    # Check cutoff values
-    mgrid = dft.get("+mgrid")
-    if mgrid is not None:
-        cutoff = mgrid.get("cutoff")
-        if cutoff is not None:
-            try:
-                cutoff_val = float(str(cutoff).split()[0]) if isinstance(cutoff, (list, tuple)) else float(cutoff)
-                if cutoff_val < 200:
-                    result.add_error(
-                        source="cp2k-semantics", code="CUTOFF_TOO_LOW",
-                        message=f"CUTOFF={cutoff_val} Ry is too low. Minimum recommended is 200 Ry.",
-                        suggested_fix="Increase CUTOFF to at least 200 Ry",
-                    )
-                elif cutoff_val < 300:
-                    result.add_warning(
-                        source="cp2k-lint", code="CUTOFF_LOW",
-                        message=f"CUTOFF={cutoff_val} Ry is low. Recommended ≥ 300 Ry for accurate results.",
-                        suggested_fix="Consider increasing CUTOFF to ≥ 300 Ry",
-                    )
-            except (ValueError, TypeError):
-                pass
-
-        rel_cutoff = mgrid.get("rel_cutoff")
-        if rel_cutoff is not None:
-            try:
-                rel_val = float(str(rel_cutoff).split()[0]) if isinstance(rel_cutoff, (list, tuple)) else float(rel_cutoff)
-                if rel_val < 30:
-                    result.add_warning(
-                        source="cp2k-lint", code="REL_CUTOFF_LOW",
-                        message=f"REL_CUTOFF={rel_val} Ry is low. Recommended ≥ 30 Ry.",
-                    )
-            except (ValueError, TypeError):
-                pass
-
-    # Check KPOINTS for molecular (non-periodic) systems
-    kpoints = dft.get("+kpoints")
-    if kpoints is not None:
-        poisson = dft.get("+poisson")
-        periodic = None
-        if poisson is not None:
-            periodic = poisson.get("periodic")
-            if isinstance(periodic, list):
-                periodic = periodic[0]
-        if periodic and str(periodic).upper() == "NONE":
-            result.add_warning(
-                source="cp2k-lint", code="KPOINTS_NON_PERIODIC",
-                message="KPOINTS specified but POISSON PERIODIC=NONE. K-points are not useful for non-periodic systems.",
-                suggested_fix="Remove &KPOINTS section or set POISSON PERIODIC appropriately",
-            )
-
-
-def validate_coordinates(tree: dict, result: ValidationResult):
-    """Issue #5: Validate coordinate section for element symbols and basic structure."""
-    subsys = _find_section(tree, "FORCE_EVAL", "SUBSYS")
-    if subsys is None:
-        return
-
-    coord = subsys.get("+coord")
-    if coord is None:
-        return
-
-    # Get coordinate lines (stored as "*" key)
-    coord_lines = coord.get("*", [])
-    if not isinstance(coord_lines, list):
-        coord_lines = [coord_lines] if coord_lines else []
-
-    atoms_found = set()
-    for coordline in coord_lines:
-        if isinstance(coordline, str):
-            fields = coordline.split()
-        elif hasattr(coordline, "split"):
-            fields = str(coordline).split()
-        else:
-            fields = [str(coordline)] if coordline else []
-
-        if len(fields) < 4:
-            continue
-
-        element = fields[0].rstrip("0123456789")
-        if element not in ELEMENTS:
-            # Check if it's a valid element with isotope number
-            result.add_error(
-                source="cp2k-semantics", code="INVALID_ELEMENT",
-                message=f"Unknown element '{element}' in COORD section.",
-                suggested_fix=f"Use a valid chemical element symbol",
-            )
-        atoms_found.add(element)
-
-    # Check KIND definitions match coordinate atoms
-    kinds = subsys.get("+kind")
-    if kinds is not None:
-        if isinstance(kinds, dict):
-            kind_names = set(k.upper() for k in kinds.keys() if k != "_")
-        elif isinstance(kinds, list):
-            kind_names = set()
-            for k in kinds:
-                if isinstance(k, dict):
-                    param = k.get("_")
-                    if param:
-                        kind_names.add(str(param).upper())
-        else:
-            kind_names = set()
-
-        for atom in atoms_found:
-            if atom.upper() not in kind_names:
-                result.add_warning(
-                    source="cp2k-semantics", code="MISSING_KIND",
-                    message=f"No &KIND section defined for element '{atom}'. Default parameters will be used.",
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"`RUN_TYPE={run_type}` 通常需要 `&MOTION / &{section_name}` 截面。\n"
+                    f"  - 当前设置：RUN_TYPE={run_type} ({rules['description']})\n"
+                    f"  - 缺少：&{section_name} 截面\n"
+                    f"建议：添加 `&MOTION / &{section_name}` 截面或检查 RUN_TYPE 设置是否正确",
+                    severity="warning",
+                    code="MISSING_MOTION_SECTION",
+                    section="MOTION",
                 )
+            )
 
+    def _validate_force_eval_method(self, force_eval: Dict):
+        """Validate FORCE_EVAL METHOD compatibility."""
+        method = self._get_keyword_value(force_eval, "method", "QS").upper()
 
-def validate_removed_deprecated_keywords(tree: dict, result: ValidationResult):
-    """Issue #5: Detect removed and deprecated keywords."""
+        if method not in self.METHOD_SECTION_MAP:
+            return
 
-    def _scan_dict(d, path=""):
-        if isinstance(d, dict):
-            for key, val in d.items():
-                clean_key = key.lstrip("+").upper()
-                current_path = f"{path}/{clean_key}" if path else clean_key
-                if clean_key in REMOVED_KEYWORDS:
-                    result.add_error(
-                        source="cp2k-semantics", code="REMOVED_KEYWORD",
-                        message=f"Keyword '{clean_key}' has been removed in CP2K 2024.1.",
-                        suggested_fix=f"Remove '{clean_key}' from input",
-                    )
-                if clean_key in DEPRECATED_KEYWORDS:
-                    replacement = DEPRECATED_KEYWORDS[clean_key]
-                    result.add_warning(
-                        source="cp2k-lint", code="DEPRECATED_KEYWORD",
-                        message=f"Keyword '{clean_key}' is deprecated. {replacement}",
-                        suggested_fix=f"Consider replacing '{clean_key}'",
-                    )
-                _scan_dict(val, current_path)
-        elif isinstance(d, list):
-            for item in d:
-                _scan_dict(item, path)
+        rules = self.METHOD_SECTION_MAP[method]
+        required: set[str] = set(rules["required"])  # type: ignore[assignment]
+        forbidden: set[str] = set(rules["forbidden"])  # type: ignore[assignment]
 
-    _scan_dict(tree)
+        # Get present sections in FORCE_EVAL
+        present_sections = set()
+        for name in force_eval.keys():
+            if name.startswith("_"):
+                continue
+            present_sections.add(name.upper())
 
+        # Check for required sections
+        missing_required = required - present_sections
+        if missing_required:
+            line = self._get_section_line(force_eval)
+            section_name = next(iter(missing_required))
 
-def validate_multipolespin(tree: dict, result: ValidationResult):
-    """Issue #5: Check MULTIPLICITY vs UKS consistency."""
-    dft = _find_section(tree, "FORCE_EVAL", "DFT")
-    if dft is None:
-        return
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"`METHOD={method}` ({rules['description']}) 需要 `&{section_name}` 截面。\n"
+                    f"  - 当前设置：METHOD={method}\n"
+                    f"  - 缺少：&{section_name} 截面",
+                    severity="error",
+                    code="MISSING_REQUIRED_SECTION",
+                    section=f"FORCE_EVAL/{section_name}",
+                )
+            )
 
-    mult = dft.get("multiplicity")
-    uks = dft.get("uks")
+        # Check for forbidden sections
+        forbidden_present = present_sections & forbidden
+        if forbidden_present:
+            line = self._get_section_line(force_eval)
+            section_name = next(iter(forbidden_present))
 
-    if mult is not None:
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"`METHOD={method}` 与 `&{section_name}` 截面不兼容。\n"
+                    f"  - 当前设置：METHOD={method} ({rules['description']})\n"
+                    f"  - 不兼容：&{section_name} 截面",
+                    severity="error",
+                    code="METHOD_SECTION_INCOMPAT",
+                    section=f"FORCE_EVAL/{section_name}",
+                )
+            )
+
+    def _validate_electronic_structure(self, force_eval: Dict):
+        """Validate electronic structure settings (charge, multiplicity, UKS)."""
+        dft = force_eval.get("dft", {})
+        if isinstance(dft, list):
+            dft = dft[0] if dft else {}
+
+        if not dft:
+            return  # Not a DFT calculation
+
+        # Get charge and multiplicity
+        charge_str = self._get_keyword_value(dft, "charge", "0")
+        mult_str = self._get_keyword_value(dft, "multiplicity", "0")
+        uks = self._get_keyword_value(dft, "uks", "false").lower() in ("true", "yes", "1")
+
         try:
-            mult_val = int(str(mult).split()[0]) if isinstance(mult, (list, tuple)) else int(mult)
-            if mult_val > 1 and uks is not None:
-                uks_val = str(uks).upper().split()[0] if isinstance(uks, (list, tuple)) else str(uks).upper()
-                if uks_val in ("F", "FALSE", "FALS", "0"):
-                    result.add_error(
-                        source="cp2k-semantics", code="MULTIPLICITY_UKS_CONFLICT",
-                        message=f"MULTIPLICITY={mult_val} requires open-shell (UKS=TRUE), but UKS=FALSE.",
-                        suggested_fix="Set UKS TRUE or remove MULTIPLICITY",
+            charge = int(charge_str)
+            multiplicity = int(mult_str)
+        except ValueError:
+            return  # Invalid values, skip
+
+        # Get coordinates to count electrons
+        subsys = force_eval.get("subsys", {})
+        if isinstance(subsys, list):
+            subsys = subsys[0] if subsys else {}
+
+        coord = subsys.get("coord", {})
+        if isinstance(coord, list):
+            coord = coord[0] if coord else {}
+
+        if not coord:
+            return  # No coordinates, skip
+
+        # Count electrons from coordinates
+        total_electrons = self._count_electrons(coord)
+
+        if total_electrons == 0:
+            return  # Could not determine
+
+        # Adjust for charge
+        total_electrons -= charge
+
+        # Validate multiplicity vs electron count
+        # odd multiplicity (1, 3, 5...) -> even electrons
+        # even multiplicity (2, 4, 6...) -> odd electrons
+        electrons_mod_2 = total_electrons % 2
+        mult_mod_2 = multiplicity % 2
+
+        # If both are even or both are odd -> mismatch
+        if multiplicity > 0 and electrons_mod_2 == mult_mod_2:
+            line = self._get_section_line(dft)
+
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"电子数 ({total_electrons}) 与多重态 (MULTIPLICITY={multiplicity}) 不一致。\n"
+                    f"  - 当前电子数：{total_electrons} ({'偶数' if electrons_mod_2 == 0 else '奇数'})\n"
+                    f"  - 多重态 {multiplicity} 需要{'偶数' if mult_mod_2 == 1 else '奇数'}电子\n"
+                    f"建议：检查 CHARGE、MULTIPLICITY 或坐标设置",
+                    severity="error",
+                    code="ELECTRON_MULT_MISMATCH",
+                    section="FORCE_EVAL/DFT",
+                )
+            )
+
+        # Validate UKS with multiplicity > 1
+        if multiplicity > 1 and not uks:
+            line = self._get_section_line(dft)
+
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"MULTIPLICITY={multiplicity} (> 1) 需要 UKS=TRUE。\n"
+                    f"  - 多重态 {multiplicity} 意味着开壳层体系\n"
+                    f"  - 当前 UKS=FALSE (闭壳层)\n"
+                    f"建议：添加 `UKS TRUE` 或设置 `MULTIPLICITY 1`",
+                    severity="error",
+                    code="MULTIPLICITY_UKS_MISMATCH",
+                    section="FORCE_EVAL/DFT",
+                )
+            )
+
+    def _count_electrons(self, coord_section: Dict) -> int:
+        """Count electrons from COORD section."""
+        total = 0
+
+        # Get coordinate lines (default keyword *)
+        coord_lines = coord_section.get("*", [])
+        if isinstance(coord_lines, str):
+            coord_lines = [coord_lines]
+
+        for line in coord_lines:
+            if isinstance(line, str):
+                parts = line.split()
+                if parts:
+                    element = parts[0].capitalize()
+                    z = self.ELEMENT_Z.get(element, 0)
+                    total += z
+
+        return total
+
+    def _validate_scf_solvers(self, dft: Dict):
+        """Validate SCF solver conflicts."""
+        scf = dft.get("scf", {})
+        if isinstance(scf, list):
+            scf = scf[0] if scf else {}
+
+        if not scf:
+            return
+
+        present_solvers = []
+        for solver in self.SCF_SOLVER_SECTIONS:
+            if solver.lower() in [k.lower() for k in scf.keys()]:
+                present_solvers.append(solver)
+
+        if len(present_solvers) > 1:
+            line = self._get_section_line(scf)
+
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"不能同时使用多种 SCF 求解器。\n"
+                    f"  - 检测到：{', '.join(f'&{s}' for s in present_solvers)}\n"
+                    f"  - OT (优化传递) 和 DIAGONALIZATION 是互斥的\n"
+                    f"建议：只保留一种 SCF 求解器",
+                    severity="error",
+                    code="SCF_SOLVER_CONFLICT",
+                    section="FORCE_EVAL/DFT/SCF",
+                )
+            )
+
+    def _validate_cutoff(self, force_eval: Dict):
+        """Validate cutoff energy."""
+        dft = force_eval.get("dft", {})
+        if isinstance(dft, list):
+            dft = dft[0] if dft else {}
+
+        mgrid = dft.get("mgrid", {})
+        if isinstance(mgrid, list):
+            mgrid = mgrid[0] if mgrid else {}
+
+        if not mgrid:
+            return
+
+        cutoff_str = self._get_keyword_value(mgrid, "cutoff", "0")
+
+        try:
+            cutoff = float(cutoff_str)
+        except ValueError:
+            return
+
+        # Warn if cutoff is too low (typically < 300 Ry for production)
+        if 0 < cutoff < 300:
+            line = self._get_section_line(mgrid)
+
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message=f"截断能过低可能导致结果不准确。\n"
+                    f"  - 当前 CUTOFF：{cutoff} Ry\n"
+                    f"  - 建议值：≥ 300 Ry (生产计算)\n"
+                    f"  - 高精度：≥ 600 Ry\n"
+                    f"注意：截断能过低会导致基组不完整，能量和力计算误差增大",
+                    severity="warning",
+                    code="LOW_CUTOFF",
+                    section="FORCE_EVAL/DFT/MGRID",
+                )
+            )
+
+    def _validate_removed_keywords(self, tree: Dict):
+        """Validate removed/deprecated keywords based on CP2K version."""
+        # Recursively search for removed keywords
+        self._check_keywords_recursive(tree, [])
+
+    def _check_keywords_recursive(self, section: Dict, path: List[str]):
+        """Recursively check for removed/deprecated keywords."""
+        if not isinstance(section, dict):
+            return
+
+        for key, value in section.items():
+            if key.startswith("_"):
+                continue
+
+            key_upper = key.upper()
+
+            # Check for removed keywords
+            if key_upper in REMOVED_KEYWORDS:
+                info = REMOVED_KEYWORDS[key_upper]
+                line = self._get_section_line(section)
+                section_path = "/".join(path) if path else "ROOT"
+
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"关键字 `{key}` 已在 CP2K {info['since']} 中移除。\n"
+                        f"{info['message']}\n"
+                        f"当前 LSP 支持版本：{self.TARGET_VERSION}",
+                        severity="error",
+                        code="REMOVED_KEYWORD",
+                        section=section_path,
                     )
-        except (ValueError, TypeError):
+                )
+
+            # Check for deprecated keywords
+            if key_upper in DEPRECATED_KEYWORDS:
+                info = DEPRECATED_KEYWORDS[key_upper]
+                line = self._get_section_line(section)
+                section_path = "/".join(path) if path else "ROOT"
+
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"关键字 `{key}` 在 CP2K {info['since']} 中已废弃。\n"
+                        f"{info['message']}",
+                        severity="warning",
+                        code="DEPRECATED_KEYWORD",
+                        section=section_path,
+                    )
+                )
+
+            # Recurse into subsections
+            if isinstance(value, dict):
+                self._check_keywords_recursive(value, path + [key_upper])
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        self._check_keywords_recursive(item, path + [key_upper])
+
+    def _validate_scf_params(self, scf: Dict):
+        """Validate SCF parameters for common issues."""
+        if not scf:
+            return
+
+        # Check MAX_SCF
+        max_scf_str = self._get_keyword_value(scf, "max_scf", "50")
+        try:
+            max_scf = int(max_scf_str)
+            if max_scf < 20:
+                line = self._get_section_line(scf)
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"MAX_SCF 设置过少可能导致 SCF 不收敛。\n"
+                        f"  - 当前值：{max_scf}\n"
+                        f"  - 建议值：≥ 20（默认 50）\n"
+                        f"建议：增加 MAX_SCF 或检查初始猜测设置",
+                        severity="warning",
+                        code="LOW_MAX_SCF",
+                        section="FORCE_EVAL/DFT/SCF",
+                    )
+                )
+        except ValueError:
             pass
 
-
-def validate_md_parameters(tree: dict, result: ValidationResult):
-    """Issue #5: Validate MD parameters."""
-    md = _find_section(tree, "MOTION", "MD")
-    if md is None:
-        return
-
-    ensemble = md.get("ensemble")
-    if ensemble is None:
-        return
-    if isinstance(ensemble, list):
-        ensemble = ensemble[0]
-    ensemble = str(ensemble).upper()
-
-    if "NPT" in ensemble:
-        barostat = md.get("+barostat")
-        if not barostat:
-            result.add_warning(
-                source="cp2k-lint", code="NPT_NO_BAROSTAT",
-                message=f"ENSEMBLE={ensemble} but no &BAROSTAT section found.",
-                suggested_fix="Add &BAROSTAT section under &MD",
-            )
-
-    if ensemble in ("NVT", "NPT", "NPT_I", "NPT_F"):
-        thermostat = md.get("+thermostat")
-        if not thermostat:
-            result.add_warning(
-                source="cp2k-lint", code="MD_NO_THERMOSTAT",
-                message=f"ENSEMBLE={ensemble} but no &THERMOSTAT section found.",
-                suggested_fix="Add &THERMOSTAT section under &MD",
-            )
-
-    timestep = md.get("timestep")
-    if timestep is not None:
+        # Check EPS_SCF
+        eps_scf_str = self._get_keyword_value(scf, "eps_scf", "1.0E-5")
         try:
-            ts_val = float(str(timestep).split()[0]) if isinstance(timestep, (list, tuple)) else float(timestep)
-            if ts_val < 0.1 or ts_val > 2.0:
-                result.add_warning(
-                    source="cp2k-lint", code="TIMESTEP_OUT_OF_RANGE",
-                    message=f"TIMESTEP={ts_val} fs is outside the typical range (0.1–2.0 fs).",
+            eps_scf = float(eps_scf_str)
+            if eps_scf > 1.0E-5:
+                line = self._get_section_line(scf)
+                self.diagnostics.append(
+                    SemanticDiagnostic(
+                        line=line,
+                        message=f"EPS_SCF 设置过松可能导致能量精度不足。\n"
+                        f"  - 当前值：{eps_scf_str}\n"
+                        f"  - 建议值：≤ 1.0E-5（默认 1.0E-5）\n"
+                        f"建议：减小 EPS_SCF 以提高精度",
+                        severity="warning",
+                        code="LOOSE_EPS_SCF",
+                        section="FORCE_EVAL/DFT/SCF",
+                    )
                 )
-        except (ValueError, TypeError):
+        except ValueError:
             pass
 
-
-def validate_geo_opt_parameters(tree: dict, result: ValidationResult):
-    """Issue #5: Validate GEO_OPT parameters."""
-    geo_opt = _find_section(tree, "MOTION", "GEO_OPT")
-    if geo_opt is None:
-        return
-
-    max_iter = geo_opt.get("max_iter")
-    if max_iter is not None:
-        try:
-            mi_val = int(str(max_iter).split()[0]) if isinstance(max_iter, (list, tuple)) else int(max_iter)
-            if mi_val < 20:
-                result.add_warning(
-                    source="cp2k-lint", code="GEO_OPT_LOW_MAX_ITER",
-                    message=f"GEO_OPT MAX_ITER={mi_val} is low. Convergence may not be reached.",
-                    suggested_fix="Consider increasing MAX_ITER to ≥ 100",
+        # Check for IGNORE_CONVERGENCE_FAILURE
+        ignore = self._get_keyword_value(scf, "ignore_convergence_failure", "false")
+        if ignore.lower() in ("true", "yes", "1"):
+            line = self._get_section_line(scf)
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message="IGNORE_CONVERGENCE_FAILURE 已启用。\n"
+                    "  - SCF 不收敛时程序将继续运行\n"
+                    "  - 结果可能不可靠\n"
+                    "建议：仅在调试时使用，生产计算请确保 SCF 收敛",
+                    severity="warning",
+                    code="IGNORE_SCF_FAILURE",
+                    section="FORCE_EVAL/DFT/SCF",
                 )
-        except (ValueError, TypeError):
-            pass
+            )
 
-    optimizer = geo_opt.get("optimizer")
-    if optimizer is not None:
-        opt_val = str(optimizer).upper().split()[0] if isinstance(optimizer, (list, tuple)) else str(optimizer).upper()
-        if opt_val == "BFGS":
-            result.add_info = True  # informational, not actionable
+    def _validate_coordinates(self, coord: Dict):
+        """Validate coordinate section."""
+        if not coord:
+            return
 
+        coord_lines = coord.get("*", [])
+        if isinstance(coord_lines, str):
+            coord_lines = [coord_lines]
 
-def validate_cell_periodic(tree: dict, result: ValidationResult):
-    """Issue #5: Check POISSON PERIODIC vs CELL PERIODIC consistency."""
-    dft = _find_section(tree, "FORCE_EVAL", "DFT")
-    if dft is None:
-        return
+        line_num = self._get_section_line(coord)
+        unknown_elements = []
 
-    poisson = dft.get("+poisson")
-    if poisson is None:
-        return
+        for line in coord_lines:
+            if isinstance(line, str):
+                parts = line.split()
+                if parts:
+                    element = parts[0].capitalize()
+                    # Check if valid element
+                    if element not in self.ELEMENT_Z:
+                        unknown_elements.append(element)
 
-    poisson_periodic = poisson.get("periodic")
-    if poisson_periodic is None:
-        return
-    if isinstance(poisson_periodic, list):
-        poisson_periodic = poisson_periodic[0]
-    poisson_periodic = str(poisson_periodic).upper()
+        if unknown_elements:
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line_num,
+                    message=f"检测到未知元素符号。\n"
+                    f"  - 未知元素：{', '.join(set(unknown_elements))}\n"
+                    f"  - 支持的元素：H-U (1-92)\n"
+                    f"建议：检查坐标中的元素符号是否正确",
+                    severity="error",
+                    code="UNKNOWN_ELEMENT",
+                    section="FORCE_EVAL/SUBSYS/COORD",
+                )
+            )
 
-    subsys = _find_section(tree, "FORCE_EVAL", "SUBSYS")
-    if subsys is None:
-        return
+    def _validate_xc_functional(self, dft: Dict):
+        """Validate XC functional configuration."""
+        xc = dft.get("xc", {})
+        if isinstance(xc, list):
+            xc = xc[0] if xc else {}
 
-    cell = subsys.get("+cell")
-    if cell is None:
-        return
+        # If no XC section at all, skip (QS method requires it but that's caught elsewhere)
+        # Note: {} means XC section exists but is empty - we should check it
+        if xc is None:
+            return
 
-    cell_periodic = cell.get("periodic")
-    if cell_periodic is None:
-        return
-    if isinstance(cell_periodic, list):
-        cell_periodic = cell_periodic[0]
-    cell_periodic = str(cell_periodic).upper()
+        # Get xc_functional section
+        xc_functional = xc.get("xc_functional")
 
-    if poisson_periodic != cell_periodic:
-        result.add_warning(
-            source="cp2k-semantics", code="PERIODIC_MISMATCH",
-            message=f"POISSON PERIODIC={poisson_periodic} but CELL PERIODIC={cell_periodic}. "
-                    "These should typically match.",
-            suggested_fix=f"Set both to {cell_periodic} or {poisson_periodic}",
-        )
+        # If xc_functional key doesn't exist (empty XC section or missing XC_FUNCTIONAL)
+        if xc_functional is None:
+            line = self._get_section_line(xc) if xc else 1
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message="未指定 XC 泛函。\n"
+                    "  - &XC 截面存在但未定义 &XC_FUNCTIONAL\n"
+                    "建议：添加泛函定义如 `&XC_FUNCTIONAL PBE`",
+                    severity="warning",
+                    code="NO_XC_FUNCTIONAL",
+                    section="FORCE_EVAL/DFT/XC",
+                )
+            )
+            return
 
+        if isinstance(xc_functional, list):
+            xc_functional = xc_functional[0] if xc_functional else {}
 
-def validate_file_references(tree: dict, result: ValidationResult):
-    """Issue #5: Check if referenced files exist."""
-    subsys = _find_section(tree, "FORCE_EVAL", "SUBSYS")
-    if subsys is None:
-        return
+        # Check if xc_functional is empty
+        has_functional = False
 
-    for key in ("basis_set_file_name", "potential_file_name", "coord_file_name"):
-        file_ref = subsys.get(key)
-        if file_ref is None:
-            continue
-        if isinstance(file_ref, list):
-            file_ref = file_ref[0]
-        file_path = str(file_ref)
-        # Skip if it looks like a placeholder or built-in name
-        if not file_path.startswith("/") and not file_path.startswith("."):
-            continue
-        p = pathlib.Path(file_path)
-        if not p.exists():
-            result.add_warning(
-                source="cp2k-lint", code="FILE_NOT_FOUND",
-                message=f"Referenced file '{file_path}' ({key}) does not exist.",
+        # Check for shortcut form like XC_FUNCTIONAL PBE
+        if xc_functional and xc_functional.get("_"):
+            has_functional = True
+        else:
+            # Check for subsection form like &PBE, &B3LYP
+            for key in xc_functional.keys():
+                if not key.startswith("_"):
+                    has_functional = True
+                    break
+
+        if not has_functional:
+            line = self._get_section_line(xc_functional) if xc_functional else self._get_section_line(xc)
+            self.diagnostics.append(
+                SemanticDiagnostic(
+                    line=line,
+                    message="未指定 XC 泛函。\n"
+                    "  - &XC_FUNCTIONAL 截面为空或未定义\n"
+                    "建议：添加泛函定义如 `&XC_FUNCTIONAL PBE` 或 `&PBE` 子截面",
+                    severity="warning",
+                    code="NO_XC_FUNCTIONAL",
+                    section="FORCE_EVAL/DFT/XC/XC_FUNCTIONAL",
+                )
             )
 
 
-def validate(tree: dict) -> ValidationResult:
-    """
-    Run all semantic validation rules on a parsed CP2K input tree.
-
-    :param tree: The nested dict produced by CP2KInputParser.parse()
-    :return: ValidationResult with all diagnostics
-    """
-    result = ValidationResult()
-
-    validate_removed_deprecated_keywords(tree, result)
-    validate_run_type_motion_consistency(tree, result)
-    validate_force_eval_method(tree, result)
-    validate_dft_section(tree, result)
-    validate_coordinates(tree, result)
-    validate_multipolespin(tree, result)
-    validate_md_parameters(tree, result)
-    validate_geo_opt_parameters(tree, result)
-    validate_cell_periodic(tree, result)
-    validate_file_references(tree, result)
-
-    return result
+def validate_semantics(tree: Any) -> List[SemanticDiagnostic]:
+    """Convenience function to validate semantics."""
+    validator = CP2KSemanticValidator()
+    return validator.validate(tree)
