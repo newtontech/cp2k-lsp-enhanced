@@ -77,9 +77,10 @@ def _get_schema_metadata() -> Dict:
                     enum_el = dt.find("./ENUMERATION")
                     if enum_el is not None:
                         values = []
-                        for val_el in enum_el.findall("./VAL"):
-                            if val_el.text:
-                                values.append(val_el.text.upper())
+                        for item_el in enum_el.findall("./ITEM"):
+                            name_el = item_el.find("./NAME")
+                            if name_el is not None and name_el.text:
+                                values.append(name_el.text.upper())
                         if values:
                             info["enum_values"] = values
 

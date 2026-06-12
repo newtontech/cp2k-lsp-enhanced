@@ -1,5 +1,6 @@
 """Tests for CP2K linter module."""
 
+import pathlib
 
 import pytest
 
@@ -7,13 +8,28 @@ from . import TEST_DIR
 
 linter = pytest.importorskip("cp2k_input_tools.linter")
 
-_get_all_schema_keywords = linter._get_all_schema_keywords
-_get_all_schema_sections = linter._get_all_schema_sections
-lint = linter.lint
-lint_config_smells = linter.lint_config_smells
-lint_duplicates = linter.lint_duplicates
-lint_invalid_nesting = linter.lint_invalid_nesting
-lint_keywords_misspelled = linter.lint_keywords_misspelled
+from cp2k_input_tools.linter import (
+    lint,
+    lint_keywords_misspelled,
+    lint_invalid_nesting,
+    lint_duplicates,
+    lint_config_smells,
+    lint_missing_end,
+    lint_unknown_enum,
+    lint_missing_files,
+    _get_all_schema_keywords,
+    _get_all_schema_sections,
+    RULE_LOW_CUTOFF,
+    RULE_LOW_REL_CUTOFF,
+    RULE_MISSING_END,
+    RULE_UNKNOWN_ENUM,
+    RULE_MISSING_BASIS,
+    RULE_MISSING_POTENTIAL,
+    RULE_INVALID_NESTING,
+    RULE_DUPLICATE_SECTION,
+    RULE_LOOSE_SCF_EPS,
+    RULE_MISSPELLED_KEYWORD,
+)
 
 
 class TestSchemaExtraction:
@@ -169,7 +185,7 @@ class TestConfigSmells:
   &END MGRID
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert any(d.code == "lint/low-cutoff" for d in diagnostics)
+        assert any(d.code == RULE_LOW_CUTOFF for d in diagnostics)
 
     def test_ok_cutoff(self):
         """Should not warn about reasonable cutoff."""
@@ -179,7 +195,7 @@ class TestConfigSmells:
   &END MGRID
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert not any(d.code == "lint/low-cutoff" for d in diagnostics)
+        assert not any(d.code == RULE_LOW_CUTOFF for d in diagnostics)
 
     def test_low_rel_cutoff(self):
         """Should warn about very low rel_cutoff."""
@@ -189,7 +205,7 @@ class TestConfigSmells:
   &END MGRID
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert any(d.code == "lint/low-rel-cutoff" for d in diagnostics)
+        assert any(d.code == RULE_LOW_REL_CUTOFF for d in diagnostics)
 
     def test_few_scf_iterations(self):
         """Should warn about very few SCF iterations."""
@@ -209,7 +225,7 @@ class TestConfigSmells:
   &END SCF
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert any(d.code == "lint/loose-scf-eps" for d in diagnostics)
+        assert any(d.code == RULE_LOOSE_SCF_EPS for d in diagnostics)
 
     def test_short_timestep(self):
         """Should warn about suspiciously short timestep."""
@@ -230,6 +246,105 @@ class TestConfigSmells:
 &END MOTION"""
         diagnostics = lint_config_smells(text)
         assert any(d.code == "lint/long-timestep" for d in diagnostics)
+
+
+class TestMissingEnd:
+    """Tests for missing section END detection."""
+
+    def test_no_missing_end(self):
+        """Valid input should not trigger missing END errors."""
+        text = """&GLOBAL
+  PROJECT test
+  RUN_TYPE ENERGY
+&END GLOBAL"""
+        diagnostics = lint_missing_end(text)
+        assert len(diagnostics) == 0
+
+    def test_missing_end_at_eof(self):
+        """Should detect section without END at end of file."""
+        text = """&GLOBAL
+  PROJECT test
+  RUN_TYPE ENERGY"""
+        diagnostics = lint_missing_end(text)
+        assert len(diagnostics) == 1
+        assert "GLOBAL" in diagnostics[0].message
+        assert diagnostics[0].code == RULE_MISSING_END
+
+    def test_missing_end_nested(self):
+        """Should detect nested section without END."""
+        text = """&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &SCF
+    &END SCF
+  Missing DFT END
+&END FORCE_EVAL"""
+        diagnostics = lint_missing_end(text)
+        assert len(diagnostics) == 1
+
+
+class TestUnknownEnum:
+    """Tests for unknown enum value detection."""
+
+    def test_valid_enum_value(self):
+        """Valid enum values should not trigger errors."""
+        text = """&GLOBAL
+  PROJECT test
+  PRINT_LEVEL MEDIUM
+&END GLOBAL"""
+        diagnostics = lint_unknown_enum(text)
+        assert len(diagnostics) == 0
+
+    def test_invalid_print_level(self):
+        """Should detect invalid PRINT_LEVEL value."""
+        text = """&GLOBAL
+  PROJECT test
+  PRINT_LEVEL INVALID_LEVEL
+&END GLOBAL"""
+        diagnostics = lint_unknown_enum(text)
+        assert len(diagnostics) >= 1
+        assert any("INVALID_LEVEL" in d.message or "PRINT_LEVEL" in d.message for d in diagnostics)
+
+
+class TestMissingFiles:
+    """Tests for missing file detection."""
+
+    def test_no_missing_files(self):
+        """Valid input should not trigger missing file errors."""
+        text = """&FORCE_EVAL
+  METHOD QS
+  &SUBSYS
+    &KIND O
+      BASIS_SET DZVP-MOLOPT-GTH
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL"""
+        diagnostics = lint_missing_files(text)
+        assert len(diagnostics) == 0
+
+    def test_missing_basis_file(self):
+        """Should detect missing basis file when specified."""
+        text = """&FORCE_EVAL
+  METHOD QS
+  &SUBSYS
+    BASIS_SET_FILE_NAME /nonexistent/basis.bas
+  &END SUBSYS
+&END FORCE_EVAL"""
+        diagnostics = lint_missing_files(text)
+        assert len(diagnostics) >= 1
+        assert any(d.code == RULE_MISSING_BASIS for d in diagnostics)
+
+    def test_missing_potential_file(self):
+        """Should detect missing potential file when specified."""
+        text = """&FORCE_EVAL
+  METHOD QS
+  &SUBSYS
+    POTENTIAL_FILE_NAME /nonexistent/pot.pot
+  &END SUBSYS
+&END FORCE_EVAL"""
+        diagnostics = lint_missing_files(text)
+        assert len(diagnostics) >= 1
+        assert any(d.code == RULE_MISSING_POTENTIAL for d in diagnostics)
 
 
 class TestFullLintPipeline:
@@ -270,7 +385,8 @@ class TestFullLintPipeline:
         with open(testpath) as f:
             text = f.read()
         diagnostics = lint(text)
-        misspelling_warnings = [d for d in diagnostics if d.code == "lint/misspelled-keyword"]
+        # Check for misspelling diagnostics
+        misspelling_warnings = [d for d in diagnostics if d.code == RULE_MISSPELLED_KEYWORD or "misspelled" in d.code.lower()]
         assert len(misspelling_warnings) >= 2
 
     def test_invalid_nesting_file(self):
@@ -279,5 +395,6 @@ class TestFullLintPipeline:
         with open(testpath) as f:
             text = f.read()
         diagnostics = lint(text)
-        nesting_errors = [d for d in diagnostics if d.code == "lint/invalid-nesting"]
+        # Check for invalid nesting diagnostics
+        nesting_errors = [d for d in diagnostics if d.code == RULE_INVALID_NESTING or "invalid_nesting" in d.code]
         assert len(nesting_errors) >= 1
