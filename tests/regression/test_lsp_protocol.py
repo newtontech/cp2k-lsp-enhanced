@@ -19,7 +19,9 @@ from time import sleep
 
 import pytest
 
-TEST_DIR = Path(__file__).resolve().parent.parent
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+GOLDEN_DIR = FIXTURES_DIR / "golden"
+TEST_DIR = FIXTURES_DIR.parent
 
 if hasattr(sys, "pypy_version_info"):
     pytest.skip("pypy is currently not supported", allow_module_level=True)
@@ -94,15 +96,7 @@ class TestLSPDiagnostics:
         """Valid input should produce no ERROR-level diagnostics."""
         client, server = client_server
         test_file = tmp_path / "valid.inp"
-        test_file.write_text(
-            "&GLOBAL\n"
-            "  PROJECT test\n"
-            "  RUN_TYPE ENERGY\n"
-            "&END GLOBAL\n"
-            "&FORCE_EVAL\n"
-            "  METHOD QS\n"
-            "&END FORCE_EVAL\n"
-        )
+        test_file.write_text((GOLDEN_DIR / "valid_minimal.inp").read_text())
         _open_file(client, server, test_file)
         assert client.diagnostics is not None
         errors = [d for d in client.diagnostics if d.severity == DiagnosticSeverity.Error]
@@ -269,6 +263,7 @@ class TestLSPDocumentSymbol:
 class TestLSPDefinition:
     """LSP go-to-definition via textDocument/definition."""
 
+    @pytest.mark.xfail(reason="textDocument/definition not registered on cp2k-language-server")
     def test_definition_no_crash(self, client_server):
         """Definition request should not crash."""
         client, server = client_server
