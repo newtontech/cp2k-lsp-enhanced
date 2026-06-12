@@ -32,6 +32,7 @@ class CP2KPreprocessor(Iterator):
         self._lineiter = MultiFileLineIterator()
         self._conditional_block = None
         self._current_line_entry = None
+        self._last_linenr = 0  # Track last valid line number for EOF errors
 
         if isinstance(base_dir, (str, Path)):
             self._inc_dirs = [Path(base_dir)]
@@ -242,6 +243,12 @@ class CP2KPreprocessor(Iterator):
     def __next__(self):
         for line in self._lineiter:
             try:
+                # Track current line number for EOF error reporting
+                if hasattr(self._lineiter, 'line_range'):
+                    try:
+                        self._last_linenr = self._lineiter.line_range[1]
+                    except (IndexError, AttributeError):
+                        pass  # Will use last known linenr
                 # ignore empty lines and comments:
                 if not line or line.startswith(COMMENT_CHARS):
                     continue
@@ -264,8 +271,10 @@ class CP2KPreprocessor(Iterator):
                 raise
 
         if self._conditional_block is not None:
+            ctx = Context(ref_line=self._conditional_block.ctx.line)
+            ctx.linenr = self._last_linenr
             raise PreprocessorError(
-                "conditional block not closed at end of file", Context(ref_line=self._conditional_block.ctx.line)
+                "conditional block not closed at end of file", ctx
             )
 
         raise StopIteration

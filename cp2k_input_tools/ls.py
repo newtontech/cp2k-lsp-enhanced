@@ -1,9 +1,11 @@
 from typing import Union
 
 from lsprotocol.types import (
+    TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
+    CompletionParams,
     Diagnostic,
     DiagnosticSeverity,
     DidChangeTextDocumentParams,
@@ -14,6 +16,7 @@ from lsprotocol.types import (
 )
 from pygls.server import LanguageServer
 
+from .completion import get_completions
 from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
 from .tokenizer import TokenizerError
@@ -54,7 +57,7 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
 
         except (TokenizerError, ParserError) as exc:
             ctx = exc.args[1]
-            line = ctx.line.rstrip()
+            line = ctx.line.rstrip() if ctx.line else ""
 
             msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
 
@@ -77,8 +80,11 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
                 # at least do one context
                 count = max(1, count)
 
+                # Clamp character values to valid range [0, 2147483647]
+                start_char = max(0, colnr + 1 - count)
+                end_char = colnr + 1
                 erange = Range(
-                    start=Position(line=linenr, character=colnr + 1 - count), end=Position(line=linenr, character=colnr + 1)
+                    start=Position(line=linenr, character=start_char), end=Position(line=linenr, character=end_char)
                 )
 
             else:
@@ -87,6 +93,18 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
             diagnostics += [Diagnostic(range=erange, message=msg, source=type(ls).__name__)]
 
     ls.publish_diagnostics(text_doc.uri, diagnostics)
+
+
+def completion(ls, params: CompletionParams):
+    """Provide completion items for CP2K input files."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    return get_completions(
+        text=text,
+        position=params.position,
+        uri=params.text_document.uri,
+    )
 
 
 def setup_cp2k_ls_server(server):
@@ -104,6 +122,11 @@ def setup_cp2k_ls_server(server):
     async def did_open(ls, params: DidOpenTextDocumentParams):
         """Text document did open notification."""
         _validate(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_COMPLETION)
+    def did_completion(ls, params: CompletionParams):
+        """Completion request handler."""
+        return completion(ls, params)
 
 
 cp2k_server = LanguageServer("cp2k-lsp", "v0.1")
