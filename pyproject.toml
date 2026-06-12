@@ -74,6 +74,11 @@ select = ["E", "F", "B", "I"]
 test = "pytest"
 html_docs = "make html -C docs"
 
+[tool.pytest.ini_options]
+markers = [
+    "openqc: OpenQC contract and smoke tests (deselect with '-m not openqc')",
+]
+
 [build-system]
 requires = ["poetry>=1"]
 build-backend = "poetry.masonry.api"

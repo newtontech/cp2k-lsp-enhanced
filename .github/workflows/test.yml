@@ -197,3 +197,6 @@ jobs:
         assert type(canonical) != type(enhanced)
         print("parser separation: OK")
         PY
+
+    - name: Run OpenQC contract tests
+      run: poetry run pytest tests/test_enhanced_parser_grammar.py -v -m openqc
