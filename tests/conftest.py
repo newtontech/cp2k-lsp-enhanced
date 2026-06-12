@@ -1,9 +1,16 @@
 import asyncio
 import concurrent
 import os
+import sys
 import threading
 
 import pytest
+
+# Skip on PyPy – the LSP implementation behaves differently
+if hasattr(sys, "pypy_version_info"):
+    pytest.skip("pypy is currently not supported", allow_module_level=True)
+
+pytest.importorskip("pygls")
 
 CALL_TIMEOUT = 3
 

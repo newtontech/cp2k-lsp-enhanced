@@ -99,8 +99,8 @@ def _suggest_enum_fixes(line_text: str, line_num: int, range_obj: Range, schema:
     if len(parts) < 2:
         return []
 
-    keyword_name = parts[0].upper()
-    invalid_value = parts[1].strip().upper()
+    parts[0].upper()
+    parts[1].strip().upper()
 
     # We need the section path to get the keyword spec
     # For now, we'll skip this as we don't have the section context
@@ -121,8 +121,7 @@ def _suggest_keyword_sections(line_text: str, line_num: int, range_obj: Range, s
     keyword_name = parts[0].upper()
 
     # Search all sections for this keyword
-    matching_sections = []
-    for section_path_tuple in [()]:  # Would iterate all sections in full implementation
+    for _section_path_tuple in [()]:  # Would iterate all sections in full implementation
         # This is a simplified version - full implementation would search all sections
         pass
 

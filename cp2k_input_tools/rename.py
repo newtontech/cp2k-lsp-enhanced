@@ -80,7 +80,7 @@ def _is_variable(line: str, char_pos: int) -> bool:
     """Check if position is on a variable reference."""
     match = _VARIABLE_PATTERN.search(line)
     if match:
-        name = match.group("name")
+        match.group("name")
         # Check if position is within the variable name (excluding @ and {})
         name_start = match.start("name")
         name_end = match.end("name")

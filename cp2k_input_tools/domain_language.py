@@ -552,7 +552,7 @@ def make_example(section_path: str, visited: Optional[set] = None) -> Optional[D
 
     # Add parent sections if nested (without recursion)
     if len(components) > 1:
-        parent_path = ".".join(components[:-1])
+        ".".join(components[:-1])
         # Add parent section headers manually
         for comp in components[:-1]:
             lines.append(f"&{comp}")

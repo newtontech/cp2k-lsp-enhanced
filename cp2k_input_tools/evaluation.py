@@ -525,8 +525,8 @@ def _diagnostics_equal(d1: Dict[str, Any], d2: Dict[str, Any]) -> bool:
     # Required fields that must match
     required_fields = ["line", "severity", "code"]
 
-    for field in required_fields:
-        if d1.get(field) != d2.get(field):
+    for fld in required_fields:
+        if d1.get(fld) != d2.get(fld):
             return False
 
     # Message should be similar (allow minor variations)
