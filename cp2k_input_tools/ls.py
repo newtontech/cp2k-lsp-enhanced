@@ -70,7 +70,7 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
             if len(exc.args) >= 2 and exc.args[1] is not None:
                 ctx = exc.args[1]
                 error_line = ctx.line.rstrip() if ctx.line else ""
-                msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
+                msg = f"Syntax error: {exc.args[0]}"
                 linenr = ctx.linenr - 1 if hasattr(ctx, "linenr") and ctx.linenr else 0
                 colnr = ctx.colnr if hasattr(ctx, "colnr") else None
             else:
@@ -97,14 +97,22 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
                 count = max(1, count)
 
                 # Clamp character values to valid range [0, 2147483647]
-                start_char = max(0, colnr + 1 - count)
+                start_char = max(0, colnr - count)
                 end_char = colnr + 1
                 erange = Range(start=Position(line=linenr, character=start_char), end=Position(line=linenr, character=end_char))
 
             else:
                 erange = Range(start=Position(line=linenr, character=1), end=Position(line=linenr, character=len(error_line)))
 
-            diagnostics += [Diagnostic(range=erange, message=msg, source=type(ls).__name__)]
+            diagnostics += [
+                Diagnostic(
+                    range=erange,
+                    message=msg,
+                    severity=DiagnosticSeverity.Error,
+                    source="cp2k-parser",
+                    code="syntax-error",
+                )
+            ]
 
     ls.publish_diagnostics(text_doc.uri, diagnostics)
 
