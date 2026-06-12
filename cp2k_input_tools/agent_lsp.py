@@ -54,6 +54,12 @@ class AgentLSP:
         payload["contents"] = None
         return payload
 
+    def explain(self, line: int = 0, character: int = 0) -> dict:
+        payload = agent_check_payload(software=SOFTWARE, uri=self.uri, operation="explain")
+        payload["position"] = {"line": line, "character": character}
+        payload["contents"] = None
+        return payload
+
     def symbols(self) -> dict:
         payload = agent_check_payload(software=SOFTWARE, uri=self.uri, operation="symbols")
         payload["items"] = []
