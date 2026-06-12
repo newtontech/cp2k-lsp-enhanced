@@ -1,0 +1,13 @@
+{
+  "description": "Misspelled keyword METHOOD instead of METHOD. Should trigger unknown keyword or misspelling diagnostic.",
+  "diagnostics": [
+    {
+      "line": 1,
+      "severity": "error",
+      "code_match": "unknown|misspell",
+      "message_fragment": "METHOOD"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}

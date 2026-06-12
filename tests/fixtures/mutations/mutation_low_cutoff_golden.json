@@ -1,0 +1,12 @@
+{
+  "description": "Low cutoff, few SCF iterations, loose EPS_SCF. Should trigger configuration smell warnings.",
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code_match": "cutoff|scf",
+      "message_fragment": "CUTOFF"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}

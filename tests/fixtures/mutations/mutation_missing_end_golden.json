@@ -1,0 +1,11 @@
+{
+  "description": "Missing &END FORCE_EVAL and &END SUBSYS. Should trigger missing END diagnostic or parser error.",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code_match": "missing|end|unterminated|unclosed"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}

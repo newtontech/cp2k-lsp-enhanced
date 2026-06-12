@@ -1,0 +1,12 @@
+{
+  "description": "Duplicate non-repeatable keyword METHOD. Should trigger duplicate diagnostic.",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code_match": "duplicate",
+      "message_fragment": "METHOD"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}
