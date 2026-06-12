@@ -7,7 +7,7 @@ code actions, document symbols, formatting, and rename for CP2K input files.
 
 import re
 import xml.etree.ElementTree as ET
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from lsprotocol.types import (
     TEXT_DOCUMENT_CODE_ACTION,

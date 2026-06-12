@@ -95,6 +95,8 @@ def kw_converter_str(string):
 
 FORTRAN_REAL = re.compile(r"(\d*\.\d+)[dD]([-+]?\d+)")
 
+INTEGER_RANGE = re.compile(r"^([+-]?\d+)\.\.([+-]?\d+)$")
+
 
 def kw_converter_float(string):
     """convert a given string to a Python float
@@ -109,6 +111,28 @@ def kw_converter_float(string):
     return float(string)
 
 
+def kw_converter_integer(string):
+    """Convert a string to a Python int.
+
+    Supports the CP2K range syntax ``X..Y`` which expands to a list of
+    integers from X to Y inclusive.  When the input is *not* a range the
+    function behaves like ``int(string)`` and returns a single ``int``.
+
+    :param string: string representation of an integer or integer range
+    :returns: a single ``int`` or a ``list[int]`` when a range is given
+    :raises InvalidParameterError: if the range is malformed (e.g. start > end)
+    """
+    match = INTEGER_RANGE.match(string)
+    if match:
+        start = int(match.group(1))
+        end = int(match.group(2))
+        if start > end:
+            raise InvalidParameterError(f"invalid integer range: start ({start}) > end ({end})")
+        return list(range(start, end + 1))
+
+    return int(string)
+
+
 def kw_converter_keyword(string, allowed_values):
     string = string.upper()
 
@@ -120,7 +144,7 @@ def kw_converter_keyword(string, allowed_values):
 
 KW_VALUE_CONVERTERS = {
     "logical": kw_converter_bool,
-    "integer": int,
+    "integer": kw_converter_integer,
     "real": kw_converter_float,
     "word": kw_converter_str,
     "string": kw_converter_str,
@@ -233,7 +257,12 @@ class Keyword:
                 # interpret the given value in the specified unit, convert it and get the raw value
                 value = (value * current_unit).to(default_unit).magnitude
 
-            values += [value]
+            # Range expansion (e.g. ``1..5``) returns a list of integers;
+            # extend the values list in that case, otherwise append normally.
+            if isinstance(value, list):
+                values += value
+            else:
+                values += [value]
 
         if not values:
             raise InvalidParameterError("keyword expects at least one value, only a unit spec was given")
