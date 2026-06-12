@@ -87,7 +87,23 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--character", type=int, default=0, help="0-based character for position-aware operations.")
         if operation == "check":
             sub.add_argument("--fail-on-blocking", action="store_true")
+    caps_sub = subparsers.add_parser("capabilities")
+    caps_sub.add_argument("--format", choices=["json"], default="json")
     args = parser.parse_args(argv)
+    if args.operation == "capabilities":
+        from .agent_operations import OPERATIONS
+        payload = {
+            "software": SOFTWARE,
+            "status": "available",
+            "capabilities": {
+                "operations": list(OPERATIONS),
+                "operation": "capabilities",
+                "status": "available",
+                "source": "cp2k-lsp-tool",
+            },
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     if args.operation == "check":
         payload = with_capabilities(check_path(args.path), "check")
         print(json.dumps(payload, indent=2, sort_keys=True))

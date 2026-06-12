@@ -634,3 +634,23 @@ def test_source_manifests_validate_against_json_schema() -> None:
     for manifest_path in sorted(Path("sources").glob("*/*.json")):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         jsonschema.validate(manifest, schema)
+
+
+def test_capabilities_subcommand_returns_json_and_exits_zero(script_runner) -> None:
+    result = script_runner.run(["cp2k-lsp-tool", "capabilities"])
+
+    assert result.success
+    payload = json.loads(result.stdout)
+    assert payload["software"] == "cp2k"
+    assert payload["status"] == "available"
+    assert "capabilities" in payload
+    caps = payload["capabilities"]
+    assert caps["operation"] == "capabilities"
+    assert caps["status"] == "available"
+    assert "check" in caps["operations"]
+    assert "context" in caps["operations"]
+    assert "complete" in caps["operations"]
+    assert "hover" in caps["operations"]
+    assert "symbols" in caps["operations"]
+    assert "fix" in caps["operations"]
+    assert "capabilities" in caps["operations"]
