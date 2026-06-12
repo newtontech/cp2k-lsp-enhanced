@@ -14,6 +14,7 @@ from cp2k_lsp.data.sections import CP2K_SECTIONS, get_section_info
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _keyword_type_str(kt: KeywordType) -> str:
     return kt.value
 
@@ -62,9 +63,7 @@ def _section_to_dict(name: str, *, recurse: bool = False, depth: int = 0) -> Dic
 
     if recurse and depth < 6:
         d["subsections_detail"] = [
-            _section_to_dict(sub, recurse=True, depth=depth + 1)
-            for sub in info.subsections
-            if get_section_info(sub) is not None
+            _section_to_dict(sub, recurse=True, depth=depth + 1) for sub in info.subsections if get_section_info(sub) is not None
         ]
 
     return d
@@ -73,6 +72,7 @@ def _section_to_dict(name: str, *, recurse: bool = False, depth: int = 0) -> Dic
 # ---------------------------------------------------------------------------
 # Public API – #36
 # ---------------------------------------------------------------------------
+
 
 def describe_section(name: str) -> Optional[Dict[str, Any]]:
     """Return a structured description of a CP2K section.
@@ -123,8 +123,7 @@ def describe_section_tree(name: str) -> Optional[Dict[str, Any]]:
 def list_all_sections() -> List[Dict[str, Any]]:
     """Return a flat list of all known CP2K section descriptors."""
     return [
-        {"name": info.name, "description": info.description,
-         "required": info.required, "repeats": info.repeats}
+        {"name": info.name, "description": info.description, "required": info.required, "repeats": info.repeats}
         for info in CP2K_SECTIONS.values()
     ]
 

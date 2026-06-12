@@ -85,12 +85,12 @@ def assert_golden(name: str, actual: List[Any], *, update: bool = False) -> None
     if normalized != golden_items:
         import difflib
         import json
+
         actual_str = json.dumps(normalized, indent=2, sort_keys=True)
         golden_str = json.dumps(golden_items, indent=2, sort_keys=True)
-        diff = '\n'.join(difflib.unified_diff(
-            golden_str.splitlines(), actual_str.splitlines(),
-            fromfile='golden', tofile='actual', lineterm=''
-        ))
+        diff = "\n".join(
+            difflib.unified_diff(golden_str.splitlines(), actual_str.splitlines(), fromfile="golden", tofile="actual", lineterm="")
+        )
         raise AssertionError(
             f"Golden mismatch for {name}.json.\n"
             f"Expected {len(golden_items)} items, got {len(normalized)} items.\n"

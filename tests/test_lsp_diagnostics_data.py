@@ -1,6 +1,5 @@
 """Tests for data-driven diagnostics using the cp2k_lsp data layer."""
 
-
 from cp2k_lsp.data.keywords import KeywordType, get_enum_values, get_keyword_info
 from cp2k_lsp.data.sections import get_section_info
 from cp2k_lsp.parser import CP2KParser
@@ -8,6 +7,7 @@ from cp2k_lsp.parser import CP2KParser
 # =============================================================================
 # Helper
 # =============================================================================
+
 
 def _parse(text: str):
     """Parse text and return (ast, errors)."""
@@ -64,9 +64,11 @@ class TestSectionValidation:
 
     def test_section_keywords_consistency(self):
         """Keywords listed in section data should be consistent with keyword data."""
-        for sec_name, sec_info in [("GLOBAL", get_section_info("GLOBAL")),
-                                    ("SCF", get_section_info("SCF")),
-                                    ("DFT", get_section_info("DFT"))]:
+        for sec_name, sec_info in [
+            ("GLOBAL", get_section_info("GLOBAL")),
+            ("SCF", get_section_info("SCF")),
+            ("DFT", get_section_info("DFT")),
+        ]:
             for kw_name in sec_info.keywords:
                 kw_info = get_keyword_info(kw_name)
                 assert kw_info is not None, f"Keyword {kw_name} in {sec_name} should be in keyword data"

@@ -1,7 +1,5 @@
 """Tests for CP2K linter module."""
 
-import pathlib
-
 import pytest
 
 from . import TEST_DIR
@@ -9,13 +7,13 @@ from . import TEST_DIR
 linter = pytest.importorskip("cp2k_input_tools.linter")
 
 from cp2k_input_tools.linter import (
-    lint,
-    lint_keywords_misspelled,
-    lint_invalid_nesting,
-    lint_duplicates,
-    lint_config_smells,
     _get_all_schema_keywords,
     _get_all_schema_sections,
+    lint,
+    lint_config_smells,
+    lint_duplicates,
+    lint_invalid_nesting,
+    lint_keywords_misspelled,
 )
 
 

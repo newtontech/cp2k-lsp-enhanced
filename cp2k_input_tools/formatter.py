@@ -16,6 +16,7 @@ _BLANK_LINE_RE = re.compile(r"^\s*$")
 @dataclass
 class FormatLine:
     """Represents a single line with its formatting context."""
+
     original: str
     indent_level: int = 0
     is_section_start: bool = False
@@ -78,12 +79,12 @@ def _extract_inline_comment(content: str) -> Tuple[str, Optional[str]]:
     while i < len(content):
         c = content[i]
         if in_string:
-            if c == string_char and (i == 0 or content[i - 1] != '\\'):
+            if c == string_char and (i == 0 or content[i - 1] != "\\"):
                 in_string = False
         elif c in ('"', "'"):
             in_string = True
             string_char = c
-        elif c in ('!', '#') and (i == 0 or content[i - 1] != '\\'):
+        elif c in ("!", "#") and (i == 0 or content[i - 1] != "\\"):
             return content[:i].rstrip(), content[i:]
         i += 1
     return content, None
@@ -91,7 +92,7 @@ def _extract_inline_comment(content: str) -> Tuple[str, Optional[str]]:
 
 def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
     """Format a CP2K input document. Returns TextEdit list for full document replacement."""
-    lines = text.split('\n')
+    lines = text.split("\n")
     formatted_lines: List[str] = []
     indent_level = 0
     pending_blank_lines = 0
@@ -161,7 +162,7 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
             content = content.strip()
             if content:
                 # Normalize keyword casing to uppercase
-                kw_match = re.match(r'^([\w\-_]+)\s*(.*)', content)
+                kw_match = re.match(r"^([\w\-_]+)\s*(.*)", content)
                 if kw_match:
                     kw_name = kw_match.group(1).upper()
                     kw_value = kw_match.group(2)
@@ -177,29 +178,30 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
 
     # Build single TextEdit for the entire document
     line_count = len(lines)
-    new_text = '\n'.join(formatted_lines)
+    new_text = "\n".join(formatted_lines)
     # Ensure trailing newline if original had one
-    if text.endswith('\n') and not new_text.endswith('\n'):
-        new_text += '\n'
+    if text.endswith("\n") and not new_text.endswith("\n"):
+        new_text += "\n"
 
-    return [TextEdit(
-        range=Range(start=Position(line=0, character=0), end=Position(line=line_count, character=0)),
-        new_text=new_text
-    )]
+    return [
+        TextEdit(range=Range(start=Position(line=0, character=0), end=Position(line=line_count, character=0)), new_text=new_text)
+    ]
 
 
 def format_range(text: str, start_line: int, end_line: int, indent_str: str = "  ") -> List[TextEdit]:
     """Format a range of lines in a CP2K input document."""
-    lines = text.split('\n')
+    lines = text.split("\n")
     # Extract the range, format it, and return edits
     range_lines = lines[start_line:end_line]
-    range_text = '\n'.join(range_lines)
+    range_text = "\n".join(range_lines)
 
     formatted = format_document(range_text, indent_str)
     if not formatted:
         return []
 
-    return [TextEdit(
-        range=Range(start=Position(line=start_line, character=0), end=Position(line=end_line, character=0)),
-        new_text=formatted[0].new_text
-    )]
+    return [
+        TextEdit(
+            range=Range(start=Position(line=start_line, character=0), end=Position(line=end_line, character=0)),
+            new_text=formatted[0].new_text,
+        )
+    ]

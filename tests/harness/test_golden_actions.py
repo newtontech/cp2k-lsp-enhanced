@@ -79,6 +79,7 @@ def test_golden_invalid_input_code_actions(client_server):
         golden_path = FIXTURES_DIR / "invalid_input_actions.json"
         if golden_path.exists():
             import json
+
             golden = json.loads(golden_path.read_text())
             assert normalized == golden.get("items", []), (
                 f"Golden mismatch for invalid_input_actions.json. "

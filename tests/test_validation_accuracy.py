@@ -1,6 +1,5 @@
 """Tests for validation accuracy framework."""
 
-
 import pytest
 
 from tests import TEST_DIR

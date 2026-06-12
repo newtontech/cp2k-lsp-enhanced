@@ -1,6 +1,5 @@
 """Tests for CP2K input file formatter."""
 
-
 from cp2k_input_tools.formatter import format_document, format_range
 
 
@@ -11,16 +10,16 @@ def _apply_edits(text, edits):
     for edit in edits:
         start = edit.range.start
         end = edit.range.end
-        lines = text.split('\n')
+        lines = text.split("\n")
         # For full document edits (start=0,0 to end=last,0), replace entire text
         if start.line == 0 and end.line >= len(lines):
             return edit.new_text
         # For range edits, replace the specific lines
         if start.line < len(lines):
-            before = lines[:start.line]
-            after = lines[end.line:] if end.line < len(lines) else []
-            new_lines = edit.new_text.split('\n')
-            return '\n'.join(before + new_lines + after)
+            before = lines[: start.line]
+            after = lines[end.line :] if end.line < len(lines) else []
+            new_lines = edit.new_text.split("\n")
+            return "\n".join(before + new_lines + after)
     return text
 
 
@@ -41,7 +40,7 @@ BASIS_SET_FILE_NAME BASIS_MOLOPT
 """
         edits = format_document(text)
         result = _apply_edits(text, edits)
-        lines = result.split('\n')
+        lines = result.split("\n")
         # Lines: 0=&GLOBAL, 1=  PROJECT, 2=  RUN_TYPE, 3=&END GLOBAL,
         #        4=&FORCE_EVAL, 5=  METHOD, 6=  &DFT, 7=    BASIS_SET, ...
         assert lines[1].startswith("  ")  # PROJECT indented under GLOBAL
@@ -137,7 +136,7 @@ CUTOFF 400
 """
         edits = format_document(text)
         result = _apply_edits(text, edits)
-        lines = result.split('\n')
+        lines = result.split("\n")
         # Lines: 0=&FORCE_EVAL, 1=  &DFT, 2=    &MGRID, 3=      CUTOFF, ...
         assert lines[3].startswith("      CUTOFF")  # Triple nested
 

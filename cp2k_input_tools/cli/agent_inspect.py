@@ -142,6 +142,7 @@ def get_hover_info(file_path: str, line: int, character: int) -> Optional[Dict[s
         target_line = lines[line - 1].strip()
         # Check if line looks like a keyword
         import re
+
         kw_match = re.match(r"&?(\w+)", target_line)
         if kw_match:
             name = kw_match.group(1).upper()
@@ -163,6 +164,7 @@ def get_references(file_path: str, line: int, character: int) -> List[Dict[str, 
     if 0 < line <= len(lines):
         target_line = lines[line - 1].strip()
         import re
+
         # Check for @SET or $VAR
         set_match = re.match(r"@SET\s+(\w+)", target_line)
         if set_match:
@@ -230,16 +232,19 @@ def get_code_actions(file_path: str, line: int, character: int) -> List[Dict[str
         target_line = lines[line - 1].strip().upper()
 
         if target_line.startswith("&END"):
-            actions.append({
-                "title": "Verify &END section name matches opening section",
-                "kind": "quickfix",
-                "description": "Ensure the section name after &END matches the corresponding &SECTION name",
-            })
+            actions.append(
+                {
+                    "title": "Verify &END section name matches opening section",
+                    "kind": "quickfix",
+                    "description": "Ensure the section name after &END matches the corresponding &SECTION name",
+                }
+            )
 
     return actions
 
 
 # CLI commands
+
 
 @click.group()
 def cli():

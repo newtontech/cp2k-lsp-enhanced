@@ -258,10 +258,7 @@ def list_available_examples() -> List[Dict[str, str]]:
 
     Each entry has ``id``, ``description``, and ``run_type``.
     """
-    return [
-        {"id": key, "description": val["description"], "run_type": val["run_type"]}
-        for key, val in MINIMAL_EXAMPLES.items()
-    ]
+    return [{"id": key, "description": val["description"], "run_type": val["run_type"]} for key, val in MINIMAL_EXAMPLES.items()]
 
 
 def get_minimal_example(example_id: str) -> Optional[Dict[str, Any]]:
@@ -286,6 +283,7 @@ def get_minimal_example(example_id: str) -> Optional[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Next-token guidance – #38
 # ---------------------------------------------------------------------------
+
 
 def get_next_token_guidance(partial_input: str) -> Dict[str, Any]:
     """Return context-aware suggestions for completing *partial_input*.
@@ -383,6 +381,7 @@ def get_next_token_guidance(partial_input: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _collect_open_sections(text: str) -> List[str]:
     """Return a list of section names that have been opened but not closed."""

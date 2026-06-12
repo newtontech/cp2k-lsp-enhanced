@@ -32,6 +32,7 @@ def get_diagnostic_codes(result: ValidationResult):
 
 # --- Issue #3: RUN_TYPE/MOTION consistency ---
 
+
 class TestRunTypeMotionConsistency:
     def test_energy_with_geo_opt_error(self):
         tree = parse_input("validation_energy_geo_opt.inp")
@@ -64,15 +65,18 @@ class TestRunTypeMotionConsistency:
 
 # --- Issue #1: FORCE_EVAL method conflicts ---
 
+
 class TestForceEvalMethod:
     def test_qs_with_fist_error(self):
         """QS method with &FIST section should produce METHOD_SECTION_CONFLICT."""
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {"+xc": {"+xc_functional": {"pbe": {}}}},
-                "+fist": {"+nonbonded": {}},
-            }]
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {"+xc": {"+xc_functional": {"pbe": {}}}},
+                    "+fist": {"+nonbonded": {}},
+                }
+            ]
         }
         result = ValidationResult()
         validate_force_eval_method(tree, result)
@@ -82,11 +86,13 @@ class TestForceEvalMethod:
     def test_fist_with_dft_error(self):
         """FIST method with &DFT section should produce METHOD_SECTION_CONFLICT."""
         tree = {
-            "+force_eval": [{
-                "method": "FIST",
-                "+dft": {"+xc": {"+xc_functional": {"pbe": {}}}},
-                "+fist": {},
-            }]
+            "+force_eval": [
+                {
+                    "method": "FIST",
+                    "+dft": {"+xc": {"+xc_functional": {"pbe": {}}}},
+                    "+fist": {},
+                }
+            ]
         }
         result = ValidationResult()
         validate_force_eval_method(tree, result)
@@ -95,10 +101,12 @@ class TestForceEvalMethod:
 
     def test_qs_no_conflict(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {},
-            }]
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {},
+                }
+            ]
         }
         result = ValidationResult()
         validate_force_eval_method(tree, result)
@@ -107,13 +115,16 @@ class TestForceEvalMethod:
 
 # --- Issue #5: Removed/deprecated keywords ---
 
+
 class TestRemovedDeprecatedKeywords:
     def test_removed_keyword_detected(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "single_precision_matrices": "TRUE",
-            }]
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "single_precision_matrices": "TRUE",
+                }
+            ]
         }
         result = ValidationResult()
         validate_removed_deprecated_keywords(tree, result)
@@ -122,10 +133,12 @@ class TestRemovedDeprecatedKeywords:
 
     def test_no_removed_keywords(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {"+xc": {"+xc_functional": {"pbe": {}}}},
-            }]
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {"+xc": {"+xc_functional": {"pbe": {}}}},
+                }
+            ]
         }
         result = ValidationResult()
         validate_removed_deprecated_keywords(tree, result)
@@ -134,17 +147,20 @@ class TestRemovedDeprecatedKeywords:
 
 # --- Issue #5: DFT section validation ---
 
+
 class TestDftSection:
     def test_multiple_xc_functionals_error(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {
-                    "+xc": {
-                        "+xc_functional": {"pbe": {}, "b3lyp": {}},
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {
+                        "+xc": {
+                            "+xc_functional": {"pbe": {}, "b3lyp": {}},
+                        },
                     },
-                },
-            }]
+                }
+            ]
         }
         result = ValidationResult()
         validate_dft_section(tree, result)
@@ -153,16 +169,18 @@ class TestDftSection:
 
     def test_scf_solver_conflict(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {
-                    "+scf": {
-                        "+ot": {},
-                        "+diagonalization": {},
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {
+                        "+scf": {
+                            "+ot": {},
+                            "+diagonalization": {},
+                        },
+                        "+xc": {"+xc_functional": {"pbe": {}}},
                     },
-                    "+xc": {"+xc_functional": {"pbe": {}}},
-                },
-            }]
+                }
+            ]
         }
         result = ValidationResult()
         validate_dft_section(tree, result)
@@ -171,13 +189,15 @@ class TestDftSection:
 
     def test_low_cutoff_error(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {
-                    "+mgrid": {"cutoff": 50},
-                    "+xc": {"+xc_functional": {"pbe": {}}},
-                },
-            }]
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {
+                        "+mgrid": {"cutoff": 50},
+                        "+xc": {"+xc_functional": {"pbe": {}}},
+                    },
+                }
+            ]
         }
         result = ValidationResult()
         validate_dft_section(tree, result)
@@ -186,13 +206,15 @@ class TestDftSection:
 
     def test_low_max_scf_warning(self):
         tree = {
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {
-                    "+scf": {"max_scf": 10},
-                    "+xc": {"+xc_functional": {"pbe": {}}},
-                },
-            }]
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {
+                        "+scf": {"max_scf": 10},
+                        "+xc": {"+xc_functional": {"pbe": {}}},
+                    },
+                }
+            ]
         }
         result = ValidationResult()
         validate_dft_section(tree, result)
@@ -202,17 +224,20 @@ class TestDftSection:
 
 # --- Issue #5: Coordinate validation ---
 
+
 class TestCoordinateValidation:
     def test_invalid_element(self):
         """Invalid element symbol 'X' should be detected."""
         tree = {
-            "+force_eval": [{
-                "+subsys": {
-                    "+coord": {
-                        "*": ["X  0.0  0.0  0.0", "H  0.9  0.0  0.0"],
+            "+force_eval": [
+                {
+                    "+subsys": {
+                        "+coord": {
+                            "*": ["X  0.0  0.0  0.0", "H  0.9  0.0  0.0"],
+                        },
                     },
-                },
-            }]
+                }
+            ]
         }
         result = ValidationResult()
         validate_coordinates(tree, result)
@@ -221,13 +246,15 @@ class TestCoordinateValidation:
 
     def test_valid_elements(self):
         tree = {
-            "+force_eval": [{
-                "+subsys": {
-                    "+coord": {
-                        "*": ["O  0.0  0.0  0.0", "H  0.9  0.0  0.0"],
+            "+force_eval": [
+                {
+                    "+subsys": {
+                        "+coord": {
+                            "*": ["O  0.0  0.0  0.0", "H  0.9  0.0  0.0"],
+                        },
                     },
-                },
-            }]
+                }
+            ]
         }
         result = ValidationResult()
         validate_coordinates(tree, result)
@@ -236,6 +263,7 @@ class TestCoordinateValidation:
 
 
 # --- Issue #5: MD parameter validation ---
+
 
 class TestMdParameters:
     def test_nvt_no_thermostat_warning(self):
@@ -274,27 +302,30 @@ class TestMdParameters:
 
 # --- Integration tests ---
 
+
 class TestFullValidation:
     def test_multi_error_file(self):
         """Tree with multiple semantic errors should catch them all."""
         tree = {
             "+global": {"run_type": "GEO_OPT"},
-            "+force_eval": [{
-                "method": "QS",
-                "+subsys": {
-                    "+coord": {"*": ["X  0.0  0.0  0.0", "H  0.9  0.0  0.0"]},
-                },
-                "+dft": {
-                    "+xc": {"+xc_functional": {"pbe": {}}},
-                    "+scf": {
-                        "max_scf": 10,
-                        "eps_scf": 1e-3,
-                        "+ot": {},
-                        "+diagonalization": {},
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+subsys": {
+                        "+coord": {"*": ["X  0.0  0.0  0.0", "H  0.9  0.0  0.0"]},
                     },
-                    "+mgrid": {"cutoff": 50, "rel_cutoff": 10},
-                },
-            }],
+                    "+dft": {
+                        "+xc": {"+xc_functional": {"pbe": {}}},
+                        "+scf": {
+                            "max_scf": 10,
+                            "eps_scf": 1e-3,
+                            "+ot": {},
+                            "+diagonalization": {},
+                        },
+                        "+mgrid": {"cutoff": 50, "rel_cutoff": 10},
+                    },
+                }
+            ],
         }
         result = validate(tree)
         codes = get_diagnostic_codes(result)
@@ -308,18 +339,20 @@ class TestFullValidation:
         """A properly structured input should have minimal errors."""
         tree = {
             "+global": {"run_type": "ENERGY"},
-            "+force_eval": [{
-                "method": "QS",
-                "+dft": {
-                    "+xc": {"+xc_functional": {"pbe": {}}},
-                    "+scf": {"max_scf": 50, "eps_scf": 1e-6},
-                    "+mgrid": {"cutoff": 400, "rel_cutoff": 40},
-                    "+subsys": {
-                        "+coord": {"*": ["O  0.0  0.0  0.0"]},
-                        "+kind": {"O": {"basis_set": "DZVP", "potential": "GTH-PBE"}},
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "+dft": {
+                        "+xc": {"+xc_functional": {"pbe": {}}},
+                        "+scf": {"max_scf": 50, "eps_scf": 1e-6},
+                        "+mgrid": {"cutoff": 400, "rel_cutoff": 40},
+                        "+subsys": {
+                            "+coord": {"*": ["O  0.0  0.0  0.0"]},
+                            "+kind": {"O": {"basis_set": "DZVP", "potential": "GTH-PBE"}},
+                        },
                     },
-                },
-            }],
+                }
+            ],
         }
         result = validate(tree)
         # Should have no errors (warnings are OK)
@@ -328,10 +361,12 @@ class TestFullValidation:
     def test_removed_keyword_integration(self):
         tree = {
             "+global": {"run_type": "ENERGY"},
-            "+force_eval": [{
-                "method": "QS",
-                "single_precision_matrices": "TRUE",
-            }],
+            "+force_eval": [
+                {
+                    "method": "QS",
+                    "single_precision_matrices": "TRUE",
+                }
+            ],
         }
         result = validate(tree)
         codes = get_diagnostic_codes(result)

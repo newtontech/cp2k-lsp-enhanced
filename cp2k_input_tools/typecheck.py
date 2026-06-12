@@ -158,7 +158,10 @@ def validate_enum(value: str, enum_values: List[str]) -> Tuple[bool, str]:
     parts = value.split()
     for part in parts:
         if part not in enum_values:
-            return False, f"Invalid enum value '{part}'. Allowed: {', '.join(enum_values[:5])}{'...' if len(enum_values) > 5 else ''}"
+            return (
+                False,
+                f"Invalid enum value '{part}'. Allowed: {', '.join(enum_values[:5])}{'...' if len(enum_values) > 5 else ''}",
+            )
     return True, ""
 
 
@@ -203,39 +206,45 @@ def check_keyword_type(
     # Type validation
     is_valid, err_msg = validate_type(keyword_value, expected_type)
     if not is_valid:
-        diags.append(TypeDiagnostic(
-            severity="error",
-            source="cp2k-typecheck",
-            message=err_msg,
-            code="TYPE_MISMATCH",
-            line=line,
-            col=col,
-        ))
+        diags.append(
+            TypeDiagnostic(
+                severity="error",
+                source="cp2k-typecheck",
+                message=err_msg,
+                code="TYPE_MISMATCH",
+                line=line,
+                col=col,
+            )
+        )
 
     # Enum validation
     if enum_values:
         is_valid, err_msg = validate_enum(keyword_value, enum_values)
         if not is_valid:
-            diags.append(TypeDiagnostic(
-                severity="error",
-                source="cp2k-typecheck",
-                message=err_msg,
-                code="INVALID_ENUM",
-                line=line,
-                col=col,
-            ))
+            diags.append(
+                TypeDiagnostic(
+                    severity="error",
+                    source="cp2k-typecheck",
+                    message=err_msg,
+                    code="INVALID_ENUM",
+                    line=line,
+                    col=col,
+                )
+            )
 
     # Unit syntax validation
     is_valid, err_msg = validate_unit_syntax(keyword_value)
     if not is_valid:
-        diags.append(TypeDiagnostic(
-            severity="warning",
-            source="cp2k-typecheck",
-            message=err_msg,
-            code="INVALID_UNIT_SYNTAX",
-            line=line,
-            col=col,
-        ))
+        diags.append(
+            TypeDiagnostic(
+                severity="warning",
+                source="cp2k-typecheck",
+                message=err_msg,
+                code="INVALID_UNIT_SYNTAX",
+                line=line,
+                col=col,
+            )
+        )
 
     return diags
 
@@ -264,26 +273,32 @@ def check_required_sections(
 
     # Check RUN_TYPE requirements
     if declared_run_type == "GEO_OPT" and "GEO_OPT" not in present_sections:
-        diags.append(TypeDiagnostic(
-            severity="warning",
-            source="cp2k-typecheck",
-            message="RUN_TYPE=GEO_OPT but no &GEO_OPT section found",
-            code="MISSING_REQUIRED_SECTION",
-        ))
+        diags.append(
+            TypeDiagnostic(
+                severity="warning",
+                source="cp2k-typecheck",
+                message="RUN_TYPE=GEO_OPT but no &GEO_OPT section found",
+                code="MISSING_REQUIRED_SECTION",
+            )
+        )
     elif declared_run_type == "MD" and "MD" not in present_sections:
-        diags.append(TypeDiagnostic(
-            severity="warning",
-            source="cp2k-typecheck",
-            message="RUN_TYPE=MD but no &MD section found",
-            code="MISSING_REQUIRED_SECTION",
-        ))
+        diags.append(
+            TypeDiagnostic(
+                severity="warning",
+                source="cp2k-typecheck",
+                message="RUN_TYPE=MD but no &MD section found",
+                code="MISSING_REQUIRED_SECTION",
+            )
+        )
     elif declared_run_type == "CELL_OPT" and "CELL_OPT" not in present_sections:
-        diags.append(TypeDiagnostic(
-            severity="warning",
-            source="cp2k-typecheck",
-            message="RUN_TYPE=CELL_OPT but no &CELL_OPT section found",
-            code="MISSING_REQUIRED_SECTION",
-        ))
+        diags.append(
+            TypeDiagnostic(
+                severity="warning",
+                source="cp2k-typecheck",
+                message="RUN_TYPE=CELL_OPT but no &CELL_OPT section found",
+                code="MISSING_REQUIRED_SECTION",
+            )
+        )
 
     return diags
 
@@ -338,9 +353,7 @@ def validate_text(text: str) -> List[TypeDiagnostic]:
             kw_value = m.group(2).strip()
             col = len(stripped) - len(stripped.lstrip())
 
-            diags.extend(
-                check_keyword_type(current_section, kw_name, kw_value, line=line_num, col=col)
-            )
+            diags.extend(check_keyword_type(current_section, kw_name, kw_value, line=line_num, col=col))
 
     # Check required sections
     run_type = extract_run_type(text)

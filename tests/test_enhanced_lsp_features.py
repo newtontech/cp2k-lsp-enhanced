@@ -19,6 +19,7 @@ from cp2k_lsp.parser.lexer import Lexer, TokenType
 # Helper
 # =============================================================================
 
+
 def _parse(text: str):
     """Parse text and return (ast, errors)."""
     parser = CP2KParser.parse_text(text)
@@ -166,6 +167,7 @@ class TestParserStabilityOnRealInputs:
     @pytest.fixture
     def inputs_dir(self):
         from pathlib import Path
+
         return Path(__file__).resolve().parent / "inputs"
 
     def test_parse_he_pbe(self, inputs_dir):
@@ -546,6 +548,7 @@ RUN_TYPE ENERGY
         parser = CP2KParser.parse_text(inp)
         assert parser.ast is not None
         from cp2k_lsp.features.formatting import FormattingProvider
+
         provider = FormattingProvider.__new__(FormattingProvider)
         formatted = provider._format_ast(parser.ast)
         assert "&GLOBAL" in formatted
@@ -565,6 +568,7 @@ CUTOFF 400
 """
         parser = CP2KParser.parse_text(inp)
         from cp2k_lsp.features.formatting import FormattingProvider
+
         provider = FormattingProvider.__new__(FormattingProvider)
         formatted = provider._format_ast(parser.ast)
         lines = formatted.split("\n")
@@ -592,13 +596,10 @@ class TestCodeActionCoverage:
 
         provider = CodeActionProvider.__new__(CodeActionProvider)
         diag = lsp.Diagnostic(
-            range=lsp.Range(
-                start=lsp.Position(line=0, character=0),
-                end=lsp.Position(line=0, character=10)
-            ),
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=10)),
             message="Unclosed section &GLOBAL",
             severity=lsp.DiagnosticSeverity.Error,
-            source="cp2k-lsp"
+            source="cp2k-lsp",
         )
         action = provider._fix_unclosed_section(diag, "file:///test.inp")
         assert action is not None
@@ -611,13 +612,10 @@ class TestCodeActionCoverage:
 
         provider = CodeActionProvider.__new__(CodeActionProvider)
         diag = lsp.Diagnostic(
-            range=lsp.Range(
-                start=lsp.Position(line=0, character=0),
-                end=lsp.Position(line=0, character=10)
-            ),
+            range=lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=0, character=10)),
             message="Section name mismatch",
             severity=lsp.DiagnosticSeverity.Error,
-            source="cp2k-lsp"
+            source="cp2k-lsp",
         )
         action = provider._fix_section_mismatch(diag, "file:///test.inp")
         assert action is not None

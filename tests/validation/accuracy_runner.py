@@ -15,6 +15,7 @@ from cp2k_input_tools.tokenizer import TokenizerError
 @dataclass
 class TestResult:
     """Result of a single validation test case."""
+
     test_file: str
     category: str
     expected_error: bool
@@ -26,6 +27,7 @@ class TestResult:
 @dataclass
 class AccuracyReport:
     """Aggregated accuracy report."""
+
     total: int = 0
     true_positives: int = 0
     false_positives: int = 0

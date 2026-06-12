@@ -1,11 +1,11 @@
 """Tests for LSP navigation features: document symbols, go-to-definition, rename preparation."""
 
-
 from cp2k_lsp.parser import CP2KInput, CP2KParser
 
 # =============================================================================
 # Helper
 # =============================================================================
+
 
 def _parse(text: str):
     """Parse text and return (ast, errors)."""
@@ -274,6 +274,7 @@ class TestASTRepresentation:
     def test_value_repr_with_unit(self):
         """Value with unit should show unit in repr."""
         from cp2k_lsp.parser.ast import Value, ValueType
+
         v = Value(value=4.07419, value_type=ValueType.NUMBER, unit="angstrom", line=1, column=1)
         r = repr(v)
         assert "angstrom" in r
