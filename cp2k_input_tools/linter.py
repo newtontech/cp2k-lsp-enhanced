@@ -770,5 +770,8 @@ def lint(text: str) -> List[Diagnostic]:
     all_diagnostics.extend(lint_missing_end(text))
     all_diagnostics.extend(lint_unknown_enum(text))
     all_diagnostics.extend(lint_missing_files(text))
+    from .version_policy import lint_version_policy_from_env
+
+    all_diagnostics.extend(lint_version_policy_from_env(text))
 
     return all_diagnostics

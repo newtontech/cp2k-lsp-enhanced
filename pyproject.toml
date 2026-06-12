@@ -37,6 +37,7 @@ lsp = ["pygls"]
 pytest = "^8.0"
 pytest-cov = "^6.0"
 pytest-console-scripts = "^1.4"
+jsonschema = "^4.23.0"
 sphinx = "^7.2.6"
 sphinx-rtd-theme = "^2.0.0"
 taskipy = "^1.4"
@@ -54,6 +55,7 @@ cp2k-language-server = 'cp2k_input_tools.cli.lsp:cp2k_language_server'
 cp2k-datafile-lint = 'cp2k_input_tools.cli.datafile_lint:cp2k_datafile_lint'
 cp2k-lsp = 'cp2k_lsp:server_main'
 cp2k-lsp-tool = 'cp2k_input_tools.tool:main'
+openqc-lsp-factory = 'cp2k_input_tools.openqc_lsp_factory:main'
 
 [tool.black]
 line-length = 132
@@ -75,4 +77,3 @@ html_docs = "make html -C docs"
 [build-system]
 requires = ["poetry>=1"]
 build-backend = "poetry.masonry.api"
-

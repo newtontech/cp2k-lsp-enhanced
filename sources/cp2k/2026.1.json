@@ -1,0 +1,52 @@
+{
+  "manifest_version": 1,
+  "software": "cp2k",
+  "software_version": "2026.1",
+  "generated_at": "2026-06-12T00:00:00Z",
+  "sources": [
+    {
+      "source_ref": "raw/assets/cp2k-release-2026.1.md",
+      "kind": "release-notes",
+      "path": "raw/assets/cp2k-release-2026.1.md",
+      "sha256": "ee3f4d9b84ce36580ab1885c4cc028fc7fcce9bcfe1e5a7ac1470c734083dab2",
+      "size_bytes": 218,
+      "version": "2026.1",
+      "confidence": 0.95,
+      "notes": "Fixture-backed release notes for OpenQC release-diff verification."
+    }
+  ],
+  "dsl_ir": {
+    "keywords": [
+      {
+        "name": "NEW_NAME",
+        "renamed_from": "RENAMED_KEY",
+        "status": "active",
+        "replacement": "NEW_NAME",
+        "confidence": 0.95,
+        "source_ref": "raw/assets/cp2k-release-2026.1.md"
+      },
+      {
+        "name": "EPS_SCF",
+        "section": "SCF",
+        "type": "float",
+        "default": "1e-7",
+        "enum": [
+          "1e-7",
+          "1e-8"
+        ],
+        "unit": "hartree",
+        "description": "Tighter SCF threshold.",
+        "status": "active",
+        "confidence": 0.95,
+        "source_ref": "raw/assets/cp2k-release-2026.1.md"
+      },
+      {
+        "name": "DEPRECATED_KEY",
+        "status": "deprecated",
+        "replacement": "NEW_NAME",
+        "confidence": 0.95,
+        "source_ref": "raw/assets/cp2k-release-2026.1.md"
+      }
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 """Code Action Provider (Quick Fix)."""
 
-from typing import List, Optional
+import re
+from typing import Any, List, Optional
 
 from lsprotocol import types as lsp
 
@@ -25,6 +26,10 @@ class CodeActionProvider:
     
     def _create_quick_fix(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
         """Create a quick fix for a diagnostic."""
+        code = str(diagnostic.code or "")
+        if code in {"cp2k.version.removed_keyword", "cp2k.version.deprecated_keyword"}:
+            return self._fix_version_policy_replacement(diagnostic, uri)
+
         message = diagnostic.message.lower()
         
         if "unclosed" in message or "expected" in message:
@@ -33,6 +38,28 @@ class CodeActionProvider:
             return self._fix_section_mismatch(diagnostic, uri)
         
         return None
+
+    def _fix_version_policy_replacement(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Replace a removed/deprecated keyword when the version policy names a safe target."""
+        replacement = _replacement_from_diagnostic(diagnostic)
+        if not replacement:
+            return None
+        return lsp.CodeAction(
+            title=f"Replace with {replacement}",
+            kind=lsp.CodeActionKind.QuickFix,
+            diagnostics=[diagnostic],
+            is_preferred=True,
+            edit=lsp.WorkspaceEdit(
+                changes={
+                    uri: [
+                        lsp.TextEdit(
+                            range=diagnostic.range,
+                            new_text=replacement,
+                        )
+                    ]
+                }
+            ),
+        )
     
     def _fix_unclosed_section(self, diagnostic: lsp.Diagnostic, uri: str) -> lsp.CodeAction:
         """Fix unclosed section by adding &END."""
@@ -65,3 +92,18 @@ class CodeActionProvider:
             diagnostics=[diagnostic],
             is_preferred=True
         )
+
+
+def _replacement_from_diagnostic(diagnostic: lsp.Diagnostic) -> str | None:
+    data = getattr(diagnostic, "data", None)
+    hint = ""
+    if isinstance(data, dict):
+        hint_value: Any = data.get("suggested_fix")
+        if isinstance(hint_value, str):
+            hint = hint_value
+    if not hint:
+        hint = diagnostic.message
+    match = re.search(r"\bReplace\s+\S+\s+with\s+([A-Za-z][A-Za-z0-9_\-]*)\b", hint, re.IGNORECASE)
+    if not match:
+        return None
+    return match.group(1).upper()

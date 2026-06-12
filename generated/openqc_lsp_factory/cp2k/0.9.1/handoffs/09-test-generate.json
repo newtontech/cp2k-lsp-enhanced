@@ -1,0 +1,22 @@
+{
+  "agent_role": "TestAgent",
+  "confidence": 0.95,
+  "inputs": {
+    "software": "cp2k",
+    "version": "0.9.1"
+  },
+  "mode": "generate",
+  "next_agent_suggestions": [
+    "WikiMaintainerAgent"
+  ],
+  "open_questions": [],
+  "outputs": {
+    "payload": "dsl_ir.json",
+    "run_dir": "generated/openqc_lsp_factory/cp2k/0.9.1"
+  },
+  "schema_version": 1,
+  "skill": "test-generate",
+  "software": "cp2k",
+  "status": "success",
+  "version": "0.9.1"
+}

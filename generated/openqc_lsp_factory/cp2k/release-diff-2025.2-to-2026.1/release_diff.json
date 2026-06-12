@@ -1,0 +1,63 @@
+{
+  "changes": [
+    {
+      "confidence": 0.95,
+      "kind": "renamed",
+      "new_keyword": "NEW_NAME",
+      "old_keyword": "RENAMED_KEY",
+      "replacement": "NEW_NAME"
+    },
+    {
+      "confidence": 0.95,
+      "keyword": "OLD_KEY",
+      "kind": "removed"
+    },
+    {
+      "confidence": 0.95,
+      "keyword": "DEPRECATED_KEY",
+      "kind": "deprecated",
+      "replacement": "NEW_NAME"
+    },
+    {
+      "confidence": 0.95,
+      "field": "default",
+      "keyword": "EPS_SCF",
+      "kind": "changed",
+      "new": "1e-7",
+      "old": "1e-6"
+    },
+    {
+      "confidence": 0.95,
+      "field": "enum",
+      "keyword": "EPS_SCF",
+      "kind": "changed",
+      "new": [
+        "1e-7",
+        "1e-8"
+      ],
+      "old": [
+        "1e-6"
+      ]
+    },
+    {
+      "confidence": 0.95,
+      "field": "unit",
+      "keyword": "EPS_SCF",
+      "kind": "changed",
+      "new": "hartree",
+      "old": ""
+    },
+    {
+      "confidence": 0.95,
+      "field": "description",
+      "keyword": "EPS_SCF",
+      "kind": "changed",
+      "new": "Tighter SCF threshold.",
+      "old": "SCF threshold."
+    }
+  ],
+  "from_version": "2025.2",
+  "software": "cp2k",
+  "status": "success",
+  "to_version": "2026.1"
+}
