@@ -188,7 +188,3 @@ FIST (Fast Integrated Simulation Tool) 是 CP2K 的经典力场引擎：
 - `parmck2` - AMBER 参数文件转换
 - `pdb2gmx` - GROMACS 格式转换
 - `acpype` - Antechamber Python 界面
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

@@ -226,9 +226,9 @@ class EvaluationHarness:
                     expected_items=expected_items,
                     actual_items=actual_items,
                     mrr=mrr,
-                    hit_at_1=int(hit_1),
-                    hit_at_3=int(hit_3),
-                    hit_at_5=int(hit_5),
+                    hit_at_1=hit_1,
+                    hit_at_3=hit_3,
+                    hit_at_5=hit_5,
                 )
             )
 
@@ -525,8 +525,8 @@ def _diagnostics_equal(d1: Dict[str, Any], d2: Dict[str, Any]) -> bool:
     # Required fields that must match
     required_fields = ["line", "severity", "code"]
 
-    for req_field in required_fields:
-        if d1.get(req_field) != d2.get(req_field):
+    for field in required_fields:
+        if d1.get(field) != d2.get(field):
             return False
 
     # Message should be similar (allow minor variations)
@@ -622,11 +622,10 @@ def generate_json_report(reports: List[EvaluationReport], output_path: str) -> N
     aggregate = harness.calculate_aggregate_metrics(reports)
 
     # Convert reports to dict format
-    report_entries: list[dict[str, object]] = []
-    report_data: dict[str, object] = {
+    report_data = {
         "timestamp": datetime.now().isoformat(),
         "aggregate_metrics": dataclasses.asdict(aggregate),
-        "reports": report_entries,
+        "reports": [],
     }
 
     for report in reports:
@@ -642,7 +641,7 @@ def generate_json_report(reports: List[EvaluationReport], output_path: str) -> N
             "completion_count": len(report.completion_results),
             "hover_count": len(report.hover_results),
         }
-        report_entries.append(report_dict)
+        report_data["reports"].append(report_dict)
 
     output.write_text(json.dumps(report_data, indent=2))
 

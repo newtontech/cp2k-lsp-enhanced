@@ -97,7 +97,3 @@ Standard tools: MDAnalysis, MDTraj, ASE, VMD.
 1. BioExcel CP2K Output Guide: https://docs.bioexcel.eu/qmmm_bpg/en/main/running_cp2k/cp2k_output.html
 2. ORNL Converter: https://calvera.ornl.gov/docs/user_guide/tools/Chemical%20Spectroscopy/neutrons_amml_cp2k_convert/
 3. MDAnalysis: https://www.mdanalysis.org/
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

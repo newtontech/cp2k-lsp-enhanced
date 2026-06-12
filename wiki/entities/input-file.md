@@ -147,7 +147,3 @@ _KEYWORD_MATCH = re.compile(r"(?P<name>[\w\-_]+)\s*(?P<value>.*)")
 
 1. CP2K 输入参考手册：https://manual.cp2k.org/
 2. cp2k-input-tools 仓库：https://github.com/cp2k/cp2k-input-tools
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

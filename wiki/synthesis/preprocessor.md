@@ -396,7 +396,3 @@ for line in preprocessor:
 - CP2K 手册 - 输入预处理: https://manual.cp2k.org/user_guide/input.html
 - 预处理器实现: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/preprocessor.py`
 - 解析器文档: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/wiki/synthesis/parser-api.md`
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

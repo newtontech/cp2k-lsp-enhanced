@@ -1,18 +1,20 @@
 {
   "items": [
     {
-      "message": "Syntax error: unterminated string detected (None)",
+      "code": "syntax-error",
+      "message": "Syntax error: unterminated string detected",
       "range": {
-        "end": {
-          "character": 14,
-          "line": 1
-        },
         "start": {
-          "character": 13,
-          "line": 1
+          "line": 1,
+          "character": 12
+        },
+        "end": {
+          "line": 1,
+          "character": 14
         }
       },
-      "source": "LanguageServer"
+      "severity": 1,
+      "source": "cp2k-parser"
     }
   ]
 }

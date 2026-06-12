@@ -80,7 +80,7 @@ def _is_variable(line: str, char_pos: int) -> bool:
     """Check if position is on a variable reference."""
     match = _VARIABLE_PATTERN.search(line)
     if match:
-        match.group("name")
+        name = match.group("name")
         # Check if position is within the variable name (excluding @ and {})
         name_start = match.start("name")
         name_end = match.end("name")
@@ -189,7 +189,7 @@ def get_rename_edit(text: str, position: Position, uri: str, new_name: str) -> O
     return None
 
 
-def _rename_section_parameter(text: str, line_num: int, char_num: int, uri: str, new_name: str) -> Optional[WorkspaceEdit]:
+def _rename_section_parameter(text: str, line_num: int, char_num: int, uri: str, new_name: str) -> WorkspaceEdit:
     """Create edit for renaming section parameter."""
     lines = text.split("\n")
     current_line = lines[line_num]
@@ -217,12 +217,12 @@ def _rename_section_parameter(text: str, line_num: int, char_num: int, uri: str,
     edit_range = Range(start=Position(line=line_num, character=param_start), end=Position(line=line_num, character=param_end))
 
     text_edit = TextEdit(range=edit_range, new_text=new_name)
-    document_edit = TextDocumentEdit(text_document=dict(uri=uri, version=None), edits=[text_edit])  # type: ignore[arg-type]
+    document_edit = TextDocumentEdit(text_document=dict(uri=uri, version=None), edits=[text_edit])
 
     return WorkspaceEdit(document_changes=[document_edit])
 
 
-def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> Optional[WorkspaceEdit]:
+def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> WorkspaceEdit:
     """Create edit for renaming variable (currently single-document only)."""
     lines = text.split("\n")
     line_num = position.line
@@ -263,6 +263,6 @@ def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> 
     if not edits:
         return None
 
-    document_edit = TextDocumentEdit(text_document=dict(uri=uri, version=None), edits=edits)  # type: ignore[arg-type]
+    document_edit = TextDocumentEdit(text_document=dict(uri=uri, version=None), edits=edits)
 
     return WorkspaceEdit(document_changes=[document_edit])

@@ -125,7 +125,3 @@ Configured under `&MD / &THERMOSTAT`:
 1. MD Section Reference: https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/MD.html
 2. MD Methods: https://manual.cp2k.org/trunk/methods/sampling/molecular_dynamics.html
 3. Evans & Morriss (1983), VandeVondele (2002), Minary (2003)
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

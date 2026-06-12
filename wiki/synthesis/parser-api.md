@@ -308,7 +308,3 @@ The parser may throw the following exceptions:
 
 - CP2K 输入规范: https://manual.cp2k.org/
 - cp2k-input-tools 源代码: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/parser.py`
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

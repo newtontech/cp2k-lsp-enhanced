@@ -617,7 +617,7 @@ class TestEdgeCases:
         golden_file = tmp_path / "malformed.json"
         golden_file.write_text("{invalid json")
 
-        EvaluationHarness()
+        harness = EvaluationHarness()
         # Should raise or handle gracefully
         with pytest.raises(json.JSONDecodeError):
             json.loads(golden_file.read_text())

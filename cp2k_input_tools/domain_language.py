@@ -405,7 +405,7 @@ def suggest_next(text: str, position: int, uri: str) -> Dict[str, Any]:
     else:
         current_path = ""
 
-    suggestions: list[dict[str, object]] = []
+    suggestions = []
 
     # Get suggestions based on context
     if not current_path:
@@ -442,7 +442,7 @@ def suggest_next(text: str, position: int, uri: str) -> Dict[str, Any]:
                 name_node = kw_node.find("./NAME")
                 if name_node is not None and name_node.text:
                     kw_type = _get_keyword_type(kw_node)
-                    suggestion: dict[str, object] = {
+                    suggestion = {
                         "name": name_node.text.upper(),
                         "kind": "keyword",
                         "type": kw_type,
@@ -552,7 +552,7 @@ def make_example(section_path: str, visited: Optional[set] = None) -> Optional[D
 
     # Add parent sections if nested (without recursion)
     if len(components) > 1:
-        ".".join(components[:-1])
+        parent_path = ".".join(components[:-1])
         # Add parent section headers manually
         for comp in components[:-1]:
             lines.append(f"&{comp}")

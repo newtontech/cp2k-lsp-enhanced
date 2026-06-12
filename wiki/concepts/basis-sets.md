@@ -130,7 +130,3 @@ CP2K uses GTH (Goedecker-Teter-Hutter) basis sets and pseudopotentials:
 - /Users/yhm/Desktop/code/cp2k-lsp-enhanced/tests/inputs/He_PBE.inp (line 32)
 - Jensen (2007). "Introduction to Computational Chemistry"
 - Dunning (1989). "Gaussian basis sets for use in correlated molecular calculations"
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

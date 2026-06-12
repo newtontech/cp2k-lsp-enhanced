@@ -54,17 +54,8 @@
       "source_ref": "raw/assets/readme.md",
       "kind": "documentation",
       "path": "raw/assets/README.md",
-      "sha256": "9b7db814a775043ef1c39427b25404f432b803ae83e299c813eb3af510657fa3",
-      "size_bytes": 16488,
-      "version": "0.9.1",
-      "confidence": 0.95
-    },
-    {
-      "source_ref": "raw/assets/CONTRIBUTING.md",
-      "kind": "documentation",
-      "path": "raw/assets/CONTRIBUTING.md",
-      "sha256": "59ddba4a0c8eb689c8a8a16ac5e1be59b33c7901cbb2ad4f3fb3bb02d5d5f012",
-      "size_bytes": 1321,
+      "sha256": "ba69fae8df9e8eec84c9b5044c7a111ba15ab73743331f0283766eb99bb3604b",
+      "size_bytes": 15616,
       "version": "0.9.1",
       "confidence": 0.95
     },

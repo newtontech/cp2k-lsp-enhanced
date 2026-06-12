@@ -42,7 +42,7 @@ def get_code_actions(
     Returns:
         List of CodeAction objects, or empty list if no actions available
     """
-    actions: list[CodeAction] = []
+    actions = []
     schema = get_schema_index()
     lines = text.splitlines()
 
@@ -68,7 +68,7 @@ def get_code_actions(
             CodeAction(
                 title="Insert missing &END",
                 kind=CodeActionKind.QuickFix,
-                edit={  # type: ignore[arg-type]
+                edit={
                     "changes": [
                         {
                             "textDocument": {"uri": uri},
@@ -92,15 +92,15 @@ def get_code_actions(
 
 def _suggest_enum_fixes(line_text: str, line_num: int, range_obj: Range, schema: CP2KSchemaIndex) -> List[CodeAction]:
     """Suggest fixes for invalid enum values."""
-    actions: list[CodeAction] = []
+    actions = []
 
     # Extract keyword name and invalid value from the line
     parts = line_text.strip().split(None, 1)
     if len(parts) < 2:
         return []
 
-    parts[0].upper()
-    parts[1].strip().upper()
+    keyword_name = parts[0].upper()
+    invalid_value = parts[1].strip().upper()
 
     # We need the section path to get the keyword spec
     # For now, we'll skip this as we don't have the section context
@@ -111,7 +111,7 @@ def _suggest_enum_fixes(line_text: str, line_num: int, range_obj: Range, schema:
 
 def _suggest_keyword_sections(line_text: str, line_num: int, range_obj: Range, schema: CP2KSchemaIndex) -> List[CodeAction]:
     """Suggest which section(s) a keyword belongs to."""
-    actions: list[CodeAction] = []
+    actions = []
 
     # Extract keyword name from the line
     parts = line_text.strip().split(None, 1)
@@ -121,7 +121,8 @@ def _suggest_keyword_sections(line_text: str, line_num: int, range_obj: Range, s
     keyword_name = parts[0].upper()
 
     # Search all sections for this keyword
-    for _section_path_tuple in [()]:  # Would iterate all sections in full implementation
+    matching_sections = []
+    for section_path_tuple in [()]:  # Would iterate all sections in full implementation
         # This is a simplified version - full implementation would search all sections
         pass
 

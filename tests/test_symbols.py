@@ -71,7 +71,7 @@ class TestDocumentSymbols:
         assert "SCF" in section_names
 
         # Check parent-child relationships
-        next(s for s in symbols if s.name == "FORCE_EVAL")
+        force_eval = next(s for s in symbols if s.name == "FORCE_EVAL")
         dft = next(s for s in symbols if s.name == "DFT")
         scf = next(s for s in symbols if s.name == "SCF")
 

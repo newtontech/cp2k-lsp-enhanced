@@ -112,6 +112,6 @@ def run_explain(server: Any = None, arguments: list[Any] | None = None) -> dict[
         return _unavailable_payload("explain", "Missing or unknown uri/path for cp2k/explain.")
     line = int(args.get("line", 0) or 0)
     character = int(args.get("character", 0) or 0)
-    payload = agent.explain(line=line, character=character)  # type: ignore[attr-defined]
+    payload = agent.explain(line=line, character=character)
     payload["capabilities"]["source"] = "cp2k-lsp"
     return payload

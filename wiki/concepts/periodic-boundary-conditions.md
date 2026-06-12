@@ -135,7 +135,3 @@ Choose the shortest periodic distance for physical correctness.
 - /Users/yhm/Desktop/code/cp2k-lsp-enhanced/tests/inputs/He_PBE.inp (lines 24-26)
 - Allen & Tildesley (1987). "Computer Simulation of Liquids"
 - Martyna & Tuckerman (1999). "A reciprocal space based method"
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

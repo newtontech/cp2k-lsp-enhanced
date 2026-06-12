@@ -111,7 +111,3 @@ H    DZVP-MOLOPT-GTH
 
 - `cp2k-datafile-lint` - 基组文件格式验证工具
 - 基组文件通常位于 `BASIS_SETS` 目录
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

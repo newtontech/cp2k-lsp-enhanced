@@ -12,7 +12,11 @@ from lsprotocol.types import Location, Position, Range
 
 # Try to import schema API; fall back to basic functionality if not available
 try:
-    import cp2k_lsp.agent_api.schema  # noqa: F401
+    from cp2k_lsp.agent_api.schema import (
+        lookup_keyword_at_path,
+        lookup_keyword_schema,
+        lookup_section_schema,
+    )
 
     SCHEMA_AVAILABLE = True
 except ImportError:

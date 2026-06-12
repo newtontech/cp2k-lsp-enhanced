@@ -78,7 +78,7 @@ def resolve_cursor_context(
         CursorContext with all context information populated
     """
     lines = text.splitlines() if text else []
-    lines[line] if 0 <= line < len(lines) else ""
+    cursor_line = lines[line] if 0 <= line < len(lines) else ""
 
     # Track section stack as we process lines
     section_stack: list[str] = []

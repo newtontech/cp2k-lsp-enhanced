@@ -107,10 +107,6 @@ class CP2KParser:
 
         section.comments = self.skip_eol_and_comments()
 
-        if self.match(TokenType.KEYWORD) and self.current().line == start_token.line:
-            section.parameter = self.advance().value
-            section.comments.extend(self.skip_eol_and_comments())
-
         while not self.match(TokenType.SECTION_END, TokenType.EOF):
             if self.match(TokenType.SECTION_START):
                 # Nested subsection
@@ -144,8 +140,8 @@ class CP2KParser:
         # Expect end of section
         if self.match(TokenType.SECTION_END):
             end_token = self.advance()
-            end_name = end_token.value.upper()
-            if end_name and end_name != section.name.upper():
+            end_name = end_token.value[3:] if end_token.value.upper().startswith("END") else ""
+            if end_name and end_name.upper() != section.name.upper():
                 self.errors.append(
                     SyntaxError(
                         f"Section name mismatch: &{section.name} closed with &{end_token.value}",

@@ -115,7 +115,3 @@ H    GTH-PADE-q1
 
 - `cp2k-datafile-lint` - 赝势文件格式验证工具
 - 赝势文件通常位于 `POTENTIALS` 目录
-
-## Sources
-
-- CP2K official documentation and repository assets (synthesized wiki entry).

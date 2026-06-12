@@ -69,13 +69,13 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
             # Handle exceptions with varying argument counts
             if len(exc.args) >= 2 and exc.args[1] is not None:
                 ctx = exc.args[1]
-                line_text = ctx.line.rstrip() if ctx.line else ""
+                line = ctx.line.rstrip() if ctx.line else ""
                 msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
                 linenr = ctx.linenr - 1 if hasattr(ctx, "linenr") and ctx.linenr else 0
                 colnr = ctx.colnr if hasattr(ctx, "colnr") else None
             else:
                 # Exception without context (e.g., NameRepetitionError)
-                line_text = ""
+                line = ""
                 msg = f"Syntax error: {exc.args[0]}"
                 linenr = 0
                 colnr = None
@@ -102,7 +102,7 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
                 erange = Range(start=Position(line=linenr, character=start_char), end=Position(line=linenr, character=end_char))
 
             else:
-                erange = Range(start=Position(line=linenr, character=1), end=Position(line=linenr, character=len(line_text)))
+                erange = Range(start=Position(line=linenr, character=1), end=Position(line=linenr, character=len(line)))
 
             diagnostics += [Diagnostic(range=erange, message=msg, source=type(ls).__name__)]
 
