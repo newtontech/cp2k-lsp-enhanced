@@ -4,7 +4,7 @@ from typing import Optional
 
 from lsprotocol import types as lsp
 
-from cp2k_input_tools.cursor_context import CursorContextResolver
+from cp2k_input_tools.cursor_context import resolve_cursor_context
 from cp2k_lsp.agent_api.schema import (
     lookup_keyword_at_path,
     lookup_keyword_schema,
@@ -127,7 +127,6 @@ Maximum number of SCF iterations before giving up.
 
     def __init__(self, server):
         self.server = server
-        self.context_resolver = CursorContextResolver()
 
     def provide_hover(self, params: lsp.HoverParams) -> Optional[lsp.Hover]:
         """Provide hover information.
@@ -152,8 +151,9 @@ Maximum number of SCF iterations before giving up.
             return None
 
         # Get cursor context for section path
-        cursor_context = self.context_resolver.resolve_cursor_context(
-            uri=uri, lines=lines, line=position.line, character=position.character
+        text = "\n".join(lines)
+        cursor_context = resolve_cursor_context(
+            text=text, line=position.line, character=position.character, uri=uri
         )
         section_path = ".".join(cursor_context.section_path) if cursor_context.section_path else None
 
