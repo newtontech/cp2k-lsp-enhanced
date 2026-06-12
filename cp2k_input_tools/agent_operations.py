@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterable
 
 from .rich_diagnostics import agent_check_payload
 
-OPERATIONS = ("check", "context", "complete", "hover", "symbols", "fix")
+OPERATIONS = ("check", "context", "complete", "hover", "symbols", "fix", "capabilities")
 _WORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.$%+-]*")
 _SECTION_RE = re.compile(r"^\s*(?:&(?P<section>[A-Za-z][A-Za-z0-9_.$-]*)|\[(?P<bracket>[^\]]+)\])")
 _ASSIGNMENT_RE = re.compile(r"^\s*(?P<key>[A-Za-z_][A-Za-z0-9_.$%-]*)\s*(?:=|:|\s+)")
