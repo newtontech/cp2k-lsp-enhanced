@@ -7,7 +7,7 @@ code actions, document symbols, formatting, and rename for CP2K input files.
 
 import re
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from lsprotocol.types import (
     TEXT_DOCUMENT_CODE_ACTION,
@@ -40,6 +40,7 @@ from lsprotocol.types import (
     HoverParams,
     MarkupContent,
     MarkupKind,
+    OptionalVersionedTextDocumentIdentifier,
     Position,
     Range,
     ReferenceParams,
@@ -69,7 +70,7 @@ _KEYWORD_RE = re.compile(r"^(\s*)([\w\-_]+)\s+(.*)")
 def _find_variables(text: str) -> Dict[str, List[int]]:
     """Find all @SET variable definitions and return {var_name: [line_numbers]}."""
     defs: Dict[str, List[int]] = {}
-    for i, line in enumerate(text.split('\n')):
+    for i, line in enumerate(text.split("\n")):
         m = _VAR_SET_RE.match(line)
         if m:
             var_name = m.group(1).upper()
@@ -81,7 +82,7 @@ def _find_variable_refs(text: str, var_name: str) -> List[int]:
     """Find all lines referencing $VAR or ${VAR}."""
     refs = []
     pattern = re.compile(rf"\$\{{?{re.escape(var_name)}\}}?", re.IGNORECASE)
-    for i, line in enumerate(text.split('\n')):
+    for i, line in enumerate(text.split("\n")):
         if pattern.search(line):
             refs.append(i)
     return refs
@@ -89,7 +90,7 @@ def _find_variable_refs(text: str, var_name: str) -> List[int]:
 
 def _find_section_range(text: str, line_idx: int) -> Optional[tuple]:
     """Find the section containing the given line. Returns (start_line, end_line, name)."""
-    lines = text.split('\n')
+    lines = text.split("\n")
     current_section = None
     current_start = 0
     stack = []  # (name, start_line)
@@ -98,7 +99,7 @@ def _find_section_range(text: str, line_idx: int) -> Optional[tuple]:
         sec_match = _SECTION_RE.match(line)
         if sec_match and not _END_RE.match(line):
             name = sec_match.group(2).upper()
-            if name == 'END':
+            if name == "END":
                 continue
             stack.append((name, i))
             if i <= line_idx:
@@ -115,7 +116,7 @@ def _find_section_range(text: str, line_idx: int) -> Optional[tuple]:
     return None
 
 
-def _get_keyword_info(keyword_name: str, section_name: str = None) -> Optional[dict]:
+def _get_keyword_info(keyword_name: str, section_name: Optional[str] = None) -> Optional[dict]:
     """Look up keyword info from the XML schema."""
     try:
         tree = ET.parse(DEFAULT_CP2K_INPUT_XML)
@@ -188,9 +189,9 @@ def _get_section_info(section_name: str) -> Optional[dict]:
 
 def _build_document_symbols(text: str) -> List[DocumentSymbol]:
     """Build a tree of document symbols from sections."""
-    lines = text.split('\n')
-    root_symbols = []
-    stack = []  # (symbol, children_list)
+    lines = text.split("\n")
+    root_symbols: List[DocumentSymbol] = []
+    stack: List[Tuple[DocumentSymbol, List[DocumentSymbol]]] = []  # (symbol, children_list)
 
     for i, line in enumerate(lines):
         end_match = _END_RE.match(line)
@@ -203,20 +204,14 @@ def _build_document_symbols(text: str) -> List[DocumentSymbol]:
         sec_match = _SECTION_RE.match(line)
         if sec_match:
             name = sec_match.group(2).upper()
-            if name == 'END':
+            if name == "END":
                 continue
 
             symbol = DocumentSymbol(
                 name=name,
                 kind=SymbolKind.Class,
-                range=Range(
-                    start=Position(line=i, character=0),
-                    end=Position(line=i, character=len(line))
-                ),
-                selection_range=Range(
-                    start=Position(line=i, character=0),
-                    end=Position(line=i, character=len(line.strip()))
-                )
+                range=Range(start=Position(line=i, character=0), end=Position(line=i, character=len(line))),
+                selection_range=Range(start=Position(line=i, character=0), end=Position(line=i, character=len(line.strip()))),
             )
 
             if stack:
@@ -224,7 +219,7 @@ def _build_document_symbols(text: str) -> List[DocumentSymbol]:
             else:
                 root_symbols.append(symbol)
 
-            stack.append((symbol, symbol.children if hasattr(symbol, 'children') else []))
+            stack.append((symbol, symbol.children if symbol.children is not None else []))
 
     return root_symbols
 
@@ -349,7 +344,7 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
 
         # Handle both Context objects with and without linenr attribute
         # (PreprocessorError may create Context without linenr)
-        linenr = (getattr(ctx, 'linenr', None) or 1) - 1
+        linenr = (getattr(ctx, "linenr", None) or 1) - 1
         colnr = ctx.colnr or 0
 
         if colnr is not None and colnr > 0:
@@ -374,38 +369,45 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
                 end=Position(line=linenr, character=len(line_text)),
             )
 
-        diagnostics.append(Diagnostic(
-            range=erange,
-            message=msg,
-            severity=DiagnosticSeverity.Error,
-            source=SOURCE_PARSER,
-            code="syntax-error",
-        ))
+        diagnostics.append(
+            Diagnostic(
+                range=erange,
+                message=msg,
+                severity=DiagnosticSeverity.Error,
+                source=SOURCE_PARSER,
+                code="syntax-error",
+            )
+        )
     except Exception as exc:
-        diagnostics.append(Diagnostic(
-            range=Range(start=Position(0, 0), end=Position(0, 1)),
-            message=f"Unexpected error during parsing: {exc}",
-            severity=DiagnosticSeverity.Error,
-            source=SOURCE_PARSER,
-            code="parse-error",
-        ))
+        diagnostics.append(
+            Diagnostic(
+                range=Range(start=Position(0, 0), end=Position(0, 1)),
+                message=f"Unexpected error during parsing: {exc}",
+                severity=DiagnosticSeverity.Error,
+                source=SOURCE_PARSER,
+                code="parse-error",
+            )
+        )
 
     # Run semantic validation if parsing succeeded
     if tree is not None:
         try:
             from .validator import validate as semantic_validate
+
             validation_result = semantic_validate(tree)
 
             # For semantic diagnostics we don't have precise line info,
             # so attach them to the top of the file
             for diag in validation_result.diagnostics:
-                diagnostics.append(Diagnostic(
-                    range=Range(start=Position(0, 0), end=Position(0, 1)),
-                    message=diag.message,
-                    severity=_severity_to_lsp(diag.severity),
-                    source=diag.source,
-                    code=diag.code,
-                ))
+                diagnostics.append(
+                    Diagnostic(
+                        range=Range(start=Position(0, 0), end=Position(0, 1)),
+                        message=diag.message,
+                        severity=_severity_to_lsp(diag.severity),
+                        source=diag.source,
+                        code=diag.code,
+                    )
+                )
         except ImportError:
             ls.show_message_log("Semantic validation module not available")
         except Exception as exc:
@@ -414,18 +416,21 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
     # Run type-checking validation (keyword types, enums, units)
     try:
         from .typecheck import validate_text as tc_validate
+
         type_diags = tc_validate(text_doc.source)
         for td in type_diags:
-            diagnostics.append(Diagnostic(
-                range=Range(
-                    start=Position(line=td.line - 1, character=td.col),
-                    end=Position(line=td.line - 1, character=td.col + 1),
-                ),
-                message=td.message,
-                severity=DiagnosticSeverity.Error if td.severity == "error" else DiagnosticSeverity.Warning,
-                source=td.source,
-                code=td.code,
-            ))
+            diagnostics.append(
+                Diagnostic(
+                    range=Range(
+                        start=Position(line=td.line - 1, character=td.col),
+                        end=Position(line=td.line - 1, character=td.col + 1),
+                    ),
+                    message=td.message,
+                    severity=DiagnosticSeverity.Error if td.severity == "error" else DiagnosticSeverity.Warning,
+                    source=td.source,
+                    code=td.code,
+                )
+            )
     except ImportError:
         ls.show_message_log("Typecheck module not available")
     except Exception as exc:
@@ -434,23 +439,26 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
     # Run static lint checks (always run, even if parsing failed partially)
     try:
         from .linter import lint as static_lint
+
         lint_diagnostics = static_lint(text_doc.source)
 
         for diag in lint_diagnostics:
             line_nr = diag.line if diag.line is not None else 0
             col_nr = diag.column if diag.column is not None else 0
-            line_text = text_doc.source.split('\n')[line_nr] if line_nr < len(text_doc.source.split('\n')) else ""
+            line_text = text_doc.source.split("\n")[line_nr] if line_nr < len(text_doc.source.split("\n")) else ""
 
-            diagnostics.append(Diagnostic(
-                range=Range(
-                    start=Position(line=line_nr, character=col_nr),
-                    end=Position(line=line_nr, character=len(line_text)),
-                ),
-                message=diag.message,
-                severity=_severity_to_lsp(diag.severity),
-                source=diag.source,
-                code=diag.code,
-            ))
+            diagnostics.append(
+                Diagnostic(
+                    range=Range(
+                        start=Position(line=line_nr, character=col_nr),
+                        end=Position(line=line_nr, character=len(line_text)),
+                    ),
+                    message=diag.message,
+                    severity=_severity_to_lsp(diag.severity),
+                    source=diag.source,
+                    code=diag.code,
+                )
+            )
     except ImportError:
         ls.show_message_log("Static lint module not available")
     except Exception as exc:
@@ -466,7 +474,7 @@ def _get_section_path_at_position(text_doc: TextDocument, tree: dict, position: 
     if position.line >= len(lines):
         return []
 
-    section_stack = []
+    section_stack: List[Tuple[str, int]] = []
 
     for i, doc_line in enumerate(lines):
         if i > position.line:
@@ -499,49 +507,63 @@ def _build_code_actions(tree: dict, diagnostics: List[Diagnostic]) -> List[CodeA
             continue
 
         if diag.code == "REMOVED_KEYWORD":
-            actions.append(CodeAction(
-                title="Remove deprecated keyword",
-                kind=CodeActionKind.QuickFix,
-                diagnostics=[diag],
-                is_preferred=True,
-            ))
+            actions.append(
+                CodeAction(
+                    title="Remove deprecated keyword",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                    is_preferred=True,
+                )
+            )
         elif diag.code == "RUN_TYPE_MOTION_MISMATCH":
             if "Remove" in (diag.message or ""):
-                actions.append(CodeAction(
-                    title="Remove conflicting section",
-                    kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag],
-                ))
+                actions.append(
+                    CodeAction(
+                        title="Remove conflicting section",
+                        kind=CodeActionKind.QuickFix,
+                        diagnostics=[diag],
+                    )
+                )
             if "change RUN_TYPE" in (diag.message or ""):
-                actions.append(CodeAction(
-                    title="Change RUN_TYPE to match section",
+                actions.append(
+                    CodeAction(
+                        title="Change RUN_TYPE to match section",
+                        kind=CodeActionKind.QuickFix,
+                        diagnostics=[diag],
+                    )
+                )
+        elif diag.code == "MULTIPLE_XC_FUNCTIONALS":
+            actions.append(
+                CodeAction(
+                    title="Keep only one XC functional",
                     kind=CodeActionKind.QuickFix,
                     diagnostics=[diag],
-                ))
-        elif diag.code == "MULTIPLE_XC_FUNCTIONALS":
-            actions.append(CodeAction(
-                title="Keep only one XC functional",
-                kind=CodeActionKind.QuickFix,
-                diagnostics=[diag],
-            ))
+                )
+            )
         elif diag.code == "SCF_SOLVER_CONFLICT":
-            actions.append(CodeAction(
-                title="Remove conflicting SCF solver",
-                kind=CodeActionKind.QuickFix,
-                diagnostics=[diag],
-            ))
+            actions.append(
+                CodeAction(
+                    title="Remove conflicting SCF solver",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                )
+            )
         elif diag.code == "METHOD_SECTION_CONFLICT":
-            actions.append(CodeAction(
-                title="Fix METHOD/section conflict",
-                kind=CodeActionKind.QuickFix,
-                diagnostics=[diag],
-            ))
+            actions.append(
+                CodeAction(
+                    title="Fix METHOD/section conflict",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                )
+            )
         elif diag.code == "CUTOFF_TOO_LOW":
-            actions.append(CodeAction(
-                title="Increase CUTOFF to 200 Ry",
-                kind=CodeActionKind.QuickFix,
-                diagnostics=[diag],
-            ))
+            actions.append(
+                CodeAction(
+                    title="Increase CUTOFF to 200 Ry",
+                    kind=CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                )
+            )
 
     return actions
 
@@ -589,7 +611,7 @@ def _find_variable_definitions(text_doc: TextDocument, var_name: str) -> List[Po
     positions = []
     pattern = re.compile(rf"^@SET\s+{re.escape(var_name)}\b", re.IGNORECASE | re.MULTILINE)
     for match in pattern.finditer(text_doc.source):
-        line_num = text_doc.source[:match.start()].count("\n")
+        line_num = text_doc.source[: match.start()].count("\n")
         positions.append(Position(line=line_num, character=0))
     return positions
 
@@ -599,7 +621,7 @@ def _find_variable_usages(text_doc: TextDocument, var_name: str) -> List[Positio
     positions = []
     pattern = re.compile(rf"\${re.escape(var_name)}\b")
     for match in pattern.finditer(text_doc.source):
-        line_num = text_doc.source[:match.start()].count("\n")
+        line_num = text_doc.source[: match.start()].count("\n")
         col = match.start() - text_doc.source.rfind("\n", 0, match.start()) - 1
         positions.append(Position(line=line_num, character=col))
     return positions
@@ -612,7 +634,7 @@ def _parse_set_vars(text_doc: TextDocument) -> dict:
     for match in pattern.finditer(text_doc.source):
         var_name = match.group(1)
         var_value = match.group(2).strip()
-        line_num = text_doc.source[:match.start()].count("\n")
+        line_num = text_doc.source[: match.start()].count("\n")
         variables[var_name] = {"value": var_value, "line": line_num}
     return variables
 
@@ -650,10 +672,7 @@ def setup_cp2k_ls_server(server):
             kw_prefix = stripped.split()[0].upper() if stripped else ""
             if kw_prefix and section:
                 # Filter completions to match prefix
-                filtered = [
-                    item for item in items
-                    if item.label.upper().startswith(kw_prefix)
-                ]
+                filtered = [item for item in items if item.label.upper().startswith(kw_prefix)]
                 if filtered:
                     items = filtered
 
@@ -732,6 +751,7 @@ def setup_cp2k_ls_server(server):
             inc_path = inc_match.group(1).strip().strip("'\"")
             # Try to resolve relative to document
             import pathlib
+
             doc_path = pathlib.Path(text_doc.path)
             resolved = (doc_path.parent / inc_path).resolve()
             if resolved.exists():
@@ -749,13 +769,16 @@ def setup_cp2k_ls_server(server):
             var_name = var_match.group(1)
             defs = _find_variable_definitions(text_doc, var_name)
             if defs:
-                return [{
-                    "uri": text_doc.uri,
-                    "range": {
-                        "start": {"line": d.line, "character": 0},
-                        "end": {"line": d.line, "character": len(f"@SET {var_name}")},
-                    },
-                } for d in defs]
+                return [
+                    {
+                        "uri": text_doc.uri,
+                        "range": {
+                            "start": {"line": d.line, "character": 0},
+                            "end": {"line": d.line, "character": len(f"@SET {var_name}")},
+                        },
+                    }
+                    for d in defs
+                ]
 
         return None
 
@@ -774,21 +797,25 @@ def setup_cp2k_ls_server(server):
             defs = _find_variable_definitions(text_doc, var_name)
             locations = []
             for d in defs:
-                locations.append({
-                    "uri": text_doc.uri,
-                    "range": {
-                        "start": {"line": d.line, "character": 0},
-                        "end": {"line": d.line, "character": len(f"@SET {var_name}")},
-                    },
-                })
+                locations.append(
+                    {
+                        "uri": text_doc.uri,
+                        "range": {
+                            "start": {"line": d.line, "character": 0},
+                            "end": {"line": d.line, "character": len(f"@SET {var_name}")},
+                        },
+                    }
+                )
             for u in usages:
-                locations.append({
-                    "uri": text_doc.uri,
-                    "range": {
-                        "start": {"line": u.line, "character": u.character},
-                        "end": {"line": u.line, "character": u.character + len(var_name) + 1},
-                    },
-                })
+                locations.append(
+                    {
+                        "uri": text_doc.uri,
+                        "range": {
+                            "start": {"line": u.line, "character": u.character},
+                            "end": {"line": u.line, "character": u.character + len(var_name) + 1},
+                        },
+                    }
+                )
             return locations
 
         # Check if cursor is on a $VARIABLE usage
@@ -799,21 +826,25 @@ def setup_cp2k_ls_server(server):
             defs = _find_variable_definitions(text_doc, var_name)
             locations = []
             for d in defs:
-                locations.append({
-                    "uri": text_doc.uri,
-                    "range": {
-                        "start": {"line": d.line, "character": 0},
-                        "end": {"line": d.line, "character": len(f"@SET {var_name}")},
-                    },
-                })
+                locations.append(
+                    {
+                        "uri": text_doc.uri,
+                        "range": {
+                            "start": {"line": d.line, "character": 0},
+                            "end": {"line": d.line, "character": len(f"@SET {var_name}")},
+                        },
+                    }
+                )
             for u in usages:
-                locations.append({
-                    "uri": text_doc.uri,
-                    "range": {
-                        "start": {"line": u.line, "character": u.character},
-                        "end": {"line": u.line, "character": u.character + len(var_name) + 1},
-                    },
-                })
+                locations.append(
+                    {
+                        "uri": text_doc.uri,
+                        "range": {
+                            "start": {"line": u.line, "character": u.character},
+                            "end": {"line": u.line, "character": u.character + len(var_name) + 1},
+                        },
+                    }
+                )
             return locations
 
         return []
@@ -823,8 +854,8 @@ def setup_cp2k_ls_server(server):
     def document_symbol(ls: LanguageServer, params: DocumentSymbolParams):
         """Return document symbol tree for nested sections."""
         text_doc = ls.workspace.get_document(params.text_document.uri)
-        symbols = []
-        stack = []  # (indent, symbol)
+        symbols: List[DocumentSymbol] = []
+        stack: List[Tuple[int, DocumentSymbol]] = []  # (indent, symbol)
 
         for i, line in enumerate(text_doc.source.split("\n")):
             stripped = line.strip()
@@ -840,7 +871,7 @@ def setup_cp2k_ls_server(server):
 
                 sym = DocumentSymbol(
                     name=sec_name,
-                    kind=21,  # SymbolKind.Struct
+                    kind=SymbolKind.Struct,
                     range=Range(
                         start=Position(line=i, character=0),
                         end=Position(line=i, character=len(line)),
@@ -853,6 +884,8 @@ def setup_cp2k_ls_server(server):
                 )
 
                 if stack:
+                    if stack[-1][1].children is None:
+                        stack[-1][1].children = []
                     stack[-1][1].children.append(sym)
                 else:
                     symbols.append(sym)
@@ -878,31 +911,41 @@ def setup_cp2k_ls_server(server):
             if not diag.code:
                 continue
 
-            if diag.code == "REMOVED_KEYWORD":
-                actions.append(CodeAction(
-                    title="Remove this keyword",
-                    kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag],
-                    is_preferred=True,
-                ))
-            elif "CONFLICT" in (diag.code or ""):
-                actions.append(CodeAction(
-                    title=f"Fix: {diag.message[:60]}",
-                    kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag],
-                ))
-            elif "CUTOFF" in (diag.code or ""):
-                actions.append(CodeAction(
-                    title="Set CUTOFF to 300 Ry",
-                    kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag],
-                ))
-            elif "RUN_TYPE" in (diag.code or ""):
-                actions.append(CodeAction(
-                    title="Fix RUN_TYPE/MOTION mismatch",
-                    kind=CodeActionKind.QuickFix,
-                    diagnostics=[diag],
-                ))
+            code = str(diag.code)
+
+            if code == "REMOVED_KEYWORD":
+                actions.append(
+                    CodeAction(
+                        title="Remove this keyword",
+                        kind=CodeActionKind.QuickFix,
+                        diagnostics=[diag],
+                        is_preferred=True,
+                    )
+                )
+            elif "CONFLICT" in code:
+                actions.append(
+                    CodeAction(
+                        title=f"Fix: {diag.message[:60]}",
+                        kind=CodeActionKind.QuickFix,
+                        diagnostics=[diag],
+                    )
+                )
+            elif "CUTOFF" in code:
+                actions.append(
+                    CodeAction(
+                        title="Set CUTOFF to 300 Ry",
+                        kind=CodeActionKind.QuickFix,
+                        diagnostics=[diag],
+                    )
+                )
+            elif "RUN_TYPE" in code:
+                actions.append(
+                    CodeAction(
+                        title="Fix RUN_TYPE/MOTION mismatch",
+                        kind=CodeActionKind.QuickFix,
+                        diagnostics=[diag],
+                    )
+                )
 
         return actions if actions else None
 
@@ -968,32 +1011,41 @@ def setup_cp2k_ls_server(server):
 
         # Edit all @SET definitions
         for defn in _find_variable_definitions(text_doc, var_name):
-            edits.append(TextEdit(
-                range=Range(
-                    start=Position(line=defn.line, character=len("@SET ")),
-                    end=Position(line=defn.line, character=len("@SET ") + len(var_name)),
-                ),
-                new_text=new_name,
-            ))
+            edits.append(
+                TextEdit(
+                    range=Range(
+                        start=Position(line=defn.line, character=len("@SET ")),
+                        end=Position(line=defn.line, character=len("@SET ") + len(var_name)),
+                    ),
+                    new_text=new_name,
+                )
+            )
 
         # Edit all $VAR usages
         for usage in _find_variable_usages(text_doc, var_name):
-            edits.append(TextEdit(
-                range=Range(
-                    start=Position(line=usage.line, character=usage.character + 1),
-                    end=Position(line=usage.line, character=usage.character + 1 + len(var_name)),
-                ),
-                new_text=new_name,
-            ))
+            edits.append(
+                TextEdit(
+                    range=Range(
+                        start=Position(line=usage.line, character=usage.character + 1),
+                        end=Position(line=usage.line, character=usage.character + 1 + len(var_name)),
+                    ),
+                    new_text=new_name,
+                )
+            )
 
         if not edits:
             return None
 
         return WorkspaceEdit(
-            document_changes=[TextDocumentEdit(
-                text_document={"uri": text_doc.uri, "version": text_doc.version},
-                edits=edits,
-            )]
+            document_changes=[
+                TextDocumentEdit(
+                    text_document=OptionalVersionedTextDocumentIdentifier(
+                        uri=text_doc.uri,
+                        version=text_doc.version,
+                    ),
+                    edits=cast(Any, edits),
+                )
+            ]
         )
 
 

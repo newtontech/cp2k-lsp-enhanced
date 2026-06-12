@@ -56,7 +56,7 @@ def operation_path(
     path = Path(path)
     file_type = file_type_func(path)
     text = _read_text(path)
-    diagnostics = _safe_collect_diagnostics(path, collect_diagnostics) if operation == "fix" else []
+    diagnostics = _safe_collect_diagnostics(path, collect_diagnostics) if operation in {"context", "complete", "hover", "fix"} else []
     payload = agent_check_payload(
         software=software,
         uri=path.resolve().as_uri(),
@@ -72,9 +72,7 @@ def operation_path(
         context = _context_for(text, position)
         context.update({"path": str(path), "file_type": file_type})
         context["nearby_symbols"] = _nearby_symbols(_symbols_for(path, text), line)
-        context["diagnostics_at_position"] = _diagnostics_at_position(
-            payload["diagnostics"], line, character
-        )
+        context["diagnostics_at_position"] = _diagnostics_at_position(payload["diagnostics"], line, character)
         payload["context"] = context
         return with_capabilities(payload, operation)
 
@@ -127,9 +125,7 @@ def _read_text(path: Path) -> str:
         return ""
 
 
-def _safe_collect_diagnostics(
-    path: Path, collect_diagnostics: Callable[[Path], Iterable[Any]]
-) -> list[Any]:
+def _safe_collect_diagnostics(path: Path, collect_diagnostics: Callable[[Path], Iterable[Any]]) -> list[Any]:
     try:
         return list(collect_diagnostics(path))
     except Exception as exc:  # pragma: no cover - defensive agent boundary
@@ -161,8 +157,8 @@ def _context_for(text: str, position: dict[str, int]) -> dict[str, Any]:
             "start": {"line": line_no, "character": start},
             "end": {"line": line_no, "character": end},
         },
-        "before": lines[max(0, line_no - 3):line_no],
-        "after": lines[line_no + 1:line_no + 4],
+        "before": lines[max(0, line_no - 3) : line_no],
+        "after": lines[line_no + 1 : line_no + 4],
     }
 
 
@@ -176,9 +172,7 @@ def _word_at(line: str, character: int) -> tuple[str, int, int]:
     return "", character, character
 
 
-def _diagnostics_at_position(
-    diagnostics: list[dict[str, Any]], line: int, character: int
-) -> list[dict[str, Any]]:
+def _diagnostics_at_position(diagnostics: list[dict[str, Any]], line: int, character: int) -> list[dict[str, Any]]:
     selected: list[dict[str, Any]] = []
     for item in diagnostics:
         rng = item.get("range", {})
@@ -188,9 +182,11 @@ def _diagnostics_at_position(
         end_line = int(end.get("line", start_line) or start_line)
         start_char = int(start.get("character", 0) or 0)
         end_char = int(end.get("character", start_char + 1) or (start_char + 1))
-        if start_line <= line <= end_line and (
-            line != start_line or character >= start_char
-        ) and (line != end_line or character <= end_char):
+        if (
+            start_line <= line <= end_line
+            and (line != start_line or character >= start_char)
+            and (line != end_line or character <= end_char)
+        ):
             selected.append(item)
     return selected
 
@@ -277,9 +273,7 @@ def _symbols_for(path: Path, text: str) -> list[dict[str, Any]]:
     return _generic_symbols(text)
 
 
-def _generic_completion_items(
-    text: str, diagnostics: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def _generic_completion_items(text: str, diagnostics: list[dict[str, Any]]) -> list[dict[str, Any]]:
     labels: dict[str, str] = {}
     for symbol in _generic_symbols(text):
         labels.setdefault(symbol["name"], symbol.get("detail", "Document symbol"))
@@ -290,10 +284,7 @@ def _generic_completion_items(
         manual_ref = diagnostic.get("manual_ref")
         if isinstance(manual_ref, str) and manual_ref.strip():
             labels.setdefault(manual_ref.strip(), "Manual reference")
-    return [
-        {"label": label, "detail": detail, "kind": 1, "source": "agent-generic"}
-        for label, detail in sorted(labels.items())
-    ][:200]
+    return [{"label": label, "detail": detail, "kind": 1, "source": "agent-generic"} for label, detail in sorted(labels.items())][:200]
 
 
 def _generic_symbols(text: str) -> list[dict[str, Any]]:
@@ -353,9 +344,7 @@ def _diagnostic_hover(diagnostics: list[dict[str, Any]], line: int, character: i
     return "\n".join(parts)
 
 
-def _fix_actions(
-    diagnostics: list[dict[str, Any]], *, line: int, character: int
-) -> list[dict[str, Any]]:
+def _fix_actions(diagnostics: list[dict[str, Any]], *, line: int, character: int) -> list[dict[str, Any]]:
     selected = _diagnostics_at_position(diagnostics, line, character) or diagnostics
     actions: list[dict[str, Any]] = []
     for diagnostic in selected:
@@ -397,10 +386,9 @@ def _call_provider(fn: Callable[..., Any], *values: Any) -> Any:
     required = [
         param
         for param in signature.parameters.values()
-        if param.default is inspect.Parameter.empty
-        and param.kind in (param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD)
+        if param.default is inspect.Parameter.empty and param.kind in (param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD)
     ]
-    attempts: list[tuple[Any, ...]] = [(), values[:1], values[:2], values[:3]]
+    attempts: list[tuple[Any, ...]] = [(), values[:1], values[:2], values[:3], values[:4]]
     for args in attempts:
         if len(args) < len(required):
             continue
