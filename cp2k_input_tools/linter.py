@@ -366,7 +366,10 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                                 severity="warning",
                                 source="cp2k-lint",
                                 code=RULE_LOW_CUTOFF,
-                                message=f"CUTOFF {cutoff_val} Ry is very low. Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy.",
+                                message=(
+                                    f"CUTOFF {cutoff_val} Ry is very low. "
+                                    f"Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy."
+                                ),
                                 line=i,
                             )
                         )

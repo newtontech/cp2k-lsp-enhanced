@@ -443,3 +443,7 @@ cp2k.popt -i single_point.inp -o single_point.out
 
 - CP2K 手册: https://manual.cp2k.org/
 - cp2k-input-tools README: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/README.md`
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

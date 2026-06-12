@@ -29,7 +29,7 @@ if hasattr(sys, "pypy_version_info"):
 
 pygls = pytest.importorskip("pygls")
 
-from lsprotocol.types import (
+from lsprotocol.types import (  # noqa: E402
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DEFINITION,
     TEXT_DOCUMENT_DID_CLOSE,
@@ -47,15 +47,15 @@ from lsprotocol.types import (
     TextDocumentItem,
 )
 
-from cp2k_input_tools.cli.agent_inspect import cli as inspect_cli
+from cp2k_input_tools.cli.agent_inspect import cli as inspect_cli  # noqa: E402
 
 # Import CLI modules
-from cp2k_input_tools.cli.lint import cp2klint
-from cp2k_input_tools.cli.main import cp2k_lsp
-from cp2k_input_tools.cli.validate import cp2k_validate
-from cp2k_input_tools.parser import CP2KInputParser
-from cp2k_input_tools.parser_errors import ParserError
-from cp2k_input_tools.tokenizer import TokenizerError
+from cp2k_input_tools.cli.lint import cp2klint  # noqa: E402
+from cp2k_input_tools.cli.main import cp2k_lsp  # noqa: E402
+from cp2k_input_tools.cli.validate import cp2k_validate  # noqa: E402
+from cp2k_input_tools.parser import CP2KInputParser  # noqa: E402
+from cp2k_input_tools.parser_errors import ParserError  # noqa: E402
+from cp2k_input_tools.tokenizer import TokenizerError  # noqa: E402
 
 # =============================================================================
 # Fixtures

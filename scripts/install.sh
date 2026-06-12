@@ -24,6 +24,6 @@ if [ -f pyproject.toml ] || [ -f setup.py ]; then
     poetry install --with dev || poetry install
   else
     python -m pip install --upgrade pip
-    python -m pip install -e ".[dev]" || python -m pip install -e .
+    python -m pip install ".[dev]" 2>/dev/null || python -m pip install .
   fi
 fi

@@ -84,3 +84,7 @@ CP2K is developed and maintained by the CP2K Foundation under the GPLv3 open-sou
 - 关键字和部分自动补全
 - 实时错误检测
 - 格式化和代码导航
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

@@ -102,7 +102,7 @@ def test_hover_keyword(client_server):
     for i, line in enumerate(lines):
         line = line.strip()
         if line and not line.startswith("&") and not line.startswith("!") and not line.startswith("@"):
-            result = client.lsp.send_request(
+            client.lsp.send_request(
                 TEXT_DOCUMENT_HOVER,
                 HoverParams(
                     text_document=TextDocumentIdentifier(uri=str(testpath)),
@@ -117,7 +117,7 @@ def test_document_symbols(client_server):
     """Test document symbol tree."""
     client, server = client_server
     testpath = TEST_DIR / "inputs" / "test01.inp"
-    content = _open_file(client, server, testpath)
+    _open_file(client, server, testpath)
 
     result = client.lsp.send_request(
         TEXT_DOCUMENT_DOCUMENT_SYMBOL,
@@ -148,7 +148,7 @@ def test_definition_include(client_server, tmp_path):
     )
     sleep(CALL_TIMEOUT)
 
-    result = client.lsp.send_request(
+    client.lsp.send_request(
         TEXT_DOCUMENT_DEFINITION,
         DefinitionParams(
             text_document=TextDocumentIdentifier(uri=str(main_file)),

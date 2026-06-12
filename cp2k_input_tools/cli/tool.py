@@ -176,7 +176,7 @@ def _read_file_content(file_path: str) -> str:
         with open(file_path, "r") as f:
             return f.read()
     except (IOError, OSError) as e:
-        raise click.ClickException(f"Error reading file: {e}")
+        raise click.ClickException(f"Error reading file: {e}") from e
 
 
 def _get_line_at_position(content: str, line: int) -> str:
@@ -210,7 +210,7 @@ def _get_section_context_at_position(content: str, line_idx: int) -> Optional[Di
     lines = content.split("\n")
     stack = [root_section]
 
-    for i, line in enumerate(lines[: line_idx + 1]):
+    for _i, line in enumerate(lines[: line_idx + 1]):
         stripped = line.strip()
 
         if not stripped or stripped.startswith(("!", "#")):

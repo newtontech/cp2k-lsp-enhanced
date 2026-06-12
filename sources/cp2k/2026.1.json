@@ -13,6 +13,56 @@
       "version": "2026.1",
       "confidence": 0.95,
       "notes": "Fixture-backed release notes for OpenQC release-diff verification."
+    },
+    {
+      "source_ref": "raw/assets/cp2k-dft-qs-reference.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-dft-qs-reference.md",
+      "sha256": "55098437f389d7b418916011af239aae6f7223865a34aedac7394be5b877d4cc",
+      "size_bytes": 8529,
+      "version": "2026.1",
+      "confidence": 0.9,
+      "notes": "CP2K DFT/QS reference digest for wiki synthesis."
+    },
+    {
+      "source_ref": "raw/assets/cp2k-input-sections-reference.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-input-sections-reference.md",
+      "sha256": "ccdf81420c67640a198513845f15310a1ce931c6de6263ecffe8a7a96a393549",
+      "size_bytes": 7157,
+      "version": "2026.1",
+      "confidence": 0.9,
+      "notes": "CP2K input sections reference digest."
+    },
+    {
+      "source_ref": "raw/assets/cp2k-md-tutorials.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-md-tutorials.md",
+      "sha256": "668f367959d68f544b0f037b40833d6ff881265a1ba91f95916b6d84121ed1c3",
+      "size_bytes": 9311,
+      "version": "2026.1",
+      "confidence": 0.9,
+      "notes": "CP2K molecular dynamics tutorials digest."
+    },
+    {
+      "source_ref": "raw/assets/cp2k-ml-potentials.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-ml-potentials.md",
+      "sha256": "2decf64bc68b4de6aea5bad075620b83bb3810cf9ab8506907d4a95c9d341658",
+      "size_bytes": 10555,
+      "version": "2026.1",
+      "confidence": 0.9,
+      "notes": "CP2K machine-learning potentials digest."
+    },
+    {
+      "source_ref": "raw/assets/cp2k-output-format.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-output-format.md",
+      "sha256": "ea633c6bd665dc1193ce1a40759c61d99d155942690234572e9e54e6d76053a6",
+      "size_bytes": 8890,
+      "version": "2026.1",
+      "confidence": 0.9,
+      "notes": "CP2K output format reference digest."
     }
   ],
   "dsl_ir": {

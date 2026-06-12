@@ -73,7 +73,7 @@ def test_nacl_completion_works(client_server):
         (55, 10, "keyword"),
     ]
 
-    for line_num, char_offset, expected_type in test_positions:
+    for line_num, char_offset, _expected_type in test_positions:
         if line_num >= len(lines):
             continue
 
@@ -107,7 +107,7 @@ def test_nacl_hover_works(client_server):
         (56, "MONKHORST-PACK"),
     ]
 
-    for line_num, expected_keyword in keyword_lines:
+    for line_num, _expected_keyword in keyword_lines:
         if line_num >= len(lines):
             continue
 
@@ -132,7 +132,7 @@ def test_nacl_no_spurious_diagnostics(client_server):
     """
     client, server = client_server
     testpath = TEST_DIR / "inputs" / "NaCl.inp"
-    content = _open_file(client, server, testpath)
+    _open_file(client, server, testpath)
 
     # Check that we have diagnostics (might be empty)
     assert client.diagnostics is not None, "Should have diagnostics object"
@@ -149,7 +149,7 @@ def test_nacl_variable_references_work(client_server):
     """Test that variable references like ${LATTICE} don't cause errors."""
     client, server = client_server
     testpath = TEST_DIR / "inputs" / "NaCl.inp"
-    content = _open_file(client, server, testpath)
+    _open_file(client, server, testpath)
 
     # Check diagnostics for lines with variable references
     # Lines 76-78 use ${LATTICE}
@@ -167,7 +167,7 @@ def test_nacl_preprocessor_blocks_no_errors(client_server):
     """Test that @IF/@ENDIF blocks don't cause spurious errors."""
     client, server = client_server
     testpath = TEST_DIR / "inputs" / "NaCl.inp"
-    content = _open_file(client, server, testpath)
+    _open_file(client, server, testpath)
 
     # Check for errors in @IF blocks
     # There are @IF blocks at lines 13, 17, 54, 133, 147
@@ -178,6 +178,7 @@ def test_nacl_preprocessor_blocks_no_errors(client_server):
     # Lines inside @IF blocks should not have errors (unless they're actual errors)
     # The duplicate keywords in different branches are expected warnings, not errors
     for line_num in if_block_lines:
-        line_errors = [e for d in errors if d.range.start.line == line_num - 1]
+        _line_errors = [d for d in errors if d.range.start.line == line_num - 1]
+        assert _line_errors is not None
         # We're not checking for zero here because there might be legitimate errors
         # Just verify that diagnostics exist and are reasonable

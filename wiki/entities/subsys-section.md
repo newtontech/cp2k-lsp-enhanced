@@ -273,3 +273,7 @@ F 0.25 0.25 0.25
 2. **真空层**：气相计算留至少 10 Å 真空层
 3. **基组一致性**：确保 KIND 定义与实际元素匹配
 4. **单位明确**：使用单位注记避免歧义
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

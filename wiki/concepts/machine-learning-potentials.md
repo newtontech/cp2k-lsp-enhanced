@@ -111,3 +111,7 @@ CP2K + trained ML potential
 3. Drautz, Phys. Rev. B 99, 014104 (2019)
 4. Wang et al., "DeePMD-kit" (2018)
 5. CP2K ML Methods: https://manual.cp2k.org/trunk/methods/machine_learning/
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

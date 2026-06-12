@@ -230,3 +230,7 @@ CP2K 使用以下命名模式：
 3. **压缩存储**：定期压缩归档输出文件
 4. **备份重要**：保留关键计算的 .restart 文件
 5. **轨迹检查**：定期检查轨迹文件完整性
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

@@ -282,3 +282,7 @@ The `&MOTION` section controls atomic motion calculations in CP2K, including geo
 2. **输出频率**：适当设置 STRIDE 减少输出
 3. **约束**：使用 SHAKE/RATTLE 允许更大时间步长
 4. **并行化**：大规模系统需调整并行策略
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

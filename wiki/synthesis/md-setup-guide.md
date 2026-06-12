@@ -214,3 +214,7 @@ And set:
 1. MD Reference: https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/MD.html
 2. CP2K AIMD Exercise: https://www.cp2k.org/exercises:2016_summer_school:aimd
 3. Marx & Hutter, "Ab Initio Molecular Dynamics" (2009)
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

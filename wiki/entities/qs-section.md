@@ -84,3 +84,7 @@ EXTRAPOLATION_ORDER: typically 2-4 for PS/ASPC, 4-10 for GEXT.
 
 1. QS Reference: https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/QS.html
 2. Lippert et al. (1997), VandeVondele et al. (2005)
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

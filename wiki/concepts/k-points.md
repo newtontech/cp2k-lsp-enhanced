@@ -147,3 +147,7 @@ Where n_k is grid points per direction, a is lattice constant.
 - Monkhorst & Pack (1976). "Special points for Brillouin-zone integrations"
 - Methfessel & Paxton (1989). "High-precision sampling for Brillouin-zone integration"
 - Martin (2004). "Electronic Structure: Basic Theory and Practical Methods"
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

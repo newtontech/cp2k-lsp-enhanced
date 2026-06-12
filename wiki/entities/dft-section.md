@@ -180,3 +180,7 @@ The `&DFT` section is the core part for configuring Density Functional Theory ca
 2. **多网格设置**：NGRIDS 通常设为 4-6
 3. **SCF 加速**：使用 DIIS 或 OT 方法
 4. **并行化**：调整并行网格参数
+
+## Sources
+
+- CP2K official documentation and repository assets (synthesized wiki entry).

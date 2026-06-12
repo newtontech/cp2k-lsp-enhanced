@@ -133,7 +133,7 @@ class TestDiagnosticsAPI:
 
         # Check that we have diagnostics from various sources
         # (parser, linter, typecheck, semantic)
-        sources = set(d.get("source", "") for d in result)
+        set(d.get("source", "") for d in result)
 
         # At minimum should have some diagnostics or empty if valid
         # The important thing is it doesn't crash
