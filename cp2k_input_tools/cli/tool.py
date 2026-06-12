@@ -241,12 +241,12 @@ def _get_section_context_at_position(content: str, line_idx: int) -> Optional[Di
             "name": current.name,
             "repeats": current.repeats,
             "keywords": [
-                kw.find("NAME").text
+                name_node.text
                 for kw in current.node.iterfind("./KEYWORD")
                 if (name_node := kw.find("NAME")) is not None and name_node.text
             ],
             "sections": [
-                sec.find("NAME").text
+                name_node.text
                 for sec in current.node.iterfind("./SECTION")
                 if (name_node := sec.find("NAME")) is not None and name_node.text
             ],
@@ -478,7 +478,7 @@ def _get_document_symbols(file_path: str) -> List[Dict[str, Any]]:
     content = _read_file_content(file_path)
     lines = content.split("\n")
     symbols: List[DocumentSymbol] = []
-    stack = []  # (indent, symbol)
+    stack: list[tuple[int, DocumentSymbol]] = []  # (indent, symbol)
 
     for i, line in enumerate(lines):
         stripped = line.strip()

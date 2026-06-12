@@ -42,7 +42,7 @@ def get_code_actions(
     Returns:
         List of CodeAction objects, or empty list if no actions available
     """
-    actions = []
+    actions: list[CodeAction] = []
     schema = get_schema_index()
     lines = text.splitlines()
 
@@ -68,7 +68,7 @@ def get_code_actions(
             CodeAction(
                 title="Insert missing &END",
                 kind=CodeActionKind.QuickFix,
-                edit={
+                edit={  # type: ignore[arg-type]
                     "changes": [
                         {
                             "textDocument": {"uri": uri},
@@ -92,7 +92,7 @@ def get_code_actions(
 
 def _suggest_enum_fixes(line_text: str, line_num: int, range_obj: Range, schema: CP2KSchemaIndex) -> List[CodeAction]:
     """Suggest fixes for invalid enum values."""
-    actions = []
+    actions: list[CodeAction] = []
 
     # Extract keyword name and invalid value from the line
     parts = line_text.strip().split(None, 1)
@@ -111,7 +111,7 @@ def _suggest_enum_fixes(line_text: str, line_num: int, range_obj: Range, schema:
 
 def _suggest_keyword_sections(line_text: str, line_num: int, range_obj: Range, schema: CP2KSchemaIndex) -> List[CodeAction]:
     """Suggest which section(s) a keyword belongs to."""
-    actions = []
+    actions: list[CodeAction] = []
 
     # Extract keyword name from the line
     parts = line_text.strip().split(None, 1)

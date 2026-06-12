@@ -226,9 +226,9 @@ class EvaluationHarness:
                     expected_items=expected_items,
                     actual_items=actual_items,
                     mrr=mrr,
-                    hit_at_1=hit_1,
-                    hit_at_3=hit_3,
-                    hit_at_5=hit_5,
+                    hit_at_1=int(hit_1),
+                    hit_at_3=int(hit_3),
+                    hit_at_5=int(hit_5),
                 )
             )
 
@@ -622,10 +622,11 @@ def generate_json_report(reports: List[EvaluationReport], output_path: str) -> N
     aggregate = harness.calculate_aggregate_metrics(reports)
 
     # Convert reports to dict format
-    report_data = {
+    report_entries: list[dict[str, object]] = []
+    report_data: dict[str, object] = {
         "timestamp": datetime.now().isoformat(),
         "aggregate_metrics": dataclasses.asdict(aggregate),
-        "reports": [],
+        "reports": report_entries,
     }
 
     for report in reports:
@@ -641,7 +642,7 @@ def generate_json_report(reports: List[EvaluationReport], output_path: str) -> N
             "completion_count": len(report.completion_results),
             "hover_count": len(report.hover_results),
         }
-        report_data["reports"].append(report_dict)
+        report_entries.append(report_dict)
 
     output.write_text(json.dumps(report_data, indent=2))
 

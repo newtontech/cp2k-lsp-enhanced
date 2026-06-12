@@ -40,7 +40,7 @@ def get_document_symbols(text: str, uri: str) -> List[SymbolInformation]:
         tree = parser.parse(fhandle)
 
         # Extract symbols from the parsed tree
-        symbols = []
+        symbols: list[SymbolInformation] = []
         _extract_symbols_from_tree(tree, "", symbols, uri)
         return symbols
 
