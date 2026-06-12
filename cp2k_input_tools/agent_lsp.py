@@ -54,6 +54,39 @@ class AgentLSP:
         payload["contents"] = None
         return payload
 
+    def explain(self, line: int = 0, character: int = 0) -> dict:
+        from .agent_operations import operation_path
+        from .tool import SOFTWARE, _collect_diagnostics, _file_type
+
+        parsed = urlparse(self.uri)
+        if self.text is None and parsed.scheme == "file":
+            path = Path(parsed.path)
+        else:
+            suffix = Path(parsed.path).suffix if parsed.path else ""
+            with TemporaryDirectory() as tmp:
+                path = Path(tmp) / f"input{suffix}"
+                path.write_text(self.text or "", encoding="utf-8")
+                payload = operation_path(
+                    path,
+                    "explain",
+                    software=SOFTWARE,
+                    file_type_func=_file_type,
+                    collect_diagnostics=_collect_diagnostics,
+                    line=line,
+                    character=character,
+                )
+                payload["uri"] = self.uri
+                return payload
+        return operation_path(
+            path,
+            "explain",
+            software=SOFTWARE,
+            file_type_func=_file_type,
+            collect_diagnostics=_collect_diagnostics,
+            line=line,
+            character=character,
+        )
+
     def symbols(self) -> dict:
         payload = agent_check_payload(software=SOFTWARE, uri=self.uri, operation="symbols")
         payload["items"] = []

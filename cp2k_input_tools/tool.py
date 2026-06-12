@@ -7,42 +7,21 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .agent_operations import OPERATIONS
 from .rich_diagnostics import agent_check_payload
 
 SOFTWARE = "cp2k"
 
 
 def _capabilities_payload() -> dict[str, Any]:
-    for parent in Path(__file__).resolve().parents:
-        manifest_path = parent / "lsp-capabilities.json"
-        if manifest_path.exists():
-            return json.loads(manifest_path.read_text(encoding="utf-8"))
     return {
-        "schema": "OpenQCLspCapabilities",
-        "version": 1,
         "software": SOFTWARE,
-        "capabilities": [
-            "diagnostics",
-            "rich-diagnostics",
-            "completion",
-            "hover",
-            "symbols",
-            "fix-preview",
-            "llm-wiki",
-            "openqc-context",
-        ],
-        "agentCli": {
-            "operations": [
-                "capabilities",
-                "check",
-                "context",
-                "complete",
-                "hover",
-                "symbols",
-                "fix",
-            ],
-            "jsonFormat": True,
-            "failOnBlocking": True,
+        "status": "available",
+        "capabilities": {
+            "operations": list(OPERATIONS),
+            "operation": "capabilities",
+            "status": "available",
+            "source": "cp2k-lsp-tool",
         },
     }
 
@@ -62,6 +41,9 @@ def _collect_diagnostics(path: Path) -> list[Any]:
     from .linter import lint as static_lint
     from .parser import CP2KInputParser
     from .typecheck import validate_text
+    from .version_policy import lint_version_policy_from_env
+
+    diagnostics.extend(lint_version_policy_from_env(text))
 
     try:
         with path.open("r", encoding="utf-8") as fhandle:

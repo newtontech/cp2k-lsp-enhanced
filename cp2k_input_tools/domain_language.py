@@ -45,12 +45,12 @@ def _find_section_node(name: str, parent_node: ET.Element) -> Optional[ET.Elemen
 
 
 def _find_keyword_node(name: str, section_node: ET.Element) -> Optional[ET.Element]:
-    """Find a keyword node by name within a section node."""
+    """Find a keyword node by canonical name or XML alias within a section node."""
     name_upper = name.upper()
     for kw_node in section_node.iterfind("./KEYWORD"):
-        name_node = kw_node.find("./NAME")
-        if name_node is not None and name_node.text and name_node.text.upper() == name_upper:
-            return kw_node
+        for name_node in kw_node.findall("./NAME"):
+            if name_node is not None and name_node.text and name_node.text.upper() == name_upper:
+                return kw_node
     return None
 
 
@@ -442,7 +442,7 @@ def suggest_next(text: str, position: int, uri: str) -> Dict[str, Any]:
                 name_node = kw_node.find("./NAME")
                 if name_node is not None and name_node.text:
                     kw_type = _get_keyword_type(kw_node)
-                    suggestion = {
+                    suggestion: dict[str, Any] = {
                         "name": name_node.text.upper(),
                         "kind": "keyword",
                         "type": kw_type,
@@ -552,7 +552,7 @@ def make_example(section_path: str, visited: Optional[set] = None) -> Optional[D
 
     # Add parent sections if nested (without recursion)
     if len(components) > 1:
-        parent_path = ".".join(components[:-1])
+        ".".join(components[:-1])
         # Add parent section headers manually
         for comp in components[:-1]:
             lines.append(f"&{comp}")

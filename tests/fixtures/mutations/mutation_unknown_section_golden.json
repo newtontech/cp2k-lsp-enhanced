@@ -1,0 +1,12 @@
+{
+  "description": "GLOBAL section wrongly nested under FORCE_EVAL. Should trigger invalid nesting diagnostic.",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code_match": "nesting|unknown|section",
+      "message_fragment": "GLOBAL"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}

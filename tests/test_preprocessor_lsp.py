@@ -63,7 +63,7 @@ def test_nacl_sample_no_spurious_diagnostics(client_server):
     """
     client, server = client_server
     testpath = TEST_DIR / "inputs" / "NaCl.inp"
-    content = _open_file(client, server, testpath)
+    _open_file(client, server, testpath)
 
     # Should have diagnostics (lint warnings about duplicates are expected)
     assert client.diagnostics is not None, "Should have diagnostics published"

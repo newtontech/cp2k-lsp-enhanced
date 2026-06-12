@@ -100,8 +100,7 @@ def run_check(server: Any = None, arguments: list[Any] | None = None) -> dict[st
     if agent is None:
         return _unavailable_payload("check", "Missing or unknown uri/path for cp2k/check.")
     payload = agent.check()
-    payload["capabilities"]["source"] = "cp2k-lsp"
-    return payload
+    return with_capabilities(payload, "check", source="cp2k-lsp")
 
 
 def run_explain(server: Any = None, arguments: list[Any] | None = None) -> dict[str, Any]:
@@ -113,5 +112,7 @@ def run_explain(server: Any = None, arguments: list[Any] | None = None) -> dict[
     line = int(args.get("line", 0) or 0)
     character = int(args.get("character", 0) or 0)
     payload = agent.explain(line=line, character=character)
-    payload["capabilities"]["source"] = "cp2k-lsp"
-    return payload
+    if "capabilities" in payload:
+        payload["capabilities"]["source"] = "cp2k-lsp"
+        return payload
+    return with_capabilities(payload, "explain", source="cp2k-lsp")

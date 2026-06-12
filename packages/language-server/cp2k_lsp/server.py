@@ -6,6 +6,14 @@ from typing import Dict, List, Optional
 from lsprotocol import types as lsp
 from pygls.server import LanguageServer
 
+from cp2k_lsp.agent_commands import (
+    COMMAND_CAPABILITIES,
+    COMMAND_CHECK,
+    COMMAND_EXPLAIN,
+    run_capabilities,
+    run_check,
+    run_explain,
+)
 from cp2k_lsp.features.code_action import CodeActionProvider
 from cp2k_lsp.features.completion import CompletionProvider
 from cp2k_lsp.features.diagnostics import DiagnosticsProvider
@@ -35,6 +43,22 @@ class CP2KLanguageServer(LanguageServer):
         self.code_action = CodeActionProvider(self)
 
         self._setup_handlers()
+        self._register_agent_commands()
+
+    def _register_agent_commands(self) -> None:
+        """Register agent-facing workspace/executeCommand handlers."""
+
+        @self.command(COMMAND_CHECK)
+        def cmd_check(ls, arguments):
+            return run_check(ls, arguments)
+
+        @self.command(COMMAND_EXPLAIN)
+        def cmd_explain(ls, arguments):
+            return run_explain(ls, arguments)
+
+        @self.command(COMMAND_CAPABILITIES)
+        def cmd_capabilities(ls, arguments):
+            return run_capabilities(ls, arguments)
 
     def _setup_handlers(self) -> None:
         """Setup LSP handlers."""

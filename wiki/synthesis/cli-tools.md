@@ -332,7 +332,7 @@ pip install cp2k-input-tools[lsp]
 pip install cp2k-input-tools[yaml,lsp]
 ```
 
-## 参考资料 / References
+## 参考来源 (Sources)
 
 - README: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/README.md`
 - 命令实现: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/`

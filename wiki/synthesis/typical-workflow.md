@@ -439,7 +439,13 @@ cp2k.popt -i single_point.inp -o single_point.out
 4. **版本控制**: 将输入文件和重要输出文件纳入版本控制
 5. **文档化**: 在输入文件中使用注释记录计算目的和参数选择
 
+## 参考来源 (Sources)
+
+- CP2K 手册: https://manual.cp2k.org/
+- `README.md`: cp2k-input-tools 项目说明
+- `docs/agent-workflow.md`: LSP+CLI 验证循环文档
+
 ## 参考资料 / References
 
 - CP2K 手册: https://manual.cp2k.org/
-- cp2k-input-tools README: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/README.md`
+- cp2k-input-tools README: `README.md`

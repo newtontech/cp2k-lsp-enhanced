@@ -1,0 +1,11 @@
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+  &END DFT
+  &SUBSYS
+    &COORD
+      O 0.0 0.0 0.0
+    &END COORD

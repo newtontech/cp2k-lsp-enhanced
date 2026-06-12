@@ -142,7 +142,16 @@ def test_valid_input_no_schema_diagnostics(client_server, tmp_path):
     client, server = client_server
 
     test_file = tmp_path / "valid_input.inp"
-    test_file.write_text("&FORCE_EVAL\n" "   METHOD QS\n" "   PROJECT test\n" "&END FORCE_EVAL\n")
+    test_file.write_text(
+        "&GLOBAL\n"
+        "   PROJECT test\n"
+        "&END GLOBAL\n"
+        "&FORCE_EVAL\n"
+        "   METHOD QS\n"
+        "   &DFT\n"
+        "   &END DFT\n"
+        "&END FORCE_EVAL\n"
+    )
 
     content = test_file.read_text()
     client.lsp.notify(
