@@ -1,11 +1,13 @@
 from typing import Union
 
 from lsprotocol.types import (
+    TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_HOVER,
+    CodeActionParams,
     CompletionParams,
     Diagnostic,
     DiagnosticSeverity,
@@ -18,6 +20,7 @@ from lsprotocol.types import (
 )
 from pygls.server import LanguageServer
 
+from .code_actions import get_code_actions
 from .completion import get_completions
 from .hover import get_hover
 from .parser import CP2KInputParserSimplified
@@ -128,6 +131,33 @@ def hover(ls, params: HoverParams):
     )
 
 
+def code_actions(ls, params: CodeActionParams):
+    """Provide code actions for CP2K input file diagnostics."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    # Get diagnostics from the context (handle both object and dict)
+    if params.context is None:
+        diagnostics = []
+    elif isinstance(params.context, dict):
+        diagnostics = params.context.get("diagnostics", [])
+    else:
+        diagnostics = params.context.diagnostics or []
+
+    # Collect all code actions from all diagnostics
+    all_actions = []
+    for diag in diagnostics:
+        actions = get_code_actions(
+            text=text,
+            diagnostic_range=diag.range,
+            diagnostic_message=diag.message,
+            uri=params.text_document.uri,
+        )
+        all_actions.extend(actions)
+
+    return all_actions
+
+
 def setup_cp2k_ls_server(server):
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls, params: DidChangeTextDocumentParams):
@@ -153,6 +183,11 @@ def setup_cp2k_ls_server(server):
     def did_hover(ls, params: HoverParams):
         """Hover request handler."""
         return hover(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_CODE_ACTION)
+    def did_code_actions(ls, params: CodeActionParams):
+        """Code actions request handler."""
+        return code_actions(ls, params)
 
 
 cp2k_server = LanguageServer("cp2k-lsp", "v0.1")
