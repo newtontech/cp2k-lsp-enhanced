@@ -122,10 +122,16 @@ def lint(root: Path) -> list[str]:
         if rel_path not in manifest_paths_set:
             errors.append(f"raw asset missing from source manifest: {rel_path}")
 
+    sources_headings = (
+        "## 参考来源 (Sources)",
+        "## Sources",
+        "## 来源 / Sources",
+        "## 相关来源 / Related Sources",
+    )
     for wiki_path in sorted((root / "wiki").glob("**/*.md")):
         text = wiki_path.read_text(encoding="utf-8")
         rel_path = wiki_path.relative_to(root).as_posix()
-        if "## 参考来源 (Sources)" not in text and "## Sources" not in text:
+        if not any(heading in text for heading in sources_headings):
             errors.append(f"wiki page missing Sources section: {rel_path}")
 
     return errors

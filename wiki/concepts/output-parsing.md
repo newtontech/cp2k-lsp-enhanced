@@ -92,7 +92,7 @@ Standard tools: MDAnalysis, MDTraj, ASE, VMD.
 - Entity: output-files.md (file format details / 文件格式详情)
 - Synthesis: typical-workflow.md (analysis workflow / 分析工作流)
 
-## References / 参考资料
+## 参考来源 (Sources)
 
 1. BioExcel CP2K Output Guide: https://docs.bioexcel.eu/qmmm_bpg/en/main/running_cp2k/cp2k_output.html
 2. ORNL Converter: https://calvera.ornl.gov/docs/user_guide/tools/Chemical%20Spectroscopy/neutrons_amml_cp2k_convert/
