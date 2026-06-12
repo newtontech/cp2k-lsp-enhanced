@@ -210,16 +210,23 @@ def _build_sections(
             if subsection_name_elem is not None and subsection_name_elem.text:
                 subsections.append(subsection_name_elem.text.upper())
 
-        # Get keywords
+        # Get keywords (canonical names plus XML alias lookups)
         keywords = []
+        section_path = parent_path + (name,)
         for keyword_elem in section_elem.findall("KEYWORD"):
-            keyword_name_elem = keyword_elem.find("NAME")
-            if keyword_name_elem is not None and keyword_name_elem.text:
-                keyword_name = keyword_name_elem.text.upper()
-                keywords.append(keyword_name)
-                # Parse keyword specification
-                spec = _parse_keyword(keyword_elem, keyword_name)
-                index._keywords[(parent_path + (name,), keyword_name)] = spec
+            canonical_name = None
+            alias_names: List[str] = []
+            for keyword_name_elem in keyword_elem.findall("NAME"):
+                if keyword_name_elem.text:
+                    alias_names.append(keyword_name_elem.text.upper())
+                    if keyword_name_elem.get("type") == "default" or canonical_name is None:
+                        canonical_name = keyword_name_elem.text.upper()
+            if canonical_name is None:
+                continue
+            keywords.append(canonical_name)
+            spec = _parse_keyword(keyword_elem, canonical_name)
+            for alias_name in alias_names:
+                index._keywords[(section_path, alias_name)] = spec
 
         # Create section specification
         section_spec = SectionSpec(
@@ -228,7 +235,6 @@ def _build_sections(
             subsections=tuple(subsections),
             keywords=tuple(keywords),
         )
-        section_path = parent_path + (name,)
         index._sections[section_path] = section_spec
         index._child_sections.setdefault(parent_path, []).append(name)
         index._child_sections[section_path] = []
