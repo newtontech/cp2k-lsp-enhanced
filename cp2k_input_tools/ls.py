@@ -5,18 +5,21 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
+    TEXT_DOCUMENT_HOVER,
     CompletionParams,
     Diagnostic,
     DiagnosticSeverity,
     DidChangeTextDocumentParams,
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
+    HoverParams,
     Position,
     Range,
 )
 from pygls.server import LanguageServer
 
 from .completion import get_completions
+from .hover import get_hover
 from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
 from .tokenizer import TokenizerError
@@ -107,6 +110,18 @@ def completion(ls, params: CompletionParams):
     )
 
 
+def hover(ls, params: HoverParams):
+    """Provide hover information for CP2K input files."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    return get_hover(
+        text=text,
+        position=params.position,
+        uri=params.text_document.uri,
+    )
+
+
 def setup_cp2k_ls_server(server):
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls, params: DidChangeTextDocumentParams):
@@ -127,6 +142,11 @@ def setup_cp2k_ls_server(server):
     def did_completion(ls, params: CompletionParams):
         """Completion request handler."""
         return completion(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_HOVER)
+    def did_hover(ls, params: HoverParams):
+        """Hover request handler."""
+        return hover(ls, params)
 
 
 cp2k_server = LanguageServer("cp2k-lsp", "v0.1")
