@@ -1,79 +1,86 @@
-# 变更日志 (Change Log)
+# LLM Wiki 变更日志 / Changelog
 
-## 2026-06-12 - Develop provenance update
+## 2026-06-12
 
-### Changed
+### 初始创建 / Initial Creation
 
-- Added the LLM Wiki to the active `develop` branch.
-- Added `sources/manifest.schema.json` and `sources/cp2k/0.9.1.json`.
-- Added `scripts/wiki_lint.py` to validate raw asset size, source manifest checksums, and wiki source sections.
-- Kept the large CP2K keyword registry at `cp2k_input_tools/cp2k_input.xml` instead of duplicating it under `raw/assets/`.
+创建 cp2k-lsp-enhanced 项目的 LLM Wiki 知识库，包含：
 
-## 2026-06-12 - 初始版本 (Initial Version)
+#### 实体页面 (Entity Pages)
+- [x] cp2k-intro.md - CP2K 简介
+- [ ] input-file-format.md - 输入文件格式
+- [ ] basis-set.md - 基组文件格式
+- [ ] pseudopotential.md - 赝势文件格式
+- [ ] quickstep.md - QuickStep DFT 模块
+- [ ] fist.md - FIST 经典力场模块
+- [ ] global-section.md - GLOBAL 输入部分
+- [ ] force-eval-section.md - FORCE_EVAL 输入部分
+- [ ] subsys-section.md - SUBSYS 输入部分
+- [ ] dft-section.md - DFT 输入部分
+- [ ] negf.md - NEGF 方法
+- [ ] output-files.md - 输出文件格式
+- [ ] restart-files.md - 重启文件格式
+- [ ] trajectory-files.md - 轨迹文件格式
 
-### 创建 (Created)
+#### 概念页面 (Concept Pages)
+- [ ] density-functional-theory.md - 密度泛函理论
+- [ ] xc-functionals.md - 交换关联泛函
+- [ ] gw-method.md - GW 方法
+- [ ] mp2-method.md - MP2 方法
+- [ ] qmmm.md - QM/MM 方法
+- [ ] periodic-boundary-conditions.md - 周期性边界条件
+- [ ] geometry-optimization.md - 几何优化
+- [ ] monte-carlo.md - 蒙特卡洛模拟
 
-#### 实体页面 (Entity Pages) - 8 个文件
-- `wiki/entities/cp2k-input-format.md` - CP2K 输入文件格式基础
-- `wiki/entities/globalsection.md` - GLOBAL 全局节
-- `wiki/entities/forceevalsection.md` - FORCE_EVAL 力计算节
-- `wiki/entities/dftsection.md` - DFT 密度泛函理论节
-- `wiki/entities/subsyssection.md` - SUBSYS 子系统节
-- `wiki/entities/basissets.md` - 基组类型与选择
-- `wiki/entities/pseudopotentials.md` - 赝势类型与应用
-- `wiki/entities/xcfunctionals.md` - 交换相关泛函
-- `wiki/entities/motionsection.md` - MOTION 运动节
-- `wiki/entities/kpoints.md` - K 点设置
-- `wiki/entities/scfconvergence.md` - SCF 自洽场收敛
-- `wiki/entities/units.md` - 单位系统
-- `wiki/entities/molecularmechanics.md` - 分子力学与 QM/MM
+#### 约束页面 (Constraint Pages)
+- [ ] parser-constraints.md - 解析器约束和限制
+- [ ] validation-constraints.md - 验证约束
 
-#### 概念页面 (Concept Pages) - 4 个文件
-- `wiki/concepts/parserarchitecture.md` - 解析器架构
-- `wiki/concepts/lspfeatures.md` - LSP 功能特性
-- `wiki/concepts/validationrules.md` - 验证规则
-- `wiki/concepts/jsonyamlformats.md` - JSON/YAML 格式
+#### 综合页面 (Synthesis Pages)
+- [ ] parser-api.md - 输入解析器 API
+- [ ] generator-api.md - 输入生成器 API
+- [ ] lsp-features.md - LSP 功能详解
+- [ ] cli-tools.md - 命令行工具参考
+- [ ] typical-workflow.md - 典型模拟工作流
 
-#### 综合页面 (Synthesis Pages) - 3 个文件
-- `wiki/synthesis/clireference.md` - CLI 命令参考
-- `wiki/synthesis/diagnosticscatalog.md` - 诊断错误目录
-- `wiki/synthesis/workflows.md` - 工作流程
+#### 基础文件
+- [x] index.md - 知识库导航
+- [x] log.md - 变更日志
 
-#### 导航文件
-- `index.md` - 知识库索引
-- `log.md` - 本变更日志
-- `docs/LLM-WIKI-PLAN.md` - Wiki 结构计划
+#### 资源文件
+- [x] raw/assets/ - 源代码和文档副本
+- [x] raw/assets/inputs/ - 测试用例和示例输入
+- [x] raw/assets/cp2k_input_tools/ - 核心工具实现
+- [x] raw/assets/cp2k_input_tools/cp2k_input.xml - XML 语法规范
 
-### 源文件 (Source Files)
-- `raw/assets/README.md` - 项目 README
-- `raw/assets/CHANGELOG.md` - 变更日志
-- `raw/assets/AGENTS.md` - Agent 工作流文档
-- `raw/assets/agent-workflow.md` - LSP 验证循环
-- `raw/assets/NaCl.inp` - 完整示例输入文件
-- `raw/assets/He_PBE.inp` - 简单示例
+### 统计 / Statistics
 
-### 统计 (Statistics)
 - **总文件数**: 30+
-- **实体页面**: 13
-- **概念页面**: 4
-- **综合页面**: 3
-- **覆盖主题**: CP2K 输入格式、DFT 参数、LSP 功能、CLI 工具、工作流程
+- **实体页面**: 1/14 (已创建/计划)
+- **概念页面**: 0/8
+- **约束页面**: 0/2
+- **综合页面**: 0/5
+- **语言**: 双语 (中文/English)
+
+### 覆盖范围 / Coverage
+
+- CP2K 核心概念 (输入文件、基组、赝势)
+- DFT 与计算方法 (DFT、泛函、GW、MP2)
+- 分子动力学 (FIST、QM/MM)
+- 输入结构 (GLOBAL、FORCE_EVAL、SUBSYS、DFT)
+- 高级主题 (几何优化、蒙特卡洛、NEGF)
+- 文件格式 (输出、重启、轨迹)
+- LSP 功能与 API
+
+### 待完成项 / TODO
+
+- [ ] 创建所有计划中的实体页面
+- [ ] 创建所有计划中的概念页面
+- [ ] 创建所有计划中的约束页面
+- [ ] 创建所有计划中的综合页面
+- [ ] 补充更多测试用例和示例输入
+- [ ] 添加更多代码注释和文档字符串
 
 ---
 
-## 版本历史 (Version History)
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| 1.0.1 | 2026-06-12 | Added source manifest and wiki lint on develop |
-| 1.0.0 | 2026-06-12 | 初始版本创建 |
-
----
-
-**维护说明**: 每次更新知识库时，在此文件顶部添加新的日期条目。
-## 2026-06-12 - OpenQC LSP Factory
-
-- `openqc-lsp-factory generate --software cp2k --version 0.9.1`
-## 2026-06-12 - OpenQC LSP Factory
-
-- `openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1`
+此日志遵循 Karpathy LLM Wiki 模式。

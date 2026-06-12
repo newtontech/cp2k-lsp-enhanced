@@ -1,127 +1,90 @@
-# CP2K LSP Enhanced 知识库索引 (Knowledge Base Index)
+# CP2K LSP Wiki 导航 / Navigation
 
-## 概述 (Overview)
+## 概述 / Overview
 
-本知识库采用 Karpathy 风格 LLM Wiki 模式，为 CP2K 量子化学输入文件和 LSP 工具提供结构化的领域知识。
+这是 cp2k-lsp-enhanced 项目的知识库，包含 CP2K 量子化学和固体态物理模拟的完整参考。
 
-## 目录结构 (Structure)
+## 目录结构 / Structure
 
 ```
-cp2k-lsp-enhanced/
-├── raw/assets/          # 源证据文件
-├── wiki/
-│   ├── entities/        # CP2K 特定概念
-│   ├── concepts/        # 跨领域概念
-│   └── synthesis/       # 综合参考文档
-├── index.md            # 本文件
-├── log.md              # 变更日志
-└── docs/               # 原始项目文档
+wiki/
+├── entities/       # 实体页面 (CP2K 特定概念)
+├── concepts/       # 概念页面 (跨领域思想)
+├── constraints/    # 约束页面 (高级约束和限制)
+└── synthesis/      # 综合页面 (API 参考、工作流)
 ```
 
-## 实体页面 (Entity Pages)
+## 核心主题 / Core Topics
 
-### 输入格式与结构
+### 基础 / Basics
 
-| 页面 | 描述 |
-|------|------|
-| `cp2k-input-format.md` | CP2K 输入文件格式基础语法 |
-| `globalsection.md` | GLOBAL 全局节详解 |
-| `forceevalsection.md` | FORCE_EVAL 力计算节 |
-| `dftsection.md` | DFT 密度泛函理论节 |
-| `subsyssection.md` | SUBSYS 子系统节 |
-| `motionsection.md` | MOTION 运动节 |
+- [CP2K 简介](wiki/entities/cp2k-intro.md) - CP2K 概述和特点
+- [输入文件格式](wiki/entities/input-file-format.md) - .inp 文件格式详解
+- [基组文件](wiki/entities/basis-set.md) - BASIS_SET 文件格式
+- [赝势文件](wiki/entities/pseudopotential.md) - POTENTIAL 文件格式
 
-### 物理化学参数
+### DFT 与计算方法 / DFT & Computational Methods
 
-| 页面 | 描述 |
-|------|------|
-| `basissets.md` | 基组类型与选择 |
-| `pseudopotentials.md` | 赝势类型与应用 |
-| `xcfunctionals.md` | 交换相关泛函 |
-| `kpoints.md` | K 点设置与采样 |
-| `scfconvergence.md` | SCF 自洽场收敛 |
-| `units.md` | 单位系统与转换 |
-| `molecularmechanics.md` | 分子力学与 QM/MM |
+- [密度泛函理论](wiki/concepts/density-functional-theory.md) - DFT 基础
+- [交换关联泛函](wiki/concepts/xc-functionals.md) - LDA, GGA, meta-GGA, 混合泛函
+- [QuickStep 模块](wiki/entities/quickstep.md) - DFT 计算引擎
+- [GW 方法](wiki/concepts/gw-method.md) - 准粒子能带结构
+- [MP2 方法](wiki/concepts/mp2-method.md) - 二阶微扰理论
 
-## 概念页面 (Concept Pages)
+### 分子动力学 / Molecular Dynamics
 
-| 页面 | 描述 |
-|------|------|
-| `parserarchitecture.md` | 解析器架构与流程 |
-| `lspfeatures.md` | LSP 功能特性 |
-| `validationrules.md` | 验证规则与层次 |
-| `jsonyamlformats.md` | JSON/YAML 格式规范 |
+- [FIST 模块](wiki/entities/fist.md) - 经典力场 MD
+- [QM/MM 方法](wiki/concepts/qmmm.md) - 量子/分子力学混合
+- [周期性边界条件](wiki/concepts/periodic-boundary-conditions.md) - PBC 设置
 
-## 综合页面 (Synthesis Pages)
+### 输入结构 / Input Structure
 
-| 页面 | 描述 |
-|------|------|
-| `clireference.md` | CLI 命令完整参考 |
-| `diagnosticscatalog.md` | 诊断错误目录 |
-| `workflows.md` | 工作流程与最佳实践 |
+- [GLOBAL 部分](wiki/entities/global-section.md) - 全局设置
+- [FORCE_EVAL 部分](wiki/entities/force-eval-section.md) - 力计算设置
+- [SUBSYS 部分](wiki/entities/subsys-section.md) - 子系统定义
+- [DFT 部分](wiki/entities/dft-section.md) - DFT 参数设置
 
-## 快速查找 (Quick Reference)
+### 高级主题 / Advanced Topics
 
-### 按任务查找
+- [几何优化](wiki/concepts/geometry-optimization.md) - 结构优化
+- [蒙特卡洛模拟](wiki/concepts/monte-carlo.md) - MC 方法
+- [NEGF 方法](wiki/entities/negf.md) - 非平衡格林函数
 
-| 任务 | 相关页面 |
-|------|----------|
-| 学习输入格式 | `cp2k-input-format.md` |
-| 编写 DFT 计算 | `dftsection.md`, `xcfunctionals.md` |
-| 设置几何优化 | `motionsection.md` |
-| 选择基组/赝势 | `basissets.md`, `pseudopotentials.md` |
-| 解决 SCF 不收敛 | `scfconvergence.md` |
-| 配置 LSP | `lspfeatures.md` |
-| 使用 CLI 工具 | `clireference.md` |
-| 调试错误 | `diagnosticscatalog.md` |
-| 参数扫描 | `workflows.md` |
+### 文件格式与数据 / File Formats & Data
 
-### 按主题查找
+- [输出文件](wiki/entities/output-files.md) - .out 文件格式
+- [重启文件](wiki/entities/restart-files.md) - .restart 文件
+- [轨迹文件](wiki/entities/trajectory-files.md) - .xyz, .dcd 格式
 
-| 主题 | 相关页面 |
-|------|----------|
-| 输入结构 | 所有 `*section.md` 页面 |
-| DFT 参数 | `dftsection.md`, `xcfunctionals.md`, `kpoints.md` |
-| 系统设置 | `subsyssection.md`, `basissets.md`, `pseudopotentials.md` |
-| 计算类型 | `motionsection.md` |
-| 收敛问题 | `scfconvergence.md` |
-| 工具使用 | `lspfeatures.md`, `clireference.md`, `workflows.md` |
-| 格式转换 | `jsonyamlformats.md` |
-| 错误排查 | `diagnosticscatalog.md`, `validationrules.md` |
+### API 与工具 / API & Tools
 
-## 源文件引用 (Source References)
+- [解析器 API](wiki/synthesis/parser-api.md) - CP2K 输入解析器接口
+- [生成器 API](wiki/synthesis/generator-api.md) - 输入文件生成接口
+- [LSP 功能](wiki/synthesis/lsp-features.md) - 语言服务器功能
+- [命令行工具](wiki/synthesis/cli-tools.md) - cp2klint, fromcp2k, tocp2k 等
+- [典型工作流](wiki/synthesis/typical-workflow.md) - 完整模拟流程
 
-所有知识页面均引用源证据文件：
+## 快速链接 / Quick Links
 
-- `raw/assets/*.rst`: 项目文档快照
-- `raw/assets/README.md`: 主 README
-- `raw/assets/CHANGELOG.md`: 变更日志
-- `raw/assets/*.inp`: 示例输入文件
-- `cp2k_input_tools/`: 源代码实现
-- `sources/cp2k/0.9.1.json`: 源文件清单、校验和和版本元数据
+- [源代码](raw/assets/) - 原始源文件
+- [LSP 实现](raw/assets/cp2k_input_tools/) - 语言服务器代码
+- [解析器实现](raw/assets/cp2k_input_tools/parser.py) - 输入解析器代码
+- [测试文件](raw/assets/inputs/) - 测试用例和示例输入
+- [XML 规范](raw/assets/cp2k_input_tools/cp2k_input.xml) - 完整输入语法规范
 
-## 维护指南 (Maintenance Guide)
+## 相关项目 / Related Projects
 
-### 添加新页面
+- [OpenQC-VSCode](https://github.com/newtontech/OpenQC-VSCode) - VS Code 扩展集成
+- [AiiDA-CP2K](https://github.com/aiidateam/aiida-cp2k) - AiiDA 工作流集成
 
-1. 确定页面类型 (entity/concept/synthesis)
-2. 创建双语格式 (中文标题，英文术语)
-3. 添加源文件引用
-4. 更新本索引
+## 贡献 / Contributing
 
-### 更新现有页面
+欢迎贡献！请参考项目根目录的 `CONTRIBUTING.md`。
 
-1. 检查源文件变更
-2. 验证代码示例
-3. 添加变更到 `log.md`
+## 许可证 / License
 
-## 版本信息 (Version Info)
-
-- **知识库版本**: 1.0.0
-- **CP2K 工具版本**: 0.9.1
-- **创建日期**: 2026-06-12
-- **最后更新**: 2026-06-12
+本项目基于 Apache 2.0 许可证。CP2K 核心程序基于 GPLv3 许可证。
 
 ---
 
-**导航提示**: 使用编辑器的搜索功能快速定位所需信息。所有页面支持关键词搜索。
+最后更新: 2026-06-12
