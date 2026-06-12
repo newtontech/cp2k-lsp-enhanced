@@ -1,0 +1,96 @@
+{
+  "schema": "OpenQCLspCapabilities",
+  "version": 1,
+  "id": "cp2k-lsp-enhanced",
+  "software": "cp2k",
+  "displayName": "CP2K",
+  "languageId": "cp2k",
+  "executable": "cp2k-language-server",
+  "defaultBranch": "develop",
+  "filePatterns": [
+    "*.inp"
+  ],
+  "maturity": "stable",
+  "blockingPolicy": {
+    "mode": "blocking",
+    "description": "Error diagnostics block run-gate and Bohrium submission until resolved."
+  },
+  "capabilities": [
+    "agent-envelope",
+    "agent-json-cli",
+    "blocking-gate",
+    "completion",
+    "diagnostic-engine-v1",
+    "diagnostics",
+    "fix-preview",
+    "hover",
+    "llm-wiki",
+    "manifest",
+    "openqc-context",
+    "output-log-diagnostics",
+    "rich-diagnostics",
+    "routing",
+    "source-provenance",
+    "symbols"
+  ],
+  "agentCli": {
+    "command": "cp2k-lsp-tool",
+    "operations": [
+      "capabilities",
+      "check",
+      "context",
+      "complete",
+      "hover",
+      "symbols",
+      "fix"
+    ],
+    "jsonFormat": true,
+    "failOnBlocking": true
+  },
+  "diagnosticSchema": "diagnostics/diagnostic-engine-v1.schema.json",
+  "wikiPaths": {
+    "plan": "docs/LLM-WIKI-PLAN.md",
+    "rawAssets": "raw/assets",
+    "entities": "wiki/entities",
+    "concepts": "wiki/concepts",
+    "synthesis": "wiki/synthesis",
+    "index": "index.md",
+    "log": "log.md"
+  },
+  "fixturePaths": {
+    "valid": [
+      "tests/fixtures/valid",
+      "test/fixtures/valid"
+    ],
+    "invalid": [
+      "tests/fixtures/invalid",
+      "test/fixtures/invalid"
+    ],
+    "logs": [
+      "tests/fixtures/logs",
+      "test/fixtures/logs"
+    ]
+  },
+  "outputLogPatterns": [
+    "cp2k.out",
+    "*.cp2k.out"
+  ],
+  "openqc": {
+    "registryId": "cp2k-lsp-enhanced",
+    "repoName": "cp2k-lsp-enhanced",
+    "contextContract": "DSLAuthoringContext",
+    "diagnosticEnvelope": "DiagnosticEnvelope/v1"
+  },
+  "sourceProvenance": [
+    {
+      "kind": "official_docs",
+      "label": "CP2K executable/version-matched manual generation",
+      "url": "https://www.cp2k.org/input_file"
+    },
+    {
+      "kind": "official_docs",
+      "label": "CP2K latest input reference",
+      "url": "https://manual.cp2k.org/trunk/CP2K_INPUT.html"
+    }
+  ]
+}

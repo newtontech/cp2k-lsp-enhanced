@@ -12,6 +12,41 @@ from .rich_diagnostics import agent_check_payload
 SOFTWARE = "cp2k"
 
 
+def _capabilities_payload() -> dict[str, Any]:
+    for parent in Path(__file__).resolve().parents:
+        manifest_path = parent / "lsp-capabilities.json"
+        if manifest_path.exists():
+            return json.loads(manifest_path.read_text(encoding="utf-8"))
+    return {
+        "schema": "OpenQCLspCapabilities",
+        "version": 1,
+        "software": SOFTWARE,
+        "capabilities": [
+            "diagnostics",
+            "rich-diagnostics",
+            "completion",
+            "hover",
+            "symbols",
+            "fix-preview",
+            "llm-wiki",
+            "openqc-context",
+        ],
+        "agentCli": {
+            "operations": [
+                "capabilities",
+                "check",
+                "context",
+                "complete",
+                "hover",
+                "symbols",
+                "fix",
+            ],
+            "jsonFormat": True,
+            "failOnBlocking": True,
+        },
+    }
+
+
 def _file_type(path: Path) -> str:
     name = path.name.upper()
     if name in {"INCAR", "POSCAR", "KPOINTS", "POTCAR", "CONTCAR"}:
@@ -79,6 +114,8 @@ def _empty_operation(path: Path, operation: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cp2k-lsp-tool")
     subparsers = parser.add_subparsers(dest="operation", required=True)
+    capabilities = subparsers.add_parser("capabilities")
+    capabilities.add_argument("--format", choices=["json"], default="json")
     for operation in ("check", "context", "complete", "hover", "symbols", "fix"):
         sub = subparsers.add_parser(operation)
         sub.add_argument("path", type=Path)
@@ -86,6 +123,9 @@ def main(argv: list[str] | None = None) -> int:
         if operation == "check":
             sub.add_argument("--fail-on-blocking", action="store_true")
     args = parser.parse_args(argv)
+    if args.operation == "capabilities":
+        print(json.dumps(_capabilities_payload(), indent=2, sort_keys=True))
+        return 0
     if args.operation == "check":
         payload = check_path(args.path)
         print(json.dumps(payload, indent=2, sort_keys=True))
