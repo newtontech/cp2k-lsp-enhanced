@@ -5,8 +5,10 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
+    TEXT_DOCUMENT_DOCUMENT_SYMBOL,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_HOVER,
+    WORKSPACE_SYMBOL,
     CodeActionParams,
     CompletionParams,
     Diagnostic,
@@ -14,9 +16,12 @@ from lsprotocol.types import (
     DidChangeTextDocumentParams,
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
+    DocumentSymbolParams,
     HoverParams,
     Position,
     Range,
+    SymbolInformation,
+    WorkspaceSymbolParams,
 )
 from pygls.server import LanguageServer
 
@@ -27,6 +32,7 @@ from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
 from .tokenizer import TokenizerError
 from .validator import validate_semantics
+from .symbols import get_document_symbols, get_workspace_symbols
 
 
 def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams]):
@@ -188,6 +194,44 @@ def setup_cp2k_ls_server(server):
     def did_code_actions(ls, params: CodeActionParams):
         """Code actions request handler."""
         return code_actions(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_DOCUMENT_SYMBOL)
+    def document_symbol(ls, params: DocumentSymbolParams) -> list[SymbolInformation]:
+        """Document symbol request (#55).
+
+        Returns hierarchical symbol information for sections and keywords.
+        """
+        text_doc = ls.workspace.get_text_document(params.text_document.uri)
+
+        try:
+            with open(text_doc.path, "r") as fhandle:
+                text = fhandle.read()
+
+            symbols = get_document_symbols(text, text_doc.uri)
+            return symbols
+
+        except Exception:
+            # Return empty list on error
+            return []
+
+    @server.feature(WORKSPACE_SYMBOL)
+    def workspace_symbol(ls, params: WorkspaceSymbolParams) -> list[SymbolInformation]:
+        """Workspace symbol request (#55).
+
+        Searches for symbols matching the query across all open documents.
+        """
+        # Get all open documents
+        all_files = {}
+        for doc in ls.workspace.documents.values():
+            try:
+                with open(doc.path, "r") as fhandle:
+                    all_files[doc.uri] = fhandle.read()
+            except Exception:
+                continue
+
+        # Search symbols
+        symbols = get_workspace_symbols(params.query, all_files)
+        return symbols
 
 
 cp2k_server = LanguageServer("cp2k-lsp", "v0.1")
