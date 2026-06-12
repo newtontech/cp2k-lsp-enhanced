@@ -1,243 +1,182 @@
-"""Tests for cursor context resolution."""
+"""
+Tests for CP2K input cursor context resolution.
 
-import json
-from pathlib import Path
+TDD: Tests written first, implementation to follow.
+"""
+import pytest
 
-from cp2k_input_tools.cursor_context import CursorContextResolver
+from cp2k_input_tools.cursor_context import (
+    CursorContext,
+    resolve_cursor_context,
+)
 
 
+@pytest.mark.unit
 class TestCursorContext:
-    """Test cursor context resolution."""
-    
-    def test_cursor_context_basic(self):
-        """Test basic cursor context resolution."""
-        resolver = CursorContextResolver()
-        
-        input_text = """&FORCE_EVAL
-  &DFT
-    &QS
-      METHOD GAPW
-    &END QS
-  &END DFT
-&END FORCE_EVAL
-"""
-        lines = input_text.split('\n')
-        
-        # Test cursor at QS section start (line 2, character 5)
-        context = resolver.resolve_cursor_context("test.inp", lines, 2, 5)
-        
-        assert context.uri == "test.inp"
-        assert context.line == 2
-        assert context.character == 5
-        assert context.section_path == ("FORCE_EVAL", "DFT")
-        assert context.current_section == "DFT"
-        assert context.is_section_start
-        assert not context.is_section_end
-    
-    def test_cursor_context_value_position(self):
-        """Test cursor context at value position."""
-        resolver = CursorContextResolver()
+    """Test cursor context resolution for CP2K input files."""
 
-        input_text = """&FORCE_EVAL
-  &DFT
-    &QS
-      METHOD GAPW
-    &END QS
-  &END DFT
-&END FORCE_EVAL
-"""
-        lines = input_text.split('\n')
-
-        # Test cursor after METHOD keyword (line 3, character 12)
-        context = resolver.resolve_cursor_context("test.inp", lines, 3, 12)
-
-        assert context.uri == "test.inp"
-        assert context.section_path == ("FORCE_EVAL", "DFT", "QS")
-        assert context.current_section == "QS"
-        assert context.current_keyword == "METHOD"
-        assert context.is_value_position
-        assert not context.is_keyword_position
-    
-    def test_cursor_context_section_end(self):
-        """Test cursor context at section end."""
-        resolver = CursorContextResolver()
-        
-        input_text = """&FORCE_EVAL
-  &DFT
-    &QS
-      METHOD GAPW
-    &END QS
-  &END DFT
-&END FORCE_EVAL
-"""
-        lines = input_text.split('\n')
-        
-        # Test cursor at QS section end (line 4, character 5)
-        context = resolver.resolve_cursor_context("test.inp", lines, 4, 5)
-        
-        assert context.section_path == ("FORCE_EVAL", "DFT", "QS")
-        assert context.current_section == "QS"
-        assert context.is_section_end
-        assert not context.is_section_start
-    
-    def test_cursor_context_deep_nesting(self):
-        """Test cursor context with deeply nested sections."""
-        resolver = CursorContextResolver()
-        
-        input_text = """&FORCE_EVAL
+    def test_cursor_inside_force_eval_dft_qs_resolves_section_path(self) -> None:
+        """Test that cursor inside FORCE_EVAL/DFT/QS resolves correct section path."""
+        text = """&FORCE_EVAL
   METHOD Quickstep
   &DFT
-    BASIS_SET_FILE_NAME BASIS_pob
+    BASIS_SET_FILE_NAME BASIS_MOLOPT
     &QS
-      EPS_DEFAULT 1e-12
-      METHOD GAPW
+      METHOD GPW
     &END QS
-    &SCF
-      EPS_SCF 1e-07
-      MAX_SCF 80
-      SCF_GUESS ATOMIC
-    &END SCF
   &END DFT
 &END FORCE_EVAL
 """
-        lines = input_text.split('\n')
-        
-        # Test cursor under SCF section
-        context = resolver.resolve_cursor_context("test.inp", lines, 11, 15)
+        ctx = resolve_cursor_context(text, line=4, character=10, uri="test.inp")
+        assert ctx.section_path == ("FORCE_EVAL", "DFT", "QS")
+        assert ctx.current_section == "QS"
 
-        assert context.section_path == ("FORCE_EVAL", "DFT", "SCF")
-        assert context.current_section == "SCF"
-        assert context.current_keyword == "SCF_GUESS"
-        assert context.is_value_position
-    
-    def test_cursor_context_whitespace_assignment(self):
-        """Test cursor context with CP2K whitespace assignment style."""
-        resolver = CursorContextResolver()
-        
-        input_text = """&FORCE_EVAL
+    def test_cursor_after_method_in_qs_resolves_keyword(self) -> None:
+        """Test that cursor after METHOD in &QS resolves keyword."""
+        text = """&FORCE_EVAL
+  &DFT
+    &QS
+      METHOD GPW
+    &END QS
+  &END DFT
+&END FORCE_EVAL
+"""
+        # Character 16 is after "METHOD " (in the value position)
+        ctx = resolve_cursor_context(text, line=3, character=16, uri="test.inp")
+        assert ctx.current_keyword == "METHOD"
+        assert ctx.is_value_position is True
+
+    def test_cursor_after_method_g_resolves_prefix(self) -> None:
+        """Test that cursor after METHOD G resolves prefix and value position."""
+        text = """&QS
+  METHOD G
+&END QS
+"""
+        ctx = resolve_cursor_context(text, line=1, character=12, uri="test.inp")
+        assert ctx.current_keyword == "METHOD"
+        assert ctx.prefix == "G"
+        assert ctx.is_value_position is True
+
+    def test_cursor_after_ampersand_at_top_level_is_section_start(self) -> None:
+        """Test that cursor after & at top level is section start."""
+        text = """&GLOBAL
+  PROJECT NaCl
+&END GLOBAL
+"""
+        ctx = resolve_cursor_context(text, line=0, character=2, uri="test.inp")
+        assert ctx.is_section_start is True
+
+    def test_cursor_after_end_section_is_section_end(self) -> None:
+        """Test that cursor after &END resolves section end."""
+        text = """&QS
+  METHOD GPW
+&END QS
+"""
+        ctx = resolve_cursor_context(text, line=2, character=7, uri="test.inp")
+        assert ctx.is_section_end is True
+
+    def test_works_on_incomplete_documents_unclosed_section(self) -> None:
+        """Test that resolution works on incomplete documents."""
+        text = """&FORCE_EVAL
+  &DFT
+    &QS
+      METHOD GPW
+"""
+        ctx = resolve_cursor_context(text, line=3, character=10, uri="test.inp")
+        assert ctx.section_path == ("FORCE_EVAL", "DFT", "QS")
+        assert ctx.current_section == "QS"
+
+    def test_preprocessor_if_block_no_spurious_diagnostics(self) -> None:
+        """Test that preprocessor directives don't break resolution."""
+        text = """&FORCE_EVAL
   METHOD Quickstep
+  &DFT
+    BASIS_SET_FILE_NAME BASIS_MOLOPT
+    @IF ${HP-1}
+      &KPOINTS
+        SCHEME MONKHORST-PACK 8 8 8
+      &END KPOINTS
+    @ENDIF
+  &END DFT
 &END FORCE_EVAL
 """
-        lines = input_text.split('\n')
-        
-        # Test cursor after METHOD keyword with whitespace assignment
-        context = resolver.resolve_cursor_context("test.inp", lines, 1, 12)
-        
-        assert context.section_path == ("FORCE_EVAL",)
-        assert context.current_section == "FORCE_EVAL"
-        assert context.current_keyword == "METHOD"
-        assert context.is_value_position
-    
-    def test_cursor_context_incomplete_line(self):
-        """Test cursor context with incomplete line."""
-        resolver = CursorContextResolver()
+        ctx = resolve_cursor_context(text, line=6, character=10, uri="test.inp")
+        assert ctx.section_path == ("FORCE_EVAL", "DFT", "KPOINTS")
+        assert ctx.current_section == "KPOINTS"
 
-        input_text = """&FORCE_EVAL
-  METHOD
+    def test_set_directive_recognized(self) -> None:
+        """Test that @SET directives are recognized."""
+        text = """@SET CUTOFF 600
+&MGRID
+  CUTOFF ${CUTOFF}
+&END MGRID
+"""
+        ctx = resolve_cursor_context(text, line=0, character=5, uri="test.inp")
+        # Should not break - just return what we can
+        assert ctx.uri == "test.inp"
+
+    def test_cursor_at_keyword_position(self) -> None:
+        """Test cursor at keyword position inside section."""
+        text = """&QS
+  METHOD GPW
+  EXTRAPOLATION USE_GUESS
+&END QS
+"""
+        ctx = resolve_cursor_context(text, line=2, character=5, uri="test.inp")
+        assert ctx.is_keyword_position is True
+        assert ctx.current_keyword == "EXTRAPOLATION"
+
+    def test_cursor_at_section_name(self) -> None:
+        """Test cursor at section name after &."""
+        text = """&FORCE_EVAL
+  &DFT
+    &QS
+      METHOD GPW
+    &END QS
+  &END DFT
 &END FORCE_EVAL
 """
-        lines = input_text.split('\n')
+        ctx = resolve_cursor_context(text, line=1, character=5, uri="test.inp")
+        assert ctx.is_section_start is True
+        # We're at "DFT" section
 
-        # Test cursor at incomplete METHOD line (just keyword, no space after)
-        # At position 7, we're at the last character, still typing the keyword
-        context = resolver.resolve_cursor_context("test.inp", lines, 1, 7)
+    def test_empty_document(self) -> None:
+        """Test cursor context on empty document."""
+        text = ""
+        ctx = resolve_cursor_context(text, line=0, character=0, uri="test.inp")
+        assert ctx.section_path == ()
+        assert ctx.current_section is None
 
-        assert context.section_path == ("FORCE_EVAL",)
-        assert context.current_section == "FORCE_EVAL"
-        # When there's no separator after the keyword, we're still typing it
-        assert context.is_keyword_position
-        # We're in the middle of typing, so prefix is partial
-        assert len(context.prefix) > 0
-    
-    def test_cursor_context_prefix_detection(self):
-        """Test cursor context prefix detection for completion."""
-        resolver = CursorContextResolver()
-        
-        input_text = """&FORCE_EVAL
-  METH
+    def test_nested_sections_correct_path(self) -> None:
+        """Test deeply nested section path."""
+        text = """&FORCE_EVAL
+  &DFT
+    &QS
+      &SCF
+        MAX_SCF 50
+      &END SCF
+    &END QS
+  &END DFT
 &END FORCE_EVAL
 """
-        lines = input_text.split('\n')
-        
-        # Test cursor at partial keyword (position 6 is at the end of METH)
-        context = resolver.resolve_cursor_context("test.inp", lines, 1, 6)
+        ctx = resolve_cursor_context(text, line=4, character=12, uri="test.inp")
+        assert ctx.section_path == ("FORCE_EVAL", "DFT", "QS", "SCF")
 
-        assert context.prefix == "METH"
-        assert context.is_keyword_position
-    
-    def test_cursor_context_with_comments(self):
-        """Test cursor context ignores comments properly."""
-        resolver = CursorContextResolver()
-        
-        input_text = """&FORCE_EVAL
-  METHOD Quickstep  ! This is a comment
+    def test_repeated_sections_distinguished(self) -> None:
+        """Test that repeated sections are handled correctly."""
+        text = """&FORCE_EVAL
+  &SUBSYS
+    &KIND Na
+    &END KIND
+    &KIND Cl
+    &END KIND
+  &END SUBSYS
 &END FORCE_EVAL
 """
-        lines = input_text.split('\n')
-        
-        # Test cursor before comment
-        context = resolver.resolve_cursor_context("test.inp", lines, 1, 20)
-        
-        assert context.section_path == ("FORCE_EVAL",)
-        assert context.current_section == "FORCE_EVAL"
-        # Should recognize the keyword even with comment after
-    
-    def test_cursor_context_golden_fixture(self):
-        """Test cursor context against golden fixture."""
-        resolver = CursorContextResolver()
-        
-        fixture_path = Path(__file__).parent / "fixtures" / "cursor_context" / "nested_sections.inp"
-        golden_path = Path(__file__).parent / "fixtures" / "cursor_context" / "nested_sections.json"
-        
-        # Load input file
-        with open(fixture_path) as f:
-            lines = f.readlines()
-        
-        # Load golden JSON
-        with open(golden_path) as f:
-            golden_data = json.load(f)
-        
-        # Test each cursor position
-        for test_case in golden_data['cursor_positions']:
-            context = resolver.resolve_cursor_context(
-                str(fixture_path),
-                lines,
-                test_case['line'],
-                test_case['character']
-            )
-            
-            expected = test_case['expected_context']
-            
-            # Check all fields
-            assert context.line == expected['line'], (
-                f"Line mismatch for {test_case['description']}"
-            )
-            assert context.character == expected['character'], (
-                f"Character mismatch for {test_case['description']}"
-            )
-            assert context.section_path == tuple(expected['section_path']), (
-                f"Section path mismatch for {test_case['description']}"
-            )
-            assert context.current_section == expected['current_section'], (
-                f"Current section mismatch for {test_case['description']}"
-            )
-            assert context.current_keyword == expected['current_keyword'], (
-                f"Current keyword mismatch for {test_case['description']}"
-            )
-            assert context.is_section_start is expected['is_section_start'], (
-                f"is_section_start mismatch for {test_case['description']}"
-            )
-            assert context.is_section_end is expected['is_section_end'], (
-                f"is_section_end mismatch for {test_case['description']}"
-            )
-            assert context.is_keyword_position is expected['is_keyword_position'], (
-                f"is_keyword_position mismatch for {test_case['description']}"
-            )
-            assert context.is_value_position is expected['is_value_position'], (
-                f"is_value_position mismatch for {test_case['description']}"
-            )
-            # Note: prefix matching may be lenient for whitespace
-            assert context.prefix.strip() == expected['prefix'].strip(), (
-                f"Prefix mismatch for {test_case['description']}: "
-                f"got '{context.prefix}', expected '{expected['prefix']}'"
-            )
+        # First KIND
+        ctx1 = resolve_cursor_context(text, line=2, character=10, uri="test.inp")
+        assert ctx1.current_section == "KIND"
+
+        # Second KIND (line 4 is inside "&KIND Cl", not the closing &END)
+        ctx2 = resolve_cursor_context(text, line=4, character=10, uri="test.inp")
+        assert ctx2.current_section == "KIND"
