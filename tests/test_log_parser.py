@@ -1,16 +1,15 @@
 """Tests for CP2K log parser module."""
 
-from pathlib import Path
 
 import pytest
 
-from . import TEST_DIR
 from cp2k_input_tools.log_parser import (
+    SCFConvergenceParser,
     parse_log_content,
     parse_log_file,
-    SCFConvergenceParser,
-    LogDiagnostic,
 )
+
+from . import TEST_DIR
 
 
 class TestSCFConvergenceParser:
