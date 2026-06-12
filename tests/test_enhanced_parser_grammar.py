@@ -386,6 +386,7 @@ class TestGrammarCompatibility:
 class TestOpenQCContract:
     """OpenQC-facing contract tests for LSP startup and behavior."""
 
+    @pytest.mark.openqc
     def test_lsp_package_startup(self):
         """LSP package should start without import errors."""
         from cp2k_lsp import CP2KLanguageServer
@@ -393,15 +394,17 @@ class TestOpenQCContract:
         server = CP2KLanguageServer()
         assert server is not None
 
+    @pytest.mark.openqc
     def test_lsp_version(self):
-        """LSP server should report version."""
+        """LSP server should report name and version."""
         from cp2k_lsp import CP2KLanguageServer
 
         server = CP2KLanguageServer()
         # pygls v1 stores server info differently; verify it instantiates with our name/version
-        assert hasattr(server, "name") or hasattr(server, "_server_name") or hasattr(server, "name")
-        assert server.name == "cp2k-lsp" or True  # name passed to __init__
+        assert hasattr(server, "name")
+        assert server.name == "cp2k-lsp"
 
+    @pytest.mark.openqc
     def test_lsp_can_parse_document(self):
         """LSP server should parse a document and store AST."""
         from cp2k_lsp import CP2KLanguageServer
@@ -421,6 +424,7 @@ class TestOpenQCContract:
         assert parser.ast is not None
         assert parser.ast.global_section is not None
 
+    @pytest.mark.openqc
     def test_parser_and_lsp_separation(self):
         """Parser errors should be separable from LSP diagnostics."""
         from cp2k_lsp.parser import CP2KParser
@@ -436,6 +440,70 @@ class TestOpenQCContract:
         assert hasattr(parser, "ast")
         assert hasattr(parser, "errors")
         assert isinstance(parser.errors, list)
+
+    @pytest.mark.openqc
+    def test_valid_input_contract(self):
+        """Valid CP2K input should parse without errors (non-triggering behavior)."""
+        from cp2k_lsp.parser import CP2KParser
+        valid_input = """\
+&GLOBAL
+  RUN_TYPE ENERGY
+  PROJECT valid_test
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    BASIS_SET_FILE_NAME BASIS_MOLOPT
+    POTENTIAL_FILE_NAME GTH_POTENTIALS
+    &MGRID
+      CUTOFF 400
+    &END MGRID
+  &END DFT
+  &SUBSYS
+    &CELL
+      A 10.0 0.0 0.0
+      B 0.0 10.0 0.0
+      C 0.0 0.0 10.0
+    &END CELL
+    &COORD
+      O 0.0 0.0 0.0
+      H 0.757 0.586 0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL
+"""
+        parser = CP2KParser.parse_text(valid_input)
+        assert parser.ast is not None
+        assert parser.ast.global_section is not None
+        assert len(parser.errors) == 0
+
+    @pytest.mark.openqc
+    def test_invalid_input_contract(self):
+        """Invalid CP2K input should produce parse errors (diagnostic behavior)."""
+        from cp2k_lsp.parser import CP2KParser
+
+        # Section name mismatch triggers parser.errors (not lexer throw)
+        mismatch_input = """\
+&GLOBAL
+  RUN_TYPE ENERGY
+&END FORCE_EVAL
+"""
+        parser = CP2KParser.parse_text(mismatch_input)
+        assert len(parser.errors) > 0
+        assert any("mismatch" in str(e).lower() for e in parser.errors)
+        assert any("mismatch" in str(e).lower() for e in parser.errors)
+
+    @pytest.mark.openqc
+    def test_incomplete_input_contract(self):
+        """Incomplete CP2K input should produce parse errors."""
+        from cp2k_lsp.parser import CP2KParser
+        incomplete_input = """\
+&GLOBAL
+  RUN_TYPE ENERGY
+"""
+        parser = CP2KParser.parse_text(incomplete_input)
+        assert len(parser.errors) > 0
 
 
 # =============================================================================
