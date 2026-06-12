@@ -159,6 +159,26 @@
       "confidence": 0.9
     },
     {
+      "source_ref": "raw/assets/upstream-cp2k-reference.md",
+      "kind": "documentation",
+      "path": "raw/assets/upstream-cp2k-reference.md",
+      "sha256": "25e2f901fceb3c65f1876f22e8fec6d3131c21f7b20f31652d47bec338188564",
+      "size_bytes": 2837,
+      "version": "0.9.1",
+      "confidence": 0.95,
+      "notes": "Upstream CP2K documentation link manifest for issue #109 closeout."
+    },
+    {
+      "source_ref": "raw/assets/example-nvt-md.inp",
+      "kind": "example",
+      "path": "raw/assets/example-nvt-md.inp",
+      "sha256": "f945c3453c663fc86c5a269359cad5457718f995b7f004a0a3ff65799ed8832e",
+      "size_bytes": 1150,
+      "version": "0.9.1",
+      "confidence": 0.9,
+      "notes": "Minimal NVT MD example derived from official CP2K MOTION/MD reference."
+    },
+    {
       "source_ref": "cp2k_input_tools/cp2k_input.xml",
       "kind": "schema",
       "path": "cp2k_input_tools/cp2k_input.xml",

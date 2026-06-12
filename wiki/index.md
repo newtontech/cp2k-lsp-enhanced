@@ -45,6 +45,15 @@
 | [parser-api.md](synthesis/parser-api.md) | Parser API reference |
 | [preprocessor.md](synthesis/preprocessor.md) | CP2K input preprocessor |
 | [typical-workflow.md](synthesis/typical-workflow.md) | Typical CP2K workflow |
+| [md-setup-guide.md](synthesis/md-setup-guide.md) | Practical MD setup guide |
+| [openqc-agent-context.md](synthesis/openqc-agent-context.md) | Agent context for OpenQC |
+
+## Raw Documentation / 原始文档
+
+- [Upstream CP2K Reference](../raw/assets/upstream-cp2k-reference.md) — Official documentation link manifest
+- [Input Sections Reference](../raw/assets/cp2k-input-sections-reference.md) — FORCE_EVAL hierarchy
+- [MD Tutorials](../raw/assets/cp2k-md-tutorials.md) — NVT/NPT ensemble examples
+- [Example NVT MD Input](../raw/assets/example-nvt-md.inp) — Minimal NVT `.inp` fixture
 
 ## 参考来源 (Sources)
 

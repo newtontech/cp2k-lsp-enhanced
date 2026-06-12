@@ -1,5 +1,30 @@
 # Wiki Log
 
+## 2026-06-13 -- Closeout Pass (issue #109)
+
+### Raw Assets Added
+
+- `raw/assets/upstream-cp2k-reference.md` — Official CP2K documentation link manifest
+- `raw/assets/example-nvt-md.inp` — Minimal NVT MD input (H2, CSVR thermostat)
+
+### LSP Surface Updates
+
+- `lsp-capabilities.json` — `sourceProvenance` expanded from 2 to 6 entries
+- `wiki/synthesis/openqc-agent-context.md` — Capability-to-evidence table and example references
+
+### Navigation and Tooling
+
+- `index.md`, `wiki/index.md` — Cross-links to upstream manifest, MD docs, OpenQC context
+- `scripts/wiki-lint.sh` — Lightweight orphan/broken-link check
+- `docs/LLM-WIKI-PLAN.md` — Closeout checklist recorded
+
+### Sources
+
+- https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/MD.html
+- https://www.cp2k.org/exercises
+
+---
+
 ## 2026-06-13 -- Documentation Expansion
 
 ### Raw Assets Added (5 files)

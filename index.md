@@ -59,10 +59,26 @@ wiki/
 ### API 与工具 / API & Tools
 
 - [解析器 API](wiki/synthesis/parser-api.md) - CP2K 输入解析器接口
-- [生成器 API](wiki/synthesis/generator-api.md) - 输入文件生成接口
 - [LSP 功能](wiki/synthesis/lsp-features.md) - 语言服务器功能
 - [命令行工具](wiki/synthesis/cli-tools.md) - cp2klint, fromcp2k, tocp2k 等
 - [典型工作流](wiki/synthesis/typical-workflow.md) - 完整模拟流程
+- [MD 设置指南](wiki/synthesis/md-setup-guide.md) - 分子动力学实用指南
+- [OpenQC 智能体上下文](wiki/synthesis/openqc-agent-context.md) - LSP 能力与证据映射
+
+### 分子动力学 / Molecular Dynamics (continued)
+
+- [MD 部分](wiki/entities/md-section.md) - &MD 截面参数
+- [QS 模块](wiki/entities/qs-section.md) - Quickstep DFT 引擎
+- [ML 势函数](wiki/entities/ml-potentials.md) - NNP, NequIP, DeePMD, ACE
+- [热浴与压浴](wiki/concepts/thermostats-barostats.md) - NVT/NPT 算法
+- [输出解析](wiki/concepts/output-parsing.md) - .out/.ener 文件解析
+
+## 原始文档 / Raw Documentation
+
+- [上游 CP2K 参考链接](raw/assets/upstream-cp2k-reference.md) - 官方文档链接清单
+- [输入截面参考](raw/assets/cp2k-input-sections-reference.md) - 完整输入层级
+- [MD 教程](raw/assets/cp2k-md-tutorials.md) - NVT/NPT 示例
+- [NVT MD 示例输入](raw/assets/example-nvt-md.inp) - 最小 NVT `.inp` 示例
 
 ## 快速链接 / Quick Links
 
@@ -87,4 +103,4 @@ wiki/
 
 ---
 
-最后更新: 2026-06-12
+最后更新: 2026-06-13

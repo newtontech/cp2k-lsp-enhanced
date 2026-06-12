@@ -91,6 +91,26 @@
       "kind": "official_docs",
       "label": "CP2K latest input reference",
       "url": "https://manual.cp2k.org/trunk/CP2K_INPUT.html"
+    },
+    {
+      "kind": "official_spec",
+      "label": "CP2K MOTION/MD input reference",
+      "url": "https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/MD.html"
+    },
+    {
+      "kind": "official_tutorial",
+      "label": "CP2K exercises and tutorials",
+      "url": "https://www.cp2k.org/exercises"
+    },
+    {
+      "kind": "official_docs",
+      "label": "CP2K machine learning potential methods",
+      "url": "https://manual.cp2k.org/trunk/methods/machine_learning/index.html"
+    },
+    {
+      "kind": "upstream_manifest",
+      "label": "Upstream CP2K reference links",
+      "path": "raw/assets/upstream-cp2k-reference.md"
     }
   ]
 }
