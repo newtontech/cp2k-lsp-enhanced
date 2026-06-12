@@ -71,3 +71,9 @@
 ---
 
 **维护说明**: 每次更新知识库时，在此文件顶部添加新的日期条目。
+## 2026-06-12 - OpenQC LSP Factory
+
+- `openqc-lsp-factory generate --software cp2k --version 0.9.1`
+## 2026-06-12 - OpenQC LSP Factory
+
+- `openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1`

@@ -1,0 +1,30 @@
+{
+  "keywords": [
+    {
+      "name": "NEW_NAME",
+      "renamed_from": "RENAMED_KEY",
+      "replacement": "NEW_NAME",
+      "status": "active"
+    },
+    {
+      "name": "EPS_SCF",
+      "status": "active"
+    },
+    {
+      "name": "DEPRECATED_KEY",
+      "replacement": "NEW_NAME",
+      "status": "deprecated"
+    },
+    {
+      "name": "RENAMED_KEY",
+      "replacement": "NEW_NAME",
+      "status": "removed"
+    },
+    {
+      "name": "OLD_KEY",
+      "status": "removed"
+    }
+  ],
+  "software": "cp2k",
+  "version": "2026.1"
+}

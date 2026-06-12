@@ -1,0 +1,14 @@
+{
+  "keyword_count": 2703,
+  "operations": [
+    "check",
+    "context",
+    "complete",
+    "hover",
+    "symbols",
+    "fix"
+  ],
+  "software": "cp2k",
+  "source": "sources/cp2k/0.9.1.json",
+  "version": "0.9.1"
+}

@@ -28,6 +28,9 @@ jobs:
     - name: Run mypy
       run: poetry run mypy cp2k_input_tools packages/language-server/cp2k_lsp --ignore-missing-imports
 
+    - name: Run wiki lint
+      run: poetry run python scripts/wiki_lint.py
+
   pytest:
     runs-on: ubuntu-latest
     strategy:
@@ -96,6 +99,7 @@ jobs:
         cp2klint --help
         cp2kgen --help
         cp2kget --help
+        openqc-lsp-factory --help
 
   package-smoke:
     runs-on: ubuntu-latest
@@ -129,6 +133,7 @@ jobs:
         PY
         /tmp/cp2k-input-tools-wheel-smoke/bin/cp2klint --help
         /tmp/cp2k-input-tools-wheel-smoke/bin/cp2k-language-server --help
+        /tmp/cp2k-input-tools-wheel-smoke/bin/openqc-lsp-factory --help
 
   enhanced-lsp-smoke:
     # Issue #11: CI coverage for enhanced LSP importability and OpenQC contract

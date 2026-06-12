@@ -1,0 +1,22 @@
+{
+  "agent_role": "WikiMaintainerAgent",
+  "confidence": 0.95,
+  "inputs": {
+    "software": "cp2k",
+    "version": "2026.1"
+  },
+  "mode": "release-diff",
+  "next_agent_suggestions": [
+    "VerifierAgent"
+  ],
+  "open_questions": [],
+  "outputs": {
+    "payload": "release_diff.json",
+    "run_dir": "generated/openqc_lsp_factory/cp2k/release-diff-2025.2-to-2026.1"
+  },
+  "schema_version": 1,
+  "skill": "wiki-lint",
+  "software": "cp2k",
+  "status": "success",
+  "version": "2026.1"
+}

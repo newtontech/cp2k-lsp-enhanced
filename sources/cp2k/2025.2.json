@@ -1,0 +1,48 @@
+{
+  "manifest_version": 1,
+  "software": "cp2k",
+  "software_version": "2025.2",
+  "generated_at": "2026-06-12T00:00:00Z",
+  "sources": [
+    {
+      "source_ref": "raw/assets/cp2k-release-2025.2.md",
+      "kind": "release-notes",
+      "path": "raw/assets/cp2k-release-2025.2.md",
+      "sha256": "304acbd50809c1566f73b12782b496d1536b7c3d85a2e0df534c24edf6cea5c4",
+      "size_bytes": 204,
+      "version": "2025.2",
+      "confidence": 0.95,
+      "notes": "Fixture-backed release notes for OpenQC release-diff verification."
+    }
+  ],
+  "dsl_ir": {
+    "keywords": [
+      {
+        "name": "OLD_KEY",
+        "status": "active",
+        "confidence": 0.95,
+        "source_ref": "raw/assets/cp2k-release-2025.2.md"
+      },
+      {
+        "name": "RENAMED_KEY",
+        "status": "active",
+        "confidence": 0.95,
+        "source_ref": "raw/assets/cp2k-release-2025.2.md"
+      },
+      {
+        "name": "EPS_SCF",
+        "section": "SCF",
+        "type": "float",
+        "default": "1e-6",
+        "enum": [
+          "1e-6"
+        ],
+        "unit": "",
+        "description": "SCF threshold.",
+        "status": "active",
+        "confidence": 0.95,
+        "source_ref": "raw/assets/cp2k-release-2025.2.md"
+      }
+    ]
+  }
+}
