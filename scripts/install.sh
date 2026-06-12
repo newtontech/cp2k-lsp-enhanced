@@ -25,6 +25,6 @@ if [ -f pyproject.toml ] || [ -f setup.py ]; then
   else
     python -m pip install --upgrade pip
     python -m pip install ".[dev]" 2>/dev/null || python -m pip install .
-    python -m pip install pytest pytest-cov pytest-console-scripts jsonschema ruff mypy
+    python -m pip install pytest pytest-cov pytest-console-scripts jsonschema ruff mypy pygls lsprotocol
   fi
 fi
