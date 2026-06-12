@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from .rich_diagnostics import agent_check_payload, diagnostic_to_dict
+from .rich_diagnostics import agent_check_payload
 
 OPERATIONS = ("check", "context", "complete", "hover", "symbols", "fix")
 _WORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.$%+-]*")

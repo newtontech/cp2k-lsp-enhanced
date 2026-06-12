@@ -6,20 +6,21 @@ code actions, document symbols, formatting, and rename for CP2K input files.
 """
 
 import re
-from typing import List, Optional, Union
+import xml.etree.ElementTree as ET
+from typing import Dict, List, Optional, Union
 
 from lsprotocol.types import (
     TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_COMPLETION,
+    TEXT_DOCUMENT_DEFINITION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DOCUMENT_SYMBOL,
     TEXT_DOCUMENT_HOVER,
-    TEXT_DOCUMENT_DEFINITION,
+    TEXT_DOCUMENT_PREPARE_RENAME,
     TEXT_DOCUMENT_REFERENCES,
     TEXT_DOCUMENT_RENAME,
-    TEXT_DOCUMENT_PREPARE_RENAME,
     CodeAction,
     CodeActionKind,
     CodeActionParams,
@@ -37,15 +38,13 @@ from lsprotocol.types import (
     DocumentSymbolParams,
     Hover,
     HoverParams,
-    MarkedString,
     MarkupContent,
     MarkupKind,
     Position,
-    PrepareRenameParams,
-    PrepareRenameResult,
     Range,
     ReferenceParams,
     RenameParams,
+    SymbolKind,
     TextDocumentEdit,
     TextEdit,
     WorkspaceEdit,
@@ -53,16 +52,10 @@ from lsprotocol.types import (
 from pygls.server import LanguageServer
 from pygls.workspace import TextDocument
 
-from .formatter import format_document as _format_doc, format_range as _format_range
+from . import DEFAULT_CP2K_INPUT_XML
 from .parser import CP2KInputParser, Section
 from .parser_errors import ParserError
-from .preprocessor import CP2KPreprocessor
 from .tokenizer import TokenizerError
-
-import re
-import xml.etree.ElementTree as ET
-
-from . import DEFAULT_CP2K_INPUT_XML
 
 # Regex patterns for variable detection
 _VAR_SET_RE = re.compile(r"^\s*@SET\s+(\w+)\s+(.+)", re.IGNORECASE)
@@ -250,7 +243,7 @@ def _get_section_context(lines: List[str], up_to_line: int, parser: CP2KInputPar
     # Build a tree reference stack
     treerefs = [root_section]
 
-    for i, line in enumerate(lines[:up_to_line]):
+    for _i, line in enumerate(lines[:up_to_line]):
         stripped = line.strip()
 
         # Skip empty lines and comments
@@ -473,11 +466,7 @@ def _get_section_path_at_position(text_doc: TextDocument, tree: dict, position: 
     if position.line >= len(lines):
         return []
 
-    line = lines[position.line]
-    target_indent = len(line) - len(line.lstrip())
-
     section_stack = []
-    current_indent = -2  # root is at -2
 
     for i, doc_line in enumerate(lines):
         if i > position.line:
@@ -493,7 +482,6 @@ def _get_section_path_at_position(text_doc: TextDocument, tree: dict, position: 
             while section_stack and indent <= section_stack[-1][1]:
                 section_stack.pop()
             section_stack.append((section_name, indent))
-            current_indent = indent
         elif stripped.upper().startswith("&END"):
             while section_stack:
                 section_stack.pop()
@@ -512,7 +500,7 @@ def _build_code_actions(tree: dict, diagnostics: List[Diagnostic]) -> List[CodeA
 
         if diag.code == "REMOVED_KEYWORD":
             actions.append(CodeAction(
-                title=f"Remove deprecated keyword",
+                title="Remove deprecated keyword",
                 kind=CodeActionKind.QuickFix,
                 diagnostics=[diag],
                 is_preferred=True,
@@ -561,8 +549,9 @@ def _build_code_actions(tree: dict, diagnostics: List[Diagnostic]) -> List[CodeA
 def _get_keyword_docs(kw_name: str) -> Optional[str]:
     """Get documentation for a keyword from the XML schema."""
     try:
-        from . import DEFAULT_CP2K_INPUT_XML
         import xml.etree.ElementTree as ET
+
+        from . import DEFAULT_CP2K_INPUT_XML
 
         spec = ET.parse(DEFAULT_CP2K_INPUT_XML)
         root = spec.getroot()
@@ -637,7 +626,6 @@ def setup_cp2k_ls_server(server):
         text_doc = ls.workspace.get_document(params.text_document.uri)
         lines = text_doc.source.split("\n")
         line_idx = params.position.line
-        col_idx = params.position.character
 
         if line_idx >= len(lines):
             return CompletionList(is_incomplete=False, items=[])

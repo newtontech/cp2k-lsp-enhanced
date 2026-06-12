@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .rich_diagnostics import agent_check_payload
 from .agent_operations import operation_path, with_capabilities
+from .rich_diagnostics import agent_check_payload
 
 SOFTWARE = "cp2k"
 

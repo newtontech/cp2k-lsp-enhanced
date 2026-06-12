@@ -6,8 +6,8 @@ Parses CP2K output files to extract runtime information and warnings.
 
 import re
 from dataclasses import dataclass
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
 
 
 @dataclass
