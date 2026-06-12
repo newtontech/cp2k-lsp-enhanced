@@ -124,7 +124,13 @@ def run_release_diff(root: Path, software: str, from_version: str, to_version: s
     old_keywords = _keywords_from_manifest(root, old_manifest, software, from_version)
     new_keywords = _keywords_from_manifest(root, new_manifest, software, to_version)
     changes = _diff_keywords(old_keywords, new_keywords)
-    review_items = _low_confidence_changes(changes, min_confidence)
+    review_items = [
+        *_with_release_context(_low_confidence_sources(old_manifest, min_confidence), "from", from_version),
+        *_with_release_context(_low_confidence_sources(new_manifest, min_confidence), "to", to_version),
+        *_with_release_context(_low_confidence_keywords(old_keywords, min_confidence), "from", from_version),
+        *_with_release_context(_low_confidence_keywords(new_keywords, min_confidence), "to", to_version),
+        *_low_confidence_changes(changes, min_confidence),
+    ]
 
     run_dir = _run_dir(root, software, f"release-diff-{from_version}-to-{to_version}")
     _ensure_run_dirs(run_dir)
@@ -137,11 +143,13 @@ def run_release_diff(root: Path, software: str, from_version: str, to_version: s
         "changes": changes,
     }
     _write_json(run_dir / "release_diff.json", payload)
-    _write_json(run_dir / "version_policy.json", _version_policy(software, to_version, new_keywords, changes))
     _write_handoffs(root, run_dir, software, to_version, status, payload, review_items, mode="release-diff", dag=RELEASE_DIFF_DAG)
     if review_items:
         _write_review(run_dir / "review" / "release-diff-review.json", "review_required", review_items)
+        _remove_release_promotions(root, run_dir, software, from_version, to_version)
+        return 0
 
+    _write_json(run_dir / "version_policy.json", _version_policy(software, to_version, new_keywords, changes))
     notes_path = root / "wiki" / "synthesis" / f"release-diff-{software}-{from_version}-to-{to_version}.md"
     _write_release_notes(
         notes_path,
@@ -375,6 +383,19 @@ def _diff_keywords(old_keywords: list[dict[str, Any]], new_keywords: list[dict[s
     return changes
 
 
+def _with_release_context(items: list[dict[str, Any]], release_side: str, version: str) -> list[dict[str, Any]]:
+    contextualized = []
+    for item in items:
+        contextualized.append(
+            {
+                **item,
+                "release_side": release_side,
+                "version": version,
+            }
+        )
+    return contextualized
+
+
 def _version_policy(
     software: str,
     version: str,
@@ -536,6 +557,38 @@ def _append_log(root: Path, command: str) -> None:
         return
     entry = f"\n## {_now_date()} - OpenQC LSP Factory\n\n- `{command}`\n"
     path.write_text(existing.rstrip() + entry + "\n", encoding="utf-8")
+
+
+def _remove_release_promotions(root: Path, run_dir: Path, software: str, from_version: str, to_version: str) -> None:
+    notes_path = root / "wiki" / "synthesis" / f"release-diff-{software}-{from_version}-to-{to_version}.md"
+    for path in (run_dir / "version_policy.json", notes_path):
+        if path.exists():
+            path.unlink()
+    _remove_state_line(root, f"{software} {to_version}: release diff from {from_version}")
+    _remove_log_entry(
+        root,
+        f"openqc-lsp-factory release-diff --software {software} --from {from_version} --to {to_version}",
+    )
+
+
+def _remove_state_line(root: Path, line_substring: str) -> None:
+    path = root / "wiki" / "current-state.md"
+    if not path.exists():
+        return
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    filtered = [line for line in lines if line_substring not in line]
+    path.write_text("\n".join(filtered) + "\n", encoding="utf-8")
+
+
+def _remove_log_entry(root: Path, command_substring: str) -> None:
+    path = root / "log.md"
+    if not path.exists():
+        return
+    text = path.read_text(encoding="utf-8")
+    entries = text.split("\n\n")
+    filtered = [entry for entry in entries if command_substring not in entry]
+    path.write_text("\n\n".join(filtered) + "\n", encoding="utf-8")
 
 
 def _write_json(path: Path, payload: Any) -> None:

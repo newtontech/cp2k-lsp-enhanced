@@ -182,7 +182,7 @@ def test_generate_routes_low_confidence_keywords_to_review_queue(tmp_path: Path)
     assert not (run_dir / "artifacts" / "lsp_stub.json").exists()
 
 
-def test_release_diff_outputs_structured_changes_review_queue_and_wiki_updates(tmp_path: Path) -> None:
+def test_release_diff_outputs_structured_changes_policy_and_wiki_updates(tmp_path: Path) -> None:
     _init_wiki_root(tmp_path)
     _write_manifest(
         tmp_path,
@@ -235,7 +235,7 @@ def test_release_diff_outputs_structured_changes_review_queue_and_wiki_updates(t
                 "confidence": 0.95,
                 "source_ref": "raw/assets/cp2k-2026.1.md",
             },
-            {"name": "LOW_CONF", "status": "active", "confidence": 0.4, "source_ref": "raw/assets/cp2k-2026.1.md"},
+            {"name": "ADDED_KEY", "status": "active", "confidence": 0.95, "source_ref": "raw/assets/cp2k-2026.1.md"},
         ],
     )
 
@@ -269,9 +269,8 @@ def test_release_diff_outputs_structured_changes_review_queue_and_wiki_updates(t
     assert policy_by_name["OLD_KEY"]["status"] == "removed"
     assert policy_by_name["RENAMED_KEY"]["status"] == "removed"
     assert policy_by_name["RENAMED_KEY"]["replacement"] == "NEW_NAME"
+    assert not (run_dir / "review" / "release-diff-review.json").exists()
 
-    review = json.loads((run_dir / "review" / "release-diff-review.json").read_text(encoding="utf-8"))
-    assert review["items"][0]["keyword"] == "LOW_CONF"
     handoffs = [json.loads(path.read_text(encoding="utf-8")) for path in sorted((run_dir / "handoffs").glob("*.json"))]
     assert any(item["skill"] == "release-diff" and item["agent_role"] == "ReleaseDiffAgent" for item in handoffs)
     assert all(
@@ -286,6 +285,227 @@ def test_release_diff_outputs_structured_changes_review_queue_and_wiki_updates(t
     assert "openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1" in (
         tmp_path / "log.md"
     ).read_text(encoding="utf-8")
+
+
+def test_release_diff_routes_low_confidence_sources_to_review_queue(tmp_path: Path) -> None:
+    _init_wiki_root(tmp_path)
+    _write_manifest(
+        tmp_path,
+        "2025.2",
+        confidence=0.95,
+        keywords=[
+            {
+                "name": "RUN_TYPE",
+                "section": "GLOBAL",
+                "type": "enum",
+                "enum": ["ENERGY", "ENERGY_FORCE"],
+                "default": "ENERGY",
+                "description": "Selects the CP2K calculation task.",
+                "status": "active",
+                "confidence": 0.95,
+                "source_ref": "raw/assets/cp2k-2025.2.md",
+            }
+        ],
+    )
+    _write_manifest(
+        tmp_path,
+        "2026.1",
+        confidence=0.2,
+        keywords=[
+            {
+                "name": "RUN_TYPE",
+                "section": "GLOBAL",
+                "type": "enum",
+                "enum": ["ENERGY", "ENERGY_FORCE"],
+                "default": "ENERGY",
+                "description": "Selects the CP2K calculation task.",
+                "status": "active",
+                "confidence": 0.95,
+                "source_ref": "raw/assets/cp2k-2026.1.md",
+            }
+        ],
+    )
+
+    assert (
+        factory_main(
+            [
+                "--root",
+                str(tmp_path),
+                "release-diff",
+                "--software",
+                "cp2k",
+                "--from",
+                "2025.2",
+                "--to",
+                "2026.1",
+                "--min-confidence",
+                "0.8",
+            ]
+        )
+        == 0
+    )
+
+    run_dir = tmp_path / "generated" / "openqc_lsp_factory" / "cp2k" / "release-diff-2025.2-to-2026.1"
+    diff = json.loads((run_dir / "release_diff.json").read_text(encoding="utf-8"))
+    assert diff["status"] == "review_required"
+    review = json.loads((run_dir / "review" / "release-diff-review.json").read_text(encoding="utf-8"))
+    assert review["status"] == "review_required"
+    assert review["items"][0]["reason"] == "low_confidence_source"
+    assert review["items"][0]["release_side"] == "to"
+    assert not (run_dir / "version_policy.json").exists()
+    assert not (tmp_path / "wiki" / "synthesis" / "release-diff-cp2k-2025.2-to-2026.1.md").exists()
+    current_state = tmp_path / "wiki" / "current-state.md"
+    assert not current_state.exists() or "release diff from 2025.2" not in current_state.read_text(encoding="utf-8")
+    assert "openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1" not in (
+        tmp_path / "log.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_release_diff_review_required_does_not_promote_version_policy_or_wiki(tmp_path: Path) -> None:
+    _init_wiki_root(tmp_path)
+    _write_manifest(
+        tmp_path,
+        "2025.2",
+        keywords=[
+            {
+                "name": "EPS_SCF",
+                "section": "SCF",
+                "type": "float",
+                "default": "1e-6",
+                "status": "active",
+                "confidence": 0.95,
+                "source_ref": "raw/assets/cp2k-2025.2.md",
+            }
+        ],
+    )
+    _write_manifest(
+        tmp_path,
+        "2026.1",
+        keywords=[
+            {
+                "name": "EPS_SCF",
+                "section": "SCF",
+                "type": "float",
+                "default": "1e-7",
+                "status": "active",
+                "confidence": 0.4,
+                "source_ref": "raw/assets/cp2k-2026.1.md",
+            }
+        ],
+    )
+
+    assert (
+        factory_main(
+            [
+                "--root",
+                str(tmp_path),
+                "release-diff",
+                "--software",
+                "cp2k",
+                "--from",
+                "2025.2",
+                "--to",
+                "2026.1",
+                "--min-confidence",
+                "0.8",
+            ]
+        )
+        == 0
+    )
+
+    run_dir = tmp_path / "generated" / "openqc_lsp_factory" / "cp2k" / "release-diff-2025.2-to-2026.1"
+    review = json.loads((run_dir / "review" / "release-diff-review.json").read_text(encoding="utf-8"))
+    assert {item["reason"] for item in review["items"]} >= {"low_confidence_keyword", "low_confidence_change"}
+    assert not (run_dir / "version_policy.json").exists()
+    assert not (tmp_path / "wiki" / "synthesis" / "release-diff-cp2k-2025.2-to-2026.1.md").exists()
+    assert "openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1" not in (
+        tmp_path / "log.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_release_diff_low_confidence_rerun_removes_stale_promotions(tmp_path: Path) -> None:
+    _init_wiki_root(tmp_path)
+    _write_manifest(
+        tmp_path,
+        "2025.2",
+        keywords=[
+            {"name": "OLD_KEY", "status": "active", "confidence": 0.95, "source_ref": "raw/assets/cp2k-2025.2.md"},
+        ],
+    )
+    _write_manifest(
+        tmp_path,
+        "2026.1",
+        keywords=[
+            {"name": "NEW_KEY", "status": "active", "confidence": 0.95, "source_ref": "raw/assets/cp2k-2026.1.md"},
+        ],
+    )
+
+    assert (
+        factory_main(
+            [
+                "--root",
+                str(tmp_path),
+                "release-diff",
+                "--software",
+                "cp2k",
+                "--from",
+                "2025.2",
+                "--to",
+                "2026.1",
+                "--min-confidence",
+                "0.8",
+            ]
+        )
+        == 0
+    )
+
+    run_dir = tmp_path / "generated" / "openqc_lsp_factory" / "cp2k" / "release-diff-2025.2-to-2026.1"
+    assert (run_dir / "version_policy.json").exists()
+    assert (tmp_path / "wiki" / "synthesis" / "release-diff-cp2k-2025.2-to-2026.1.md").exists()
+
+    current_state = (tmp_path / "wiki" / "current-state.md").read_text(encoding="utf-8")
+    assert "release diff from 2025.2" in current_state
+
+    log_text = (tmp_path / "log.md").read_text(encoding="utf-8")
+    assert "openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1" in log_text
+
+    _write_manifest(
+        tmp_path,
+        "2026.1",
+        keywords=[
+            {"name": "NEW_KEY", "status": "active", "confidence": 0.3, "source_ref": "raw/assets/cp2k-2026.1.md"},
+        ],
+    )
+
+    assert (
+        factory_main(
+            [
+                "--root",
+                str(tmp_path),
+                "release-diff",
+                "--software",
+                "cp2k",
+                "--from",
+                "2025.2",
+                "--to",
+                "2026.1",
+                "--min-confidence",
+                "0.8",
+            ]
+        )
+        == 0
+    )
+
+    review = json.loads((run_dir / "review" / "release-diff-review.json").read_text(encoding="utf-8"))
+    assert review["status"] == "review_required"
+    assert not (run_dir / "version_policy.json").exists()
+    assert not (tmp_path / "wiki" / "synthesis" / "release-diff-cp2k-2025.2-to-2026.1.md").exists()
+
+    current_state_after = (tmp_path / "wiki" / "current-state.md").read_text(encoding="utf-8")
+    assert "release diff from 2025.2" not in current_state_after
+
+    log_text_after = (tmp_path / "log.md").read_text(encoding="utf-8")
+    assert "openqc-lsp-factory release-diff --software cp2k --from 2025.2 --to 2026.1" not in log_text_after
 
 
 def test_version_policy_lint_distinguishes_removed_deprecated_and_unknown_keywords() -> None:
