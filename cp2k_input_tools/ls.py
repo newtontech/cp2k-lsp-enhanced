@@ -59,13 +59,19 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
                 )
 
         except (TokenizerError, ParserError) as exc:
-            ctx = exc.args[1]
-            line = ctx.line.rstrip() if ctx.line else ""
-
-            msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
-
-            linenr = ctx.linenr - 1
-            colnr = ctx.colnr
+            # Handle exceptions with varying argument counts
+            if len(exc.args) >= 2 and exc.args[1] is not None:
+                ctx = exc.args[1]
+                line = ctx.line.rstrip() if ctx.line else ""
+                msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
+                linenr = ctx.linenr - 1 if hasattr(ctx, 'linenr') and ctx.linenr else 0
+                colnr = ctx.colnr if hasattr(ctx, 'colnr') else None
+            else:
+                # Exception without context (e.g., NameRepetitionError)
+                line = ""
+                msg = f"Syntax error: {exc.args[0]}"
+                linenr = 0
+                colnr = None
 
             if colnr is not None:
                 count = 0  # number of underline chars after (positiv) or before (negative) the marker if ref_colnr given
