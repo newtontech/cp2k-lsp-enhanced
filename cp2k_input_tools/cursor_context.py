@@ -16,7 +16,7 @@ TDD: Implementation written to pass tests in tests/test_cursor_context.py
 
 import re
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 # Regular expressions for CP2K input parsing
 _SECTION_START = re.compile(r"^\s*&\s*([A-Za-z_][A-Za-z0-9_-]*)\b")
@@ -199,3 +199,18 @@ def resolve_cursor_context(
         is_value_position=is_value_position,
         prefix=prefix,
     )
+
+
+class CursorContextResolver:
+    """Resolve cursor context from CP2K input lines (LSP adapter)."""
+
+    def resolve_cursor_context(
+        self,
+        uri: str,
+        lines: List[str],
+        line: int,
+        character: int,
+    ) -> CursorContext:
+        """Resolve cursor context for a given position using document lines."""
+        text = "\n".join(lines)
+        return resolve_cursor_context(text, line, character, uri)
