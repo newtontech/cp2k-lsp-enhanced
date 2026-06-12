@@ -55,12 +55,17 @@ def main(argv: list[str] | None = None) -> int:
     release_diff.add_argument("--to", dest="to_version", required=True)
     release_diff.add_argument("--min-confidence", type=float, default=0.8)
 
+    validate_dsl = subparsers.add_parser("validate-dsl-ir")
+    validate_dsl.add_argument("path", type=Path, help="Path to a dsl_ir.json file to validate.")
+
     args = parser.parse_args(argv)
     root = args.root.resolve()
     if args.command == "generate":
         return run_generate(root, args.software, args.version, args.min_confidence)
     if args.command == "release-diff":
         return run_release_diff(root, args.software, args.from_version, args.to_version, args.min_confidence)
+    if args.command == "validate-dsl-ir":
+        return run_validate_dsl_ir(args.path)
     return 2
 
 
@@ -89,6 +94,7 @@ def run_generate(root: Path, software: str, version: str, min_confidence: float 
         "keywords": keywords,
     }
     _write_json(run_dir / "dsl_ir.json", dsl_ir)
+    _write_dsl_ir_schema(run_dir)
     _write_handoffs(root, run_dir, software, version, status, dsl_ir, review_items, dag=GENERATE_DAG)
 
     if review_items:
@@ -172,6 +178,124 @@ def run_release_diff(root: Path, software: str, from_version: str, to_version: s
     )
     _append_log(root, f"openqc-lsp-factory release-diff --software {software} --from {from_version} --to {to_version}")
     return 0
+
+
+def run_validate_dsl_ir(path: Path) -> int:
+    """Validate a DSL IR JSON file against the versioned schema.
+
+    Returns 0 on success, 1 on validation failure, 2 on I/O errors.
+    """
+    import jsonschema  # type: ignore[import-untyped]
+
+    path = path.resolve()
+    if not path.is_file():
+        print(f"Error: file not found: {path}", file=__import__("sys").stderr)
+        return 2
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"Error reading {path}: {exc}", file=__import__("sys").stderr)
+        return 2
+
+    # Locate the co-located schema: same directory or one level up per version
+    schema_path = _find_dsl_ir_schema(path)
+    if schema_path is None:
+        print("Error: could not locate dsl_ir.schema.json", file=__import__("sys").stderr)
+        return 2
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+    try:
+        jsonschema.validate(payload, schema)
+    except jsonschema.ValidationError as exc:
+        print(f"Validation error: {exc.message}", file=__import__("sys").stderr)
+        return 1
+
+    keyword_count = len(payload.get("keywords", []))
+    print(f"OK: {path} is valid ({keyword_count} keywords).")
+    return 0
+
+
+def _find_dsl_ir_schema(dsl_ir_path: Path) -> Path | None:
+    """Locate dsl_ir.schema.json next to the IR file or one level up."""
+    for candidate in (
+        dsl_ir_path.parent / "dsl_ir.schema.json",
+        dsl_ir_path.parent.parent / "dsl_ir.schema.json",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+DSL_IR_SCHEMA_BODY: dict[str, Any] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/newtontech/cp2k-lsp-enhanced/generated/openqc_lsp_factory/cp2k/0.9.1/dsl_ir.schema.json",
+    "title": "OpenQC DSL IR",
+    "description": "Versioned DSL intermediate-representation artifact produced by the OpenQC LSP factory pipeline.",
+    "type": "object",
+    "required": ["software", "version", "status", "keywords"],
+    "additionalProperties": False,
+    "properties": {
+        "software": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "enum": ["success", "review_required"]},
+        "sources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["source_ref", "kind", "version", "confidence"],
+                "additionalProperties": True,
+                "properties": {
+                    "source_ref": {"type": "string", "minLength": 1},
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "documentation", "example", "schema",
+                            "source", "release-notes", "agent-guidance",
+                        ],
+                    },
+                    "path": {"type": "string", "minLength": 1},
+                    "url": {"type": "string", "minLength": 1},
+                    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                    "size_bytes": {"type": "integer", "minimum": 0},
+                    "version": {"type": "string", "minLength": 1},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "notes": {"type": "string"},
+                },
+            },
+        },
+        "keywords": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": ["name", "status", "confidence", "source_ref"],
+                "additionalProperties": False,
+                "properties": {
+                    "name": {"type": "string", "minLength": 1},
+                    "section": {"type": "string"},
+                    "type": {"type": "string", "enum": ["integer", "keyword", "logical", "real", "string", "word"]},
+                    "enum": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                    "default": {"type": "string"},
+                    "unit": {"type": "string"},
+                    "description": {"type": "string"},
+                    "status": {"type": "string", "enum": ["active", "deprecated", "removed"]},
+                    "replacement": {"type": "string"},
+                    "renamed_from": {"type": "string"},
+                    "source_ref": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "version": {"type": "string"},
+                },
+            },
+        },
+    },
+}
+
+
+def _write_dsl_ir_schema(run_dir: Path) -> None:
+    """Write the co-located DSL IR schema next to dsl_ir.json."""
+    _write_json(run_dir / "dsl_ir.schema.json", DSL_IR_SCHEMA_BODY)
 
 
 def _load_manifest(root: Path, software: str, version: str) -> dict[str, Any]:

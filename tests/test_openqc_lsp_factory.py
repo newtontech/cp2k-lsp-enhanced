@@ -654,3 +654,108 @@ def test_capabilities_subcommand_returns_json_and_exits_zero(script_runner) -> N
     assert "symbols" in caps["operations"]
     assert "fix" in caps["operations"]
     assert "capabilities" in caps["operations"]
+
+
+# ---------------------------------------------------------------------------
+# DSL IR validator subcommand tests (issue #67)
+# ---------------------------------------------------------------------------
+
+DSL_IR_DIR = Path("generated/openqc_lsp_factory/cp2k/0.9.1")
+
+
+def test_validate_dsl_ir_accepts_generated_artifact() -> None:
+    """The shipped dsl_ir.json must validate against the co-located schema."""
+    dsl_ir_path = DSL_IR_DIR / "dsl_ir.json"
+    assert dsl_ir_path.is_file(), f"Expected generated DSL IR at {dsl_ir_path}"
+    assert factory_main(["validate-dsl-ir", str(dsl_ir_path)]) == 0
+
+
+def test_validate_dsl_ir_schema_exists_next_to_artifact() -> None:
+    schema_path = DSL_IR_DIR / "dsl_ir.schema.json"
+    assert schema_path.is_file(), f"DSL IR schema not found at {schema_path}"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    assert schema["title"] == "OpenQC DSL IR"
+
+
+def test_validate_dsl_ir_rejects_missing_file() -> None:
+    assert factory_main(["validate-dsl-ir", "/nonexistent/dsl_ir.json"]) == 2
+
+
+def test_validate_dsl_ir_rejects_invalid_json() -> None:
+    tmp = Path(__import__("tempfile").mkdtemp()) / "bad.json"
+    tmp.write_text("{not valid json", encoding="utf-8")
+    assert factory_main(["validate-dsl-ir", str(tmp)]) == 2
+
+
+def test_validate_dsl_ir_rejects_payload_missing_keywords(tmp_path: Path) -> None:
+    dsl_ir_path = tmp_path / "dsl_ir.json"
+    schema_path = tmp_path / "dsl_ir.schema.json"
+    # Write a co-located schema
+    schema_path.write_text(
+        Path("generated/openqc_lsp_factory/cp2k/0.9.1/dsl_ir.schema.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    dsl_ir_path.write_text(
+        json.dumps({"software": "cp2k", "version": "0.9.1", "status": "success"}),
+        encoding="utf-8",
+    )
+    assert factory_main(["validate-dsl-ir", str(dsl_ir_path)]) == 1
+
+
+def test_validate_dsl_ir_rejects_keyword_missing_required_fields(tmp_path: Path) -> None:
+    dsl_ir_path = tmp_path / "dsl_ir.json"
+    schema_path = tmp_path / "dsl_ir.schema.json"
+    schema_path.write_text(
+        Path("generated/openqc_lsp_factory/cp2k/0.9.1/dsl_ir.schema.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    dsl_ir_path.write_text(
+        json.dumps(
+            {
+                "software": "cp2k",
+                "version": "0.9.1",
+                "status": "success",
+                "keywords": [
+                    {"name": "FOO"},  # missing status, confidence, source_ref
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert factory_main(["validate-dsl-ir", str(dsl_ir_path)]) == 1
+
+
+def test_validate_dsl_ir_rejects_unknown_status(tmp_path: Path) -> None:
+    dsl_ir_path = tmp_path / "dsl_ir.json"
+    schema_path = tmp_path / "dsl_ir.schema.json"
+    schema_path.write_text(
+        Path("generated/openqc_lsp_factory/cp2k/0.9.1/dsl_ir.schema.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    dsl_ir_path.write_text(
+        json.dumps(
+            {
+                "software": "cp2k",
+                "version": "0.9.1",
+                "status": "unknown_status",
+                "keywords": [
+                    {"name": "FOO", "status": "active", "confidence": 0.9, "source_ref": "test"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert factory_main(["validate-dsl-ir", str(dsl_ir_path)]) == 1
+
+
+def test_generate_writes_dsl_ir_schema_next_to_artifact(tmp_path: Path) -> None:
+    """Schema should be co-located whenever generate writes dsl_ir.json."""
+    _init_wiki_root(tmp_path)
+    _write_manifest(tmp_path, "2026.4")
+
+    assert factory_main(["--root", str(tmp_path), "generate", "--software", "cp2k", "--version", "2026.4"]) == 0
+    run_dir = tmp_path / "generated" / "openqc_lsp_factory" / "cp2k" / "2026.4"
+    schema_path = run_dir / "dsl_ir.schema.json"
+    assert schema_path.is_file()
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    assert schema["title"] == "OpenQC DSL IR"
