@@ -1,0 +1,10 @@
+&FORCE_EVAL
+  &DFT
+    &QS
+      METHOD GAPW
+    &END QS
+    &SCF
+      SCF_GUESS ATOMIC
+    &END SCF
+  &END DFT
+&END FORCE_EVAL
