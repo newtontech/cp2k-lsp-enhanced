@@ -1,5 +1,17 @@
 # LLM Wiki 变更日志 / Changelog
 
+## 2026-06-13 — Closeout Pass (issue #109)
+
+- [x] `raw/assets/upstream-cp2k-reference.md` — Official CP2K documentation link manifest
+- [x] `raw/assets/example-nvt-md.inp` — Minimal NVT MD example input
+- [x] `lsp-capabilities.json` — sourceProvenance expanded 2→6 entries
+- [x] `wiki/synthesis/openqc-agent-context.md` — LSP capability and evidence mapping
+- [x] `index.md`, `wiki/index.md` — Cross-references to new raw assets and agent context
+- [x] `scripts/wiki-lint.sh` — Lightweight wiki lint script
+- [x] `docs/LLM-WIKI-PLAN.md` — Closeout status updated
+
+---
+
 ## 2026-06-12
 
 ### 初始创建 / Initial Creation
