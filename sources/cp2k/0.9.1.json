@@ -1,0 +1,118 @@
+{
+  "manifest_version": 1,
+  "software": "cp2k",
+  "software_version": "0.9.1",
+  "generated_at": "2026-06-12T00:00:00Z",
+  "sources": [
+    {
+      "source_ref": "raw/assets/agents.md",
+      "kind": "agent-guidance",
+      "path": "raw/assets/AGENTS.md",
+      "sha256": "498d47546310ae81010d5462f45dd4977f5e8b5e84c1218c64a15ae956ed7286",
+      "size_bytes": 1302,
+      "version": "0.9.1",
+      "confidence": 0.95,
+      "notes": "Snapshot of agent workflow guidance used by the wiki."
+    },
+    {
+      "source_ref": "raw/assets/changelog.md",
+      "kind": "release-notes",
+      "path": "raw/assets/CHANGELOG.md",
+      "sha256": "cad9653696136214c547d534160957f8fe275cd2ed497610e82be4158b9567b7",
+      "size_bytes": 6017,
+      "version": "0.9.1",
+      "confidence": 0.95
+    },
+    {
+      "source_ref": "raw/assets/he_pbe.inp",
+      "kind": "example",
+      "path": "raw/assets/He_PBE.inp",
+      "sha256": "2179908b2bc34ca60ecadca44ba7a750eb1d7dba4e63595e00f21e11082188ed",
+      "size_bytes": 712,
+      "version": "0.9.1",
+      "confidence": 0.95
+    },
+    {
+      "source_ref": "raw/assets/makefile",
+      "kind": "source",
+      "path": "raw/assets/Makefile",
+      "sha256": "8b6587b859607f200f116e2cb043fc358e1c3a26c326b563bf348453cfc68307",
+      "size_bytes": 634,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/nacl.inp",
+      "kind": "example",
+      "path": "raw/assets/NaCl.inp",
+      "sha256": "88b21ee681ae9c3b812a777003a67018242b23a4216508b620651b5c7b32b506",
+      "size_bytes": 3660,
+      "version": "0.9.1",
+      "confidence": 0.95
+    },
+    {
+      "source_ref": "raw/assets/readme.md",
+      "kind": "documentation",
+      "path": "raw/assets/README.md",
+      "sha256": "ba69fae8df9e8eec84c9b5044c7a111ba15ab73743331f0283766eb99bb3604b",
+      "size_bytes": 15616,
+      "version": "0.9.1",
+      "confidence": 0.95
+    },
+    {
+      "source_ref": "raw/assets/agent-workflow.md",
+      "kind": "agent-guidance",
+      "path": "raw/assets/agent-workflow.md",
+      "sha256": "9c030584e542602f3ad3b069b9748031d0f707ff706e9b0cab2bb2ffc5b73dff",
+      "size_bytes": 5498,
+      "version": "0.9.1",
+      "confidence": 0.95
+    },
+    {
+      "source_ref": "raw/assets/cli.rst",
+      "kind": "documentation",
+      "path": "raw/assets/cli.rst",
+      "sha256": "196dea5c7d38611979c27564772ec0a9b3dd4d414477da5e4b43e1247fecb72b",
+      "size_bytes": 726,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/conf.py",
+      "kind": "source",
+      "path": "raw/assets/conf.py",
+      "sha256": "764795398283d875008e787936a368c55dcbf5b11b9efb126bff042f29a21f6b",
+      "size_bytes": 3566,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/index.rst",
+      "kind": "documentation",
+      "path": "raw/assets/index.rst",
+      "sha256": "2b388bc4cfb27cff42b072fc38fd533ddbad97ef293d772e1b8c5b6eb2334c69",
+      "size_bytes": 543,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/requirements.txt",
+      "kind": "source",
+      "path": "raw/assets/requirements.txt",
+      "sha256": "ea491c42e47f5edf5084fb204cccc2833e847fed66571eb35f22c8235c78827e",
+      "size_bytes": 13,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "cp2k_input_tools/cp2k_input.xml",
+      "kind": "schema",
+      "path": "cp2k_input_tools/cp2k_input.xml",
+      "sha256": "258e45be04fe333beecca43dd0748d669d5fe1ebb0e23d43b97902a0151634ac",
+      "size_bytes": 27459375,
+      "version": "0.9.1",
+      "confidence": 0.95,
+      "notes": "Existing tracked keyword registry; intentionally not duplicated under raw/assets."
+    }
+  ]
+}
