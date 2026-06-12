@@ -12,7 +12,24 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class Diagnostic:
-    """Compatibility diagnostic used by lint and validation helpers."""
+    """Compatibility diagnostic used by lint and validation helpers.
+
+    Attributes:
+        severity: Diagnostic severity (e.g. "error", "warning").
+        source: Origin identifier (e.g. "cp2k-lint").
+        code: Lint or validation code (e.g. "lint/loose-scf-eps").
+        message: Human-readable message.
+        line: 0-based line number where the issue was detected.
+        column: 0-based column offset.
+        end_line: 0-based end line number.
+        end_column: 0-based end column offset.
+        suggested_fix: Optional quick-fix text.
+        rule_id: Optional canonical OpenQC rule identifier (e.g.
+            "cp2k.scf.eps_scf_loose").  When present this is the stable,
+            machine-readable ID that should be used for dashboards and
+            rule look-ups.  ``code`` remains the legacy short form for
+            backward compatibility.
+    """
 
     severity: str
     source: str
@@ -23,6 +40,7 @@ class Diagnostic:
     end_line: Optional[int] = None
     end_column: Optional[int] = None
     suggested_fix: Optional[str] = None
+    rule_id: Optional[str] = None
 
 
 @dataclass

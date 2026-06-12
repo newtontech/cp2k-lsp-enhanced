@@ -91,6 +91,10 @@ VALID_SECTION_PARENTS = {
     "POTENTIAL_FILE_NAME": {"FORCE_EVAL"},
 }
 
+RULE_ID_MAP: Dict[str, str] = {
+    RULE_LOOSE_SCF_EPS: "cp2k.scf.eps_scf_loose",
+}
+
 # Common configuration smell thresholds
 LOW_CUTOFF_THRESHOLD = 200  # Ry - very low, likely mistake
 LOW_REL_CUTOFF_THRESHOLD = 30  # Ry - very low
@@ -422,6 +426,7 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                                 code=RULE_LOOSE_SCF_EPS,
                                 message=f"EPS_SCF {eps_val} is very loose. Consider ≤ 1.0e-6 for production runs.",
                                 line=i,
+                                rule_id=RULE_ID_MAP.get(RULE_LOOSE_SCF_EPS),
                             )
                         )
                 except (ValueError, IndexError):
