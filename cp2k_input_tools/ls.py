@@ -374,7 +374,9 @@ def _validate(ls, params: Union[DidChangeTextDocumentParams, DidCloseTextDocumen
         if exc.__cause__:
             msg = f"Syntax error: {exc.args[0]} ({exc.__cause__})"
 
-        linenr = (ctx.linenr or 1) - 1
+        # Handle both Context objects with and without linenr attribute
+        # (PreprocessorError may create Context without linenr)
+        linenr = (getattr(ctx, 'linenr', None) or 1) - 1
         colnr = ctx.colnr or 0
 
         if colnr is not None and colnr > 0:
