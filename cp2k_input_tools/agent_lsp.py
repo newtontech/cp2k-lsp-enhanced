@@ -76,3 +76,6 @@ class AgentLSP:
 
     def symbols(self) -> dict:
         return self._operation("symbols")
+
+    def explain(self, line: int = 0, character: int = 0) -> dict:
+        return self._operation("explain", line, character)

@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterable
 
 from .rich_diagnostics import agent_check_payload
 
-OPERATIONS = ("check", "context", "complete", "hover", "symbols", "fix", "capabilities")
+OPERATIONS = ("check", "context", "complete", "hover", "symbols", "fix", "explain", "capabilities")
 _WORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.$%+-]*")
 _SECTION_RE = re.compile(r"^\s*(?:&(?P<section>[A-Za-z][A-Za-z0-9_.$-]*)|\[(?P<bracket>[^\]]+)\])")
 _ASSIGNMENT_RE = re.compile(r"^\s*(?P<key>[A-Za-z_][A-Za-z0-9_.$%-]*)\s*(?:=|:|\s+)")
@@ -56,7 +56,8 @@ def operation_path(
     path = Path(path)
     file_type = file_type_func(path)
     text = _read_text(path)
-    diagnostics = _safe_collect_diagnostics(path, collect_diagnostics) if operation in {"context", "complete", "hover", "fix"} else []
+    _POSITION_OPS = {"context", "complete", "hover", "fix", "explain"}
+    diagnostics = _safe_collect_diagnostics(path, collect_diagnostics) if operation in _POSITION_OPS else []
     payload = agent_check_payload(
         software=software,
         uri=path.resolve().as_uri(),
@@ -108,6 +109,35 @@ def operation_path(
         payload["actions"] = actions
         status = "available" if actions else "unavailable"
         reason = None if actions else "No safe quick-fix hints are available for current diagnostics."
+        return with_capabilities(payload, operation, status=status, reason=reason)
+
+    if operation == "explain":
+        context = _context_for(text, position)
+        selected = _diagnostics_at_position(payload["diagnostics"], line, character)
+        if not selected and payload["diagnostics"]:
+            selected = [payload["diagnostics"][0]]
+        payload["context"] = context
+        payload["explanations"] = [
+            {
+                "code": item.get("code"),
+                "message": item.get("message"),
+                "category": item.get("category"),
+                "severity": item.get("severity"),
+                "fix_hints": item.get("fix_hints") or [],
+                "manual_ref": item.get("manual_ref"),
+                "blocking": item.get("blocking"),
+                "confidence": item.get("confidence"),
+                "range": item.get("range"),
+            }
+            for item in selected
+        ]
+        contents = _hover_contents(path, text, context.get("token", ""), file_type)
+        if contents is None:
+            contents = _diagnostic_hover(payload["diagnostics"], line, character)
+        if contents is not None:
+            payload["contents"] = contents
+        status = "available" if payload["explanations"] or contents else "unavailable"
+        reason = None if status == "available" else "No diagnostic or documentation found for this position."
         return with_capabilities(payload, operation, status=status, reason=reason)
 
     return with_capabilities(
