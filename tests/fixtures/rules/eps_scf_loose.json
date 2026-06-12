@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.scf.eps_scf_loose",
+  "description": "Warn when EPS_SCF is looser than 1e-4",
+  "severity": "warning",
+  "source": "cp2k-lint",
+  "code": "lint/loose-scf-eps",
+  "fixtures": {
+    "invalid": "tests/fixtures/rules/eps_scf_loose.inp"
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.scf.eps_scf_loose",
+      "code": "lint/loose-scf-eps",
+      "message": "EPS_SCF 0.001 is very loose. Consider ≤ 1.0e-6 for production runs.",
+      "severity": "warning"
+    }
+  ]
+}
