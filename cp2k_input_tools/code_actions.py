@@ -19,7 +19,12 @@ from typing import List, Optional
 from lsprotocol.types import (
     CodeAction,
     CodeActionKind,
+    OptionalVersionedTextDocumentIdentifier,
+    Position,
     Range,
+    TextDocumentEdit,
+    TextEdit,
+    WorkspaceEdit,
 )
 
 from .schema_index import CP2KSchemaIndex, get_schema_index
@@ -42,7 +47,7 @@ def get_code_actions(
     Returns:
         List of CodeAction objects, or empty list if no actions available
     """
-    actions = []
+    actions: List[CodeAction] = []
     schema = get_schema_index()
     lines = text.splitlines()
 
@@ -68,22 +73,22 @@ def get_code_actions(
             CodeAction(
                 title="Insert missing &END",
                 kind=CodeActionKind.QuickFix,
-                edit={
-                    "changes": [
-                        {
-                            "textDocument": {"uri": uri},
-                            "edits": [
-                                {
-                                    "range": {
-                                        "start": {"line": start_line + 1, "character": 0},
-                                        "end": {"line": start_line + 1, "character": 0},
-                                    },
-                                    "newText": "&END\n",
-                                }
+                edit=WorkspaceEdit(
+                    document_changes=[
+                        TextDocumentEdit(
+                            text_document=OptionalVersionedTextDocumentIdentifier(uri=uri),
+                            edits=[
+                                TextEdit(
+                                    range=Range(
+                                        start=Position(line=start_line + 1, character=0),
+                                        end=Position(line=start_line + 1, character=0),
+                                    ),
+                                    new_text="&END\n",
+                                )
                             ],
-                        }
+                        )
                     ]
-                },
+                ),
             )
         )
 
@@ -92,7 +97,7 @@ def get_code_actions(
 
 def _suggest_enum_fixes(line_text: str, line_num: int, range_obj: Range, schema: CP2KSchemaIndex) -> List[CodeAction]:
     """Suggest fixes for invalid enum values."""
-    actions = []
+    actions: List[CodeAction] = []
 
     # Extract keyword name and invalid value from the line
     parts = line_text.strip().split(None, 1)

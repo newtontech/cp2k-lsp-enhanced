@@ -3,7 +3,15 @@
 import re
 from typing import Optional, Tuple
 
-from lsprotocol.types import Position, Range, TextDocumentEdit, TextEdit, WorkspaceEdit
+from lsprotocol.types import (
+    AnnotatedTextEdit,
+    OptionalVersionedTextDocumentIdentifier,
+    Position,
+    Range,
+    TextDocumentEdit,
+    TextEdit,
+    WorkspaceEdit,
+)
 
 # =============================================================================
 # Token patterns
@@ -189,7 +197,7 @@ def get_rename_edit(text: str, position: Position, uri: str, new_name: str) -> O
     return None
 
 
-def _rename_section_parameter(text: str, line_num: int, char_num: int, uri: str, new_name: str) -> WorkspaceEdit:
+def _rename_section_parameter(text: str, line_num: int, char_num: int, uri: str, new_name: str) -> Optional[WorkspaceEdit]:
     """Create edit for renaming section parameter."""
     lines = text.split("\n")
     current_line = lines[line_num]
@@ -217,12 +225,15 @@ def _rename_section_parameter(text: str, line_num: int, char_num: int, uri: str,
     edit_range = Range(start=Position(line=line_num, character=param_start), end=Position(line=line_num, character=param_end))
 
     text_edit = TextEdit(range=edit_range, new_text=new_name)
-    document_edit = TextDocumentEdit(text_document=dict(uri=uri, version=None), edits=[text_edit])
+    document_edit = TextDocumentEdit(
+        text_document=OptionalVersionedTextDocumentIdentifier(uri=uri, version=None),
+        edits=[text_edit],
+    )
 
     return WorkspaceEdit(document_changes=[document_edit])
 
 
-def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> WorkspaceEdit:
+def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> Optional[WorkspaceEdit]:
     """Create edit for renaming variable (currently single-document only)."""
     lines = text.split("\n")
     line_num = position.line
@@ -243,7 +254,7 @@ def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> 
         return None
 
     # Find all occurrences of the variable in the document
-    edits = []
+    edits: list[TextEdit | AnnotatedTextEdit] = []
     var_pattern = re.compile(r"@\{(?P<name>" + re.escape(var_name) + r")\}")
 
     for line_idx, line in enumerate(lines):
@@ -263,6 +274,9 @@ def _rename_variable(text: str, position: Position, uri: str, new_name: str) -> 
     if not edits:
         return None
 
-    document_edit = TextDocumentEdit(text_document=dict(uri=uri, version=None), edits=edits)
+    document_edit = TextDocumentEdit(
+        text_document=OptionalVersionedTextDocumentIdentifier(uri=uri, version=None),
+        edits=edits,
+    )
 
     return WorkspaceEdit(document_changes=[document_edit])

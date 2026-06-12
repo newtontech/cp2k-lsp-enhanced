@@ -51,7 +51,7 @@ def get_completions(
 
     # Section completion (after &)
     if ctx.is_section_start:
-        items.extend(_complete_sections(schema, ctx))
+        items.extend(_complete_sections(schema, ctx, text))
 
     # Keyword completion (inside section)
     elif ctx.current_section and not ctx.is_section_end:
@@ -74,7 +74,7 @@ def get_completions(
     )
 
 
-def _complete_sections(schema: CP2KSchemaIndex, ctx: CursorContext) -> List[CompletionItem]:
+def _complete_sections(schema: CP2KSchemaIndex, ctx: CursorContext, text: str) -> List[CompletionItem]:
     """Get section completions for the current context.
 
     Returns child sections of the current section path, or root sections
@@ -84,7 +84,8 @@ def _complete_sections(schema: CP2KSchemaIndex, ctx: CursorContext) -> List[Comp
     prefix = ""
     if ctx.is_section_start:
         # Extract section name prefix from cursor line
-        line_text = ctx.line if ctx.line else ""
+        lines = text.splitlines()
+        line_text = lines[ctx.line] if 0 <= ctx.line < len(lines) else ""
         ampersand_pos = line_text.find("&")
         if ampersand_pos >= 0:
             prefix = line_text[ampersand_pos + 1 : ctx.character].strip().upper()
@@ -157,10 +158,10 @@ def _complete_keywords(schema: CP2KSchemaIndex, ctx: CursorContext) -> List[Comp
 
 def _complete_values(schema: CP2KSchemaIndex, ctx: CursorContext) -> List[CompletionItem]:
     """Get value completions for the current keyword."""
-    if not ctx.current_keyword:
+    if not ctx.current_keyword or not ctx.current_section:
         return []
 
-    section_path = ctx.section_path if ctx.section_path else (ctx.current_section,)
+    section_path: tuple[str, ...] = ctx.section_path if ctx.section_path else (ctx.current_section,)
     keyword_spec = schema.get_keyword(section_path, ctx.current_keyword)
 
     if not keyword_spec:

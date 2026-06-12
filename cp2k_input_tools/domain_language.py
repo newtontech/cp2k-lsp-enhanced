@@ -442,7 +442,7 @@ def suggest_next(text: str, position: int, uri: str) -> Dict[str, Any]:
                 name_node = kw_node.find("./NAME")
                 if name_node is not None and name_node.text:
                     kw_type = _get_keyword_type(kw_node)
-                    suggestion = {
+                    suggestion: dict[str, Any] = {
                         "name": name_node.text.upper(),
                         "kind": "keyword",
                         "type": kw_type,
