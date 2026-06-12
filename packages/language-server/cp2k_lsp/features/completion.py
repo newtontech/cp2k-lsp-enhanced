@@ -27,7 +27,6 @@ class CompletionProvider:
         ("PROJECT_NAME", "Name of the project"),
         ("RUN_TYPE", "Type of calculation"),
         ("PRINT_LEVEL", "Level of output printing"),
-        ("METHOD", "Quickstep electronic-structure method"),
     ]
 
     # RUN_TYPE enum values
@@ -54,21 +53,6 @@ class CompletionProvider:
 
     # PRINT_LEVEL enum values
     PRINT_LEVELS = ["SILENT", "LOW", "MEDIUM", "HIGH", "DEBUG"]
-
-    # FORCE_EVAL / DFT / QS / METHOD enum values from the CP2K input reference.
-    QS_METHODS = [
-        "GPW",
-        "GAPW",
-        "GAPW_XC",
-        "LRIGPW",
-        "RIGPW",
-        "MNDO",
-        "AM1",
-        "PM6",
-        "DFTB",
-        "XTB",
-        "OFGPW",
-    ]
 
     def __init__(self, server):
         self.server = server
@@ -110,7 +94,7 @@ class CompletionProvider:
                 label=name,
                 kind=lsp.CompletionItemKind.Struct,
                 detail=desc,
-                insert_text=f"{name}\n&END {name}",
+                insert_text=f"{name}\n\u0026END {name}",
                 insert_text_format=lsp.InsertTextFormat.PlainText,
             )
             items.append(item)
@@ -141,15 +125,6 @@ class CompletionProvider:
         elif "PRINT_LEVEL" in line_upper:
             for pl in self.PRINT_LEVELS:
                 items.append(lsp.CompletionItem(label=pl, kind=lsp.CompletionItemKind.EnumMember, detail=f"Print level: {pl}"))
-        elif "METHOD" in line_upper:
-            for method in self.QS_METHODS:
-                items.append(
-                    lsp.CompletionItem(
-                        label=method,
-                        kind=lsp.CompletionItemKind.EnumMember,
-                        detail=f"QS method: {method}",
-                    )
-                )
         else:
             # Boolean values
             items.extend(

@@ -91,10 +91,6 @@ VALID_SECTION_PARENTS = {
     "POTENTIAL_FILE_NAME": {"FORCE_EVAL"},
 }
 
-RULE_ID_MAP: Dict[str, str] = {
-    RULE_LOOSE_SCF_EPS: "cp2k.scf.eps_scf_loose",
-}
-
 # Common configuration smell thresholds
 LOW_CUTOFF_THRESHOLD = 200  # Ry - very low, likely mistake
 LOW_REL_CUTOFF_THRESHOLD = 30  # Ry - very low
@@ -290,7 +286,8 @@ def lint_duplicates(text: str) -> List[Diagnostic]:
                             severity="warning",
                             source="cp2k-lint",
                             code=RULE_DUPLICATE_KEYWORD,
-                            message=f"Keyword '{kw_name}' appears {count} times in section '&{node.name}'. This may be unintended.",
+                            message=f"Keyword '{kw_name}' appears {count} times in section '&{node.name}'. "
+                            f"This may be unintended.",
                             line=lines[1] if len(lines) > 1 else lines[0],
                         )
                     )
@@ -307,7 +304,7 @@ def lint_duplicates(text: str) -> List[Diagnostic]:
                         severity="warning",
                         source="cp2k-lint",
                         code=RULE_DUPLICATE_SECTION,
-                        message=f"Section '&{sec_name}' appears {count} times under '&{node.name}'. This may be unintended.",
+                        message=f"Section '&{sec_name}' appears {count} times under '&{node.name}'. " f"This may be unintended.",
                         line=lines[1] if len(lines) > 1 else lines[0],
                     )
                 )
@@ -369,9 +366,7 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                                 severity="warning",
                                 source="cp2k-lint",
                                 code=RULE_LOW_CUTOFF,
-                                message=(
-                                    f"CUTOFF {cutoff_val} Ry is very low. Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy."
-                                ),
+                                message=f"CUTOFF {cutoff_val} Ry is very low. Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy.",
                                 line=i,
                             )
                         )
@@ -426,7 +421,6 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                                 code=RULE_LOOSE_SCF_EPS,
                                 message=f"EPS_SCF {eps_val} is very loose. Consider ≤ 1.0e-6 for production runs.",
                                 line=i,
-                                rule_id=RULE_ID_MAP.get(RULE_LOOSE_SCF_EPS),
                             )
                         )
                 except (ValueError, IndexError):
@@ -490,7 +484,7 @@ def lint_missing_end(text: str) -> List[Diagnostic]:
     section_re = re.compile(r"^(\s*)&(\w[\w\-_]*)\s*(.*)", re.IGNORECASE)
     end_re = re.compile(r"^(\s*)&END\s*(.*)", re.IGNORECASE)
 
-    section_stack: List[Tuple[str, int]] = []  # Stack of (section_name, line_number)
+    section_stack = []  # Stack of (section_name, line_number)
 
     for i, line in enumerate(lines):
         stripped = line.strip()
@@ -717,17 +711,15 @@ def _get_enum_values_from_schema() -> Dict[str, Set[str]]:
         tree = ET.parse(DEFAULT_CP2K_INPUT_XML)
         root = tree.getroot()
 
-        def visit_section(section: ET.Element, path: Tuple[str, ...]) -> None:
+        # Walk through all sections and keywords
+        for section in root.iter("SECTION"):
             section_name_el = section.find("./NAME")
             if section_name_el is None or not section_name_el.text:
-                return
+                continue
             section_name = section_name_el.text.upper()
-            section_path = (*path, section_name)
 
-            # Process direct keywords only. Using descendants here maps nested
-            # METHOD keywords onto FORCE_EVAL/METHOD and creates false enum
-            # errors for valid inputs such as METHOD Quickstep.
-            for kw in section.findall("./KEYWORD"):
+            # Process keywords in this section
+            for kw in section.iterfind(".//KEYWORD"):
                 kw_name_el = kw.find("./NAME")
                 if kw_name_el is None or not kw_name_el.text:
                     continue
@@ -747,14 +739,8 @@ def _get_enum_values_from_schema() -> Dict[str, Set[str]]:
 
                         if values:
                             # Store with full path for lookup
-                            lookup_key = f"{'/'.join(section_path)}/{kw_name}"
+                            lookup_key = f"{section_name}/{kw_name}"
                             enum_values[lookup_key] = values
-
-            for child in section.findall("./SECTION"):
-                visit_section(child, section_path)
-
-        for section in root.findall("./SECTION"):
-            visit_section(section, ())
     except Exception:
         pass
     return enum_values
@@ -775,8 +761,5 @@ def lint(text: str) -> List[Diagnostic]:
     all_diagnostics.extend(lint_missing_end(text))
     all_diagnostics.extend(lint_unknown_enum(text))
     all_diagnostics.extend(lint_missing_files(text))
-    from .version_policy import lint_version_policy_from_env
-
-    all_diagnostics.extend(lint_version_policy_from_env(text))
 
     return all_diagnostics
