@@ -10,6 +10,7 @@ from typing import List, Optional, Union
 
 from lsprotocol.types import (
     TEXT_DOCUMENT_CODE_ACTION,
+    TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
@@ -22,6 +23,10 @@ from lsprotocol.types import (
     CodeAction,
     CodeActionKind,
     CodeActionParams,
+    CompletionItem,
+    CompletionItemKind,
+    CompletionList,
+    CompletionParams,
     DefinitionParams,
     Diagnostic,
     DiagnosticSeverity,
@@ -623,6 +628,61 @@ def _parse_set_vars(text_doc: TextDocument) -> dict:
 
 def setup_cp2k_ls_server(server):
     """Register all LSP features on the server."""
+
+    @server.feature(TEXT_DOCUMENT_COMPLETION)
+    def completions(ls: LanguageServer, params: CompletionParams) -> CompletionList:
+        """Provide completion suggestions for CP2K keywords and sections."""
+        text_doc = ls.workspace.get_document(params.text_document.uri)
+        lines = text_doc.source.split("\n")
+        line_idx = params.position.line
+        col_idx = params.position.character
+
+        if line_idx >= len(lines):
+            return CompletionList(is_incomplete=False, items=[])
+
+        line = lines[line_idx]
+        stripped = line.strip()
+
+        items = []
+
+        # Determine if we're in a section context by parsing up to this line
+        try:
+            parser = CP2KInputParser()
+            section = _get_section_context(lines, line_idx + 1, parser)
+        except Exception:
+            section = None
+
+        if section is not None:
+            items = _get_completions_for_section(section)
+
+        # If typing a keyword name (no & prefix), also add keywords
+        if not stripped.startswith("&") and not stripped.startswith("@"):
+            kw_prefix = stripped.split()[0].upper() if stripped else ""
+            if kw_prefix and section:
+                # Filter completions to match prefix
+                filtered = [
+                    item for item in items
+                    if item.label.upper().startswith(kw_prefix)
+                ]
+                if filtered:
+                    items = filtered
+
+        # If typing a section name (starts with &), add section completions
+        if stripped.startswith("&") and not stripped.upper().startswith("&END"):
+            sec_prefix = stripped[1:].split()[0].upper() if len(stripped) > 1 else ""
+            if section:
+                for name_node in section.node.iterfind("./SECTION/NAME"):
+                    if name_node.text:
+                        if not sec_prefix or name_node.text.upper().startswith(sec_prefix):
+                            items.append(
+                                CompletionItem(
+                                    label=f"&{name_node.text}",
+                                    kind=CompletionItemKind.Class,
+                                    detail="Section",
+                                )
+                            )
+
+        return CompletionList(is_incomplete=False, items=items)
 
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls, params: DidChangeTextDocumentParams):

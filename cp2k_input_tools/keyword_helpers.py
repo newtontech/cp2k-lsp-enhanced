@@ -19,10 +19,24 @@ UREG.load_definitions(str(pathlib.Path(__file__).resolve().parent.joinpath("pint
 # Built-in registry of deprecated CP2K keywords mapped to their replacements.
 # Since the upstream CP2K XML schema does not include deprecation markers,
 # this registry captures known deprecations from CP2K release notes and docs.
-DEPRECATED_KEYWORDS: dict[str, str] = {}
+DEPRECATED_KEYWORDS: dict[str, str] = {
+    # CP2K 2024.1 deprecated keywords
+    "MOTION/PRINT/TRAJECTORY::FORCE_EVAL": None,
+    "DFT/SCF::BROYDEN_MIXING_NEW": "Use MIXING/TYPE BROYDEN_MIXING instead",
+    "DFT/QS::KP_RI_EXTENSION_FACTOR": None,
+    "FORCE_EVAL::SINGLE_PRECISION_MATRICES": None,
+    "FORCE_EVAL/SUBSYS/TOPOLOGY::COORD_FILE_NAME": "Use COORD_FILE_NAME in SUBSYS directly",
+    # CP2K 2023.x deprecated keywords
+    "DFT/SCF::OT_MINIMIZER": "Use OT/MINIMIZER instead",
+    "DFT/SCF::OT_ENERGIES": None,
+    "DFT/SCF::DIAG_METHOD": "Use DIAGONALIZATION/METHOD instead",
+}
 
 # Built-in registry of deprecated CP2K sections mapped to their replacements.
-DEPRECATED_SECTIONS: dict[str, str] = {}
+DEPRECATED_SECTIONS: dict[str, str] = {
+    "FORCE_EVAL::FIST": "Use FORCE_EVAL METHOD=FIST instead",
+    "DFT/SCF::BROYDEN": "Use MIXING section with TYPE BROYDEN_MIXING instead",
+}
 
 
 class DeprecatedKeywordWarning(UserWarning):
@@ -94,6 +108,9 @@ def kw_converter_str(string):
 
 
 FORTRAN_REAL = re.compile(r"(\d*\.\d+)[dD]([-+]?\d+)")
+
+RANGE_PATTERN = re.compile(r"^(-?\d+)\.\.(-?\d+)$")
+RANGE_PATTERN_REAL = re.compile(r"^(-?[\d.]+(?:[eE][-+]?\d+)?)\.\.(-?[\d.]+(?:[eE][-+]?\d+)?)$")
 
 
 def kw_converter_float(string):
@@ -221,6 +238,28 @@ class Keyword:
             # For internal_cp2k with explicit unit, store as string with unit
             if is_internal_cp2k and current_unit and isinstance(current_unit, str):
                 values += [f"[{current_unit}] {token}"]
+                continue
+
+            # Expand X..Y ranges for integer and real types (issue #72)
+            range_values = None
+            if datatype.type == "integer":
+                range_match = RANGE_PATTERN.match(token)
+                if range_match:
+                    start_val = int(range_match.group(1))
+                    end_val = int(range_match.group(2))
+                    range_values = list(range(start_val, end_val + 1))
+            elif datatype.type == "real":
+                range_match = RANGE_PATTERN_REAL.match(token)
+                if range_match:
+                    start_val = kw_converter_float(range_match.group(1))
+                    end_val = kw_converter_float(range_match.group(2))
+                    # For real ranges, generate values with step 1.0
+                    n_steps = int(end_val - start_val)
+                    if n_steps >= 0:
+                        range_values = [start_val + i for i in range(n_steps + 1)]
+
+            if range_values is not None:
+                values += range_values
                 continue
 
             value = datatype.parser(token)
