@@ -1,5 +1,6 @@
 """Tests for CP2K linter module."""
 
+import pathlib
 
 import pytest
 
@@ -7,13 +8,15 @@ from . import TEST_DIR
 
 linter = pytest.importorskip("cp2k_input_tools.linter")
 
-_get_all_schema_keywords = linter._get_all_schema_keywords
-_get_all_schema_sections = linter._get_all_schema_sections
-lint = linter.lint
-lint_config_smells = linter.lint_config_smells
-lint_duplicates = linter.lint_duplicates
-lint_invalid_nesting = linter.lint_invalid_nesting
-lint_keywords_misspelled = linter.lint_keywords_misspelled
+from cp2k_input_tools.linter import (
+    lint,
+    lint_keywords_misspelled,
+    lint_invalid_nesting,
+    lint_duplicates,
+    lint_config_smells,
+    _get_all_schema_keywords,
+    _get_all_schema_sections,
+)
 
 
 class TestSchemaExtraction:
@@ -142,7 +145,7 @@ class TestDuplicates:
   &END SUBSYS
 &END FORCE_EVAL"""
         diagnostics = lint_duplicates(text)
-        assert not any(d.code == "lint/duplicate-section" for d in diagnostics)
+        assert not any(d.code == "cp2k.schema.unsafe_duplicate_section" for d in diagnostics)
 
     def test_repeated_coord_labels_are_data_records(self):
         """Repeated atom labels in COORD are coordinate rows, not duplicate keywords."""
@@ -169,7 +172,7 @@ class TestConfigSmells:
   &END MGRID
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert any(d.code == "lint/low-cutoff" for d in diagnostics)
+        assert any(d.code == "cp2k.dft.cutoff_low" for d in diagnostics)
 
     def test_ok_cutoff(self):
         """Should not warn about reasonable cutoff."""
@@ -179,7 +182,7 @@ class TestConfigSmells:
   &END MGRID
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert not any(d.code == "lint/low-cutoff" for d in diagnostics)
+        assert not any(d.code == "cp2k.dft.cutoff_low" for d in diagnostics)
 
     def test_low_rel_cutoff(self):
         """Should warn about very low rel_cutoff."""
@@ -189,7 +192,7 @@ class TestConfigSmells:
   &END MGRID
 &END DFT"""
         diagnostics = lint_config_smells(text)
-        assert any(d.code == "lint/low-rel-cutoff" for d in diagnostics)
+        assert any(d.code == "cp2k.dft.rel_cutoff_low" for d in diagnostics)
 
     def test_few_scf_iterations(self):
         """Should warn about very few SCF iterations."""
@@ -279,5 +282,5 @@ class TestFullLintPipeline:
         with open(testpath) as f:
             text = f.read()
         diagnostics = lint(text)
-        nesting_errors = [d for d in diagnostics if d.code == "lint/invalid-nesting"]
+        nesting_errors = [d for d in diagnostics if d.code == "cp2k.syntax.invalid_nesting"]
         assert len(nesting_errors) >= 1
