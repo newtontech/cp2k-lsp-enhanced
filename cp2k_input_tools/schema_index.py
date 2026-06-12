@@ -256,11 +256,12 @@ def _parse_keyword(element: ET.Element, name: str) -> KeywordSpec:
     # Get default value
     default_value = element.findtext("DEFAULT_VALUE")
 
-    # Get enumeration values
+    # Get enumeration values (ENUMERATION lives under DATA_TYPE in cp2k_input.xml)
     enumeration_values = []
-    enum_element = element.find("ENUMERATION")
+    enum_element = data_type_elem.find("ENUMERATION") if data_type_elem is not None else None
+    if enum_element is None:
+        enum_element = element.find("ENUMERATION")
     if enum_element is not None:
-        # XML uses ITEM/NAME for enum values
         for item in enum_element.findall("ITEM"):
             name_elem = item.find("NAME")
             if name_elem is not None and name_elem.text:

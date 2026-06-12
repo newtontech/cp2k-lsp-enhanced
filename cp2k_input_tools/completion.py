@@ -90,12 +90,17 @@ def _complete_sections(schema: CP2KSchemaIndex, ctx: CursorContext, text: str) -
         if ampersand_pos >= 0:
             prefix = line_text[ampersand_pos + 1 : ctx.character].strip().upper()
 
+    # When typing a section name on the current line, complete against the parent path.
+    section_path = ctx.section_path
+    if ctx.is_section_start and section_path:
+        section_path = section_path[:-1]
+
     # Get available sections
-    if ctx.section_path:
+    if section_path:
         # Get child sections of current section
-        section_spec = schema.get_section(ctx.section_path)
+        section_spec = schema.get_section(section_path)
         if section_spec:
-            child_sections = schema.get_child_sections(ctx.section_path)
+            child_sections = schema.get_child_sections(section_path)
         else:
             # Current section not found in schema, return empty
             child_sections = []
@@ -107,7 +112,7 @@ def _complete_sections(schema: CP2KSchemaIndex, ctx: CursorContext, text: str) -
     items = []
     for section_name in child_sections:
         if not prefix or section_name.upper().startswith(prefix):
-            section_detail = schema.get_section(ctx.section_path + (section_name,) if ctx.section_path else (section_name,))
+            section_detail = schema.get_section(section_path + (section_name,) if section_path else (section_name,))
             items.append(
                 CompletionItem(
                     label=section_name,
