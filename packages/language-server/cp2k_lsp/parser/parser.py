@@ -154,6 +154,10 @@ class CP2KParser:
                         self.source,
                     )
                 )
+        elif self.match(TokenType.EOF):
+            self.errors.append(
+                SyntaxError(f"Unclosed section &{section.name}", start_token.line, start_token.column, self.source)
+            )
 
         return section
 
