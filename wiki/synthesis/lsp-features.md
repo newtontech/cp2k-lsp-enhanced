@@ -262,7 +262,7 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
 注意：截断能过低会导致基组不完整，能量和力计算误差增大
 ```
 
-## 参考资料 / References
+## 参考来源 (Sources)
 
 - LSP 规范: https://microsoft.github.io/language-server-protocol/
 - pygls 文档: https://github.com/openlawlibrary/pygls

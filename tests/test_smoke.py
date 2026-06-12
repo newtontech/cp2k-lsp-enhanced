@@ -13,22 +13,12 @@ TDD Workflow: These tests are written first (RED phase), then implementation fol
 
 import json
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from time import sleep
 
 import pytest
 from click.testing import CliRunner
-
-from . import TEST_DIR
-
-# Skip on PyPy - LSP implementation behaves differently
-if hasattr(sys, "pypy_version_info"):
-    pytest.skip("pypy is currently not supported", allow_module_level=True)
-
-pygls = pytest.importorskip("pygls")
-
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DEFINITION,
@@ -48,14 +38,14 @@ from lsprotocol.types import (
 )
 
 from cp2k_input_tools.cli.agent_inspect import cli as inspect_cli
-
-# Import CLI modules
 from cp2k_input_tools.cli.lint import cp2klint
 from cp2k_input_tools.cli.main import cp2k_lsp
 from cp2k_input_tools.cli.validate import cp2k_validate
 from cp2k_input_tools.parser import CP2KInputParser
 from cp2k_input_tools.parser_errors import ParserError
 from cp2k_input_tools.tokenizer import TokenizerError
+
+from . import TEST_DIR
 
 # =============================================================================
 # Fixtures

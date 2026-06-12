@@ -230,7 +230,7 @@ class TestRenameEdgeCases:
         pos = Position(line=1, character=5)
 
         # Should not crash
-        result = can_rename(inp, pos, "file://test.inp")
+        can_rename(inp, pos, "file://test.inp")
         # Result depends on what's at the position
 
     def test_rename_invalid_position(self):

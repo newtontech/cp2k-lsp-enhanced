@@ -176,7 +176,7 @@ def _read_file_content(file_path: str) -> str:
         with open(file_path, "r") as f:
             return f.read()
     except (IOError, OSError) as e:
-        raise click.ClickException(f"Error reading file: {e}")
+        raise click.ClickException(f"Error reading file: {e}") from e
 
 
 def _get_line_at_position(content: str, line: int) -> str:
@@ -210,7 +210,7 @@ def _get_section_context_at_position(content: str, line_idx: int) -> Optional[Di
     lines = content.split("\n")
     stack = [root_section]
 
-    for i, line in enumerate(lines[: line_idx + 1]):
+    for _i, line in enumerate(lines[: line_idx + 1]):
         stripped = line.strip()
 
         if not stripped or stripped.startswith(("!", "#")):
@@ -241,14 +241,14 @@ def _get_section_context_at_position(content: str, line_idx: int) -> Optional[Di
             "name": current.name,
             "repeats": current.repeats,
             "keywords": [
-                kw.find("NAME").text
+                name_node.text
                 for kw in current.node.iterfind("./KEYWORD")
-                if (name_node := kw.find("NAME")) is not None and name_node.text
+                if (name_node := kw.find("NAME")) is not None and name_node.text is not None
             ],
             "sections": [
-                sec.find("NAME").text
+                name_node.text
                 for sec in current.node.iterfind("./SECTION")
-                if (name_node := sec.find("NAME")) is not None and name_node.text
+                if (name_node := sec.find("NAME")) is not None and name_node.text is not None
             ],
         }
 
@@ -478,7 +478,7 @@ def _get_document_symbols(file_path: str) -> List[Dict[str, Any]]:
     content = _read_file_content(file_path)
     lines = content.split("\n")
     symbols: List[DocumentSymbol] = []
-    stack = []  # (indent, symbol)
+    stack: list[tuple[int, DocumentSymbol]] = []  # (indent, symbol)
 
     for i, line in enumerate(lines):
         stripped = line.strip()

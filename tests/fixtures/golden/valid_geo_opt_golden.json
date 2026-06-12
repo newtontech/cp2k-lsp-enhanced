@@ -1,0 +1,6 @@
+{
+  "description": "A valid geometry optimization input. Should produce no ERROR diagnostics.",
+  "diagnostics": [],
+  "completions": null,
+  "hover": null
+}

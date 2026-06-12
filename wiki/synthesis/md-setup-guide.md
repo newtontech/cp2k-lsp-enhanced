@@ -209,7 +209,7 @@ And set:
 - Concepts: molecular-dynamics.md, thermostats-barostats.md, scf-convergence.md
 - Synthesis: typical-workflow.md
 
-## References / 参考资料
+## 参考来源 (Sources)
 
 1. MD Reference: https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/MD.html
 2. CP2K AIMD Exercise: https://www.cp2k.org/exercises:2016_summer_school:aimd

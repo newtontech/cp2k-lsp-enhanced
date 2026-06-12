@@ -1,0 +1,12 @@
+{
+  "description": "MGRID section at root level - invalid nesting. Should trigger nesting diagnostic.",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code_match": "nesting|unknown|section",
+      "message_fragment": "MGRID"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}

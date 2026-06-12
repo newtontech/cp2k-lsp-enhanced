@@ -107,6 +107,10 @@ class CP2KParser:
 
         section.comments = self.skip_eol_and_comments()
 
+        if self.match(TokenType.KEYWORD) and self.current().line == start_token.line:
+            section.parameter = self.advance().value
+            section.comments.extend(self.skip_eol_and_comments())
+
         while not self.match(TokenType.SECTION_END, TokenType.EOF):
             if self.match(TokenType.SECTION_START):
                 # Nested subsection
@@ -140,8 +144,8 @@ class CP2KParser:
         # Expect end of section
         if self.match(TokenType.SECTION_END):
             end_token = self.advance()
-            end_name = end_token.value[3:] if end_token.value.upper().startswith("END") else ""
-            if end_name and end_name.upper() != section.name.upper():
+            end_name = end_token.value.upper()
+            if end_name and end_name != section.name.upper():
                 self.errors.append(
                     SyntaxError(
                         f"Section name mismatch: &{section.name} closed with &{end_token.value}",
@@ -150,8 +154,34 @@ class CP2KParser:
                         self.source,
                     )
                 )
+        elif self.match(TokenType.EOF):
+            self.errors.append(
+                SyntaxError(f"Unclosed section &{section.name}", start_token.line, start_token.column, self.source)
+            )
 
         return section
+
+    def _collect_line_values(self, start_line: int) -> List[Value]:
+        """Collect all value tokens on the current keyword line."""
+        values: List[Value] = []
+        while self.match(TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN, TokenType.KEYWORD, TokenType.UNIT):
+            if self.current().line != start_line:
+                break
+            values.append(self.parse_value())
+        return values
+
+    def _keyword_value(self, values: List[Value]) -> Optional[Value]:
+        """Return a single value or array value for a keyword assignment."""
+        if not values:
+            return None
+        if len(values) == 1:
+            return values[0]
+        return Value(
+            value=[item.value for item in values],
+            value_type=ValueType.ARRAY,
+            line=values[0].line,
+            column=values[0].column,
+        )
 
     def parse_keyword(self) -> Optional[Keyword]:
         """Parse a keyword assignment.
@@ -169,16 +199,28 @@ class CP2KParser:
             # In CP2K, keywords can be followed directly by a value token
             # without an equals sign: e.g., "RUN_TYPE ENERGY"
             if self.match(TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN, TokenType.KEYWORD, TokenType.UNIT):
-                value = self.parse_value()
-                return Keyword(name=name_token.value, value=value, line=name_token.line, column=name_token.column)
+                values = self._collect_line_values(name_token.line)
+                keyword_value = self._keyword_value(values) or Value()
+                return Keyword(
+                    name=name_token.value,
+                    value=keyword_value,
+                    line=name_token.line,
+                    column=name_token.column,
+                )
             # Keyword without value (boolean flag or section parameter)
             return Keyword(name=name_token.value, line=name_token.line, column=name_token.column)
 
         self.expect(TokenType.ASSIGN)
         self.skip_eol_and_comments()
 
-        value = self.parse_value()
-        return Keyword(name=name_token.value, value=value, line=name_token.line, column=name_token.column)
+        values = self._collect_line_values(name_token.line)
+        keyword_value = self._keyword_value(values) or Value()
+        return Keyword(
+            name=name_token.value,
+            value=keyword_value,
+            line=name_token.line,
+            column=name_token.column,
+        )
 
     def parse_value(self) -> Value:
         """Parse a value."""

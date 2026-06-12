@@ -108,7 +108,7 @@ Configured under `&MD / &BAROSTAT` for NPT ensembles.
 - Concept: molecular-dynamics.md
 - Entity: md-section.md
 
-## References / 参考资料
+## 参考来源 (Sources)
 
 1. MD Reference: https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/MD.html
 2. MD Methods: https://manual.cp2k.org/trunk/methods/sampling/molecular_dynamics.html

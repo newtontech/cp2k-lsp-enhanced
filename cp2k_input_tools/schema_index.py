@@ -210,16 +210,23 @@ def _build_sections(
             if subsection_name_elem is not None and subsection_name_elem.text:
                 subsections.append(subsection_name_elem.text.upper())
 
-        # Get keywords
+        # Get keywords (canonical names plus XML alias lookups)
         keywords = []
+        section_path = parent_path + (name,)
         for keyword_elem in section_elem.findall("KEYWORD"):
-            keyword_name_elem = keyword_elem.find("NAME")
-            if keyword_name_elem is not None and keyword_name_elem.text:
-                keyword_name = keyword_name_elem.text.upper()
-                keywords.append(keyword_name)
-                # Parse keyword specification
-                spec = _parse_keyword(keyword_elem, keyword_name)
-                index._keywords[(parent_path + (name,), keyword_name)] = spec
+            canonical_name = None
+            alias_names: List[str] = []
+            for keyword_name_elem in keyword_elem.findall("NAME"):
+                if keyword_name_elem.text:
+                    alias_names.append(keyword_name_elem.text.upper())
+                    if keyword_name_elem.get("type") == "default" or canonical_name is None:
+                        canonical_name = keyword_name_elem.text.upper()
+            if canonical_name is None:
+                continue
+            keywords.append(canonical_name)
+            spec = _parse_keyword(keyword_elem, canonical_name)
+            for alias_name in alias_names:
+                index._keywords[(section_path, alias_name)] = spec
 
         # Create section specification
         section_spec = SectionSpec(
@@ -228,7 +235,6 @@ def _build_sections(
             subsections=tuple(subsections),
             keywords=tuple(keywords),
         )
-        section_path = parent_path + (name,)
         index._sections[section_path] = section_spec
         index._child_sections.setdefault(parent_path, []).append(name)
         index._child_sections[section_path] = []
@@ -256,11 +262,12 @@ def _parse_keyword(element: ET.Element, name: str) -> KeywordSpec:
     # Get default value
     default_value = element.findtext("DEFAULT_VALUE")
 
-    # Get enumeration values
+    # Get enumeration values (ENUMERATION lives under DATA_TYPE in cp2k_input.xml)
     enumeration_values = []
-    enum_element = element.find("ENUMERATION")
+    enum_element = data_type_elem.find("ENUMERATION") if data_type_elem is not None else None
+    if enum_element is None:
+        enum_element = element.find("ENUMERATION")
     if enum_element is not None:
-        # XML uses ITEM/NAME for enum values
         for item in enum_element.findall("ITEM"):
             name_elem = item.find("NAME")
             if name_elem is not None and name_elem.text:

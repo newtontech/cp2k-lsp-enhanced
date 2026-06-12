@@ -139,10 +139,13 @@ class Lexer:
                 start_col = self.column
                 self.advance()
                 if self.text[self.pos : self.pos + 3].upper() == "END":
-                    name = ""
-                    while self.peek().isalnum() or self.peek() == "_":
-                        name += self.advance()
-                    self.tokens.append(Token(TokenType.SECTION_END, name, start_line, start_col))
+                    for _ in range(3):
+                        self.advance()
+                    self.skip_whitespace()
+                    end_name = ""
+                    while self.peek().isalnum() or self.peek() in "_-":
+                        end_name += self.advance()
+                    self.tokens.append(Token(TokenType.SECTION_END, end_name, start_line, start_col))
                 else:
                     name = ""
                     while self.peek().isalnum() or self.peek() == "_":

@@ -1,0 +1,13 @@
+{
+  "description": "Invalid enum value for METHOD keyword. Should trigger unknown value or enum diagnostic.",
+  "diagnostics": [
+    {
+      "line": 1,
+      "severity": "error",
+      "code_match": "unknown|enum|value",
+      "message_fragment": "INVALID_METHOD_XYZ"
+    }
+  ],
+  "completions": null,
+  "hover": null
+}

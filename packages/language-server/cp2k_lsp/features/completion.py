@@ -27,6 +27,22 @@ class CompletionProvider:
         ("PROJECT_NAME", "Name of the project"),
         ("RUN_TYPE", "Type of calculation"),
         ("PRINT_LEVEL", "Level of output printing"),
+        ("METHOD", "Electronic structure method (QS)"),
+    ]
+
+    # QS METHOD enum values
+    QS_METHODS = [
+        "GPW",
+        "GAPW",
+        "GAPW_XC",
+        "LRIGPW",
+        "RIGPW",
+        "MNDO",
+        "AM1",
+        "PM6",
+        "DFTB",
+        "XTB",
+        "OFGPW",
     ]
 
     # RUN_TYPE enum values
@@ -125,6 +141,11 @@ class CompletionProvider:
         elif "PRINT_LEVEL" in line_upper:
             for pl in self.PRINT_LEVELS:
                 items.append(lsp.CompletionItem(label=pl, kind=lsp.CompletionItemKind.EnumMember, detail=f"Print level: {pl}"))
+        elif "METHOD" in line_upper:
+            for method in self.QS_METHODS:
+                items.append(
+                    lsp.CompletionItem(label=method, kind=lsp.CompletionItemKind.EnumMember, detail=f"QS method: {method}")
+                )
         else:
             # Boolean values
             items.extend(

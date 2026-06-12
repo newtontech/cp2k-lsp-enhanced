@@ -21,9 +21,10 @@ fi
 
 if [ -f pyproject.toml ] || [ -f setup.py ]; then
   if [ -f pyproject.toml ] && grep -q '^\[tool.poetry\]' pyproject.toml && command -v poetry >/dev/null 2>&1; then
-    poetry install --with dev || poetry install
+    poetry install --with dev -E lsp || poetry install -E lsp
   else
     python -m pip install --upgrade pip
-    python -m pip install -e ".[dev]" || python -m pip install -e .
+    python -m pip install ".[dev]" 2>/dev/null || python -m pip install .
+    python -m pip install pytest pytest-cov pytest-console-scripts jsonschema ruff mypy "pygls>=1.0.0,<2.0.0" lsprotocol
   fi
 fi
