@@ -95,6 +95,9 @@ def kw_converter_str(string):
 
 FORTRAN_REAL = re.compile(r"(\d*\.\d+)[dD]([-+]?\d+)")
 
+RANGE_PATTERN = re.compile(r"^(-?\d+)\.\.(-?\d+)$")
+RANGE_PATTERN_REAL = re.compile(r"^(-?[\d.]+(?:[eE][-+]?\d+)?)\.\.(-?[\d.]+(?:[eE][-+]?\d+)?)$")
+
 
 def kw_converter_float(string):
     """convert a given string to a Python float
@@ -221,6 +224,28 @@ class Keyword:
             # For internal_cp2k with explicit unit, store as string with unit
             if is_internal_cp2k and current_unit and isinstance(current_unit, str):
                 values += [f"[{current_unit}] {token}"]
+                continue
+
+            # Expand X..Y ranges for integer and real types (issue #72)
+            range_values = None
+            if datatype.type == "integer":
+                range_match = RANGE_PATTERN.match(token)
+                if range_match:
+                    start_val = int(range_match.group(1))
+                    end_val = int(range_match.group(2))
+                    range_values = list(range(start_val, end_val + 1))
+            elif datatype.type == "real":
+                range_match = RANGE_PATTERN_REAL.match(token)
+                if range_match:
+                    start_val = kw_converter_float(range_match.group(1))
+                    end_val = kw_converter_float(range_match.group(2))
+                    # For real ranges, generate values with step 1.0
+                    n_steps = int(end_val - start_val)
+                    if n_steps >= 0:
+                        range_values = [start_val + i for i in range(n_steps + 1)]
+
+            if range_values is not None:
+                values += range_values
                 continue
 
             value = datatype.parser(token)
