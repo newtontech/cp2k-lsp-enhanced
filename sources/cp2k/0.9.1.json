@@ -54,8 +54,8 @@
       "source_ref": "raw/assets/readme.md",
       "kind": "documentation",
       "path": "raw/assets/README.md",
-      "sha256": "ba69fae8df9e8eec84c9b5044c7a111ba15ab73743331f0283766eb99bb3604b",
-      "size_bytes": 15616,
+      "sha256": "9b7db814a775043ef1c39427b25404f432b803ae83e299c813eb3af510657fa3",
+      "size_bytes": 16488,
       "version": "0.9.1",
       "confidence": 0.95
     },
@@ -101,6 +101,60 @@
       "path": "raw/assets/requirements.txt",
       "sha256": "ea491c42e47f5edf5084fb204cccc2833e847fed66571eb35f22c8235c78827e",
       "size_bytes": 13,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/contributing.md",
+      "kind": "documentation",
+      "path": "raw/assets/CONTRIBUTING.md",
+      "sha256": "59ddba4a0c8eb689c8a8a16ac5e1be59b33c7901cbb2ad4f3fb3bb02d5d5f012",
+      "size_bytes": 1321,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/cp2k-dft-qs-reference.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-dft-qs-reference.md",
+      "sha256": "55098437f389d7b418916011af239aae6f7223865a34aedac7394be5b877d4cc",
+      "size_bytes": 8529,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/cp2k-input-sections-reference.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-input-sections-reference.md",
+      "sha256": "ccdf81420c67640a198513845f15310a1ce931c6de6263ecffe8a7a96a393549",
+      "size_bytes": 7157,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/cp2k-md-tutorials.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-md-tutorials.md",
+      "sha256": "668f367959d68f544b0f037b40833d6ff881265a1ba91f95916b6d84121ed1c3",
+      "size_bytes": 9311,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/cp2k-ml-potentials.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-ml-potentials.md",
+      "sha256": "2decf64bc68b4de6aea5bad075620b83bb3810cf9ab8506907d4a95c9d341658",
+      "size_bytes": 10555,
+      "version": "0.9.1",
+      "confidence": 0.9
+    },
+    {
+      "source_ref": "raw/assets/cp2k-output-format.md",
+      "kind": "documentation",
+      "path": "raw/assets/cp2k-output-format.md",
+      "sha256": "ea633c6bd665dc1193ce1a40759c61d99d155942690234572e9e54e6d76053a6",
+      "size_bytes": 8890,
       "version": "0.9.1",
       "confidence": 0.9
     },

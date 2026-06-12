@@ -45,3 +45,8 @@
 | [parser-api.md](synthesis/parser-api.md) | Parser API reference |
 | [preprocessor.md](synthesis/preprocessor.md) | CP2K input preprocessor |
 | [typical-workflow.md](synthesis/typical-workflow.md) | Typical CP2K workflow |
+
+## 参考来源 (Sources)
+
+- `wiki/log.md`: wiki update log and provenance notes
+- `sources/cp2k/0.9.1.json`: versioned source manifest

@@ -104,7 +104,7 @@ CP2K + trained ML potential
 
 - ml-potentials.md -- Input sections and compilation details
 
-## References / 参考资料
+## 参考来源 (Sources)
 
 1. Behler, J. Chem. Phys. 134, 074106 (2011)
 2. Batzner et al., Nature Communications 13, 2453 (2022)

@@ -32,6 +32,7 @@ RULE_LOW_CUTOFF = "cp2k.dft.cutoff_low"
 RULE_LOW_REL_CUTOFF = "cp2k.dft.rel_cutoff_low"
 RULE_FEW_SCF = "lint/few-scf-iterations"
 RULE_LOOSE_SCF_EPS = "lint/loose-scf-eps"
+CANONICAL_RULE_LOOSE_SCF_EPS = "cp2k.scf.eps_scf_loose"
 RULE_SHORT_TIMESTEP = "lint/short-timestep"
 RULE_LONG_TIMESTEP = "lint/long-timestep"
 RULE_LOW_TEMP = "lint/low-electronic-temp"
@@ -366,7 +367,11 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                                 severity="warning",
                                 source="cp2k-lint",
                                 code=RULE_LOW_CUTOFF,
-                                message=f"CUTOFF {cutoff_val} Ry is very low. Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry for reasonable accuracy.",
+                                message=(
+                                    f"CUTOFF {cutoff_val} Ry is very low."
+                                    f" Consider ≥ {LOW_CUTOFF_THRESHOLD} Ry"
+                                    " for reasonable accuracy."
+                                ),
                                 line=i,
                             )
                         )
@@ -421,6 +426,7 @@ def lint_config_smells(text: str) -> List[Diagnostic]:
                                 code=RULE_LOOSE_SCF_EPS,
                                 message=f"EPS_SCF {eps_val} is very loose. Consider ≤ 1.0e-6 for production runs.",
                                 line=i,
+                                rule_id=CANONICAL_RULE_LOOSE_SCF_EPS,
                             )
                         )
                 except (ValueError, IndexError):
@@ -484,7 +490,7 @@ def lint_missing_end(text: str) -> List[Diagnostic]:
     section_re = re.compile(r"^(\s*)&(\w[\w\-_]*)\s*(.*)", re.IGNORECASE)
     end_re = re.compile(r"^(\s*)&END\s*(.*)", re.IGNORECASE)
 
-    section_stack = []  # Stack of (section_name, line_number)
+    section_stack: list[tuple[str, int]] = []  # Stack of (section_name, line_number)
 
     for i, line in enumerate(lines):
         stripped = line.strip()

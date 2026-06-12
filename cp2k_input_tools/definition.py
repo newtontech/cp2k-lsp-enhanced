@@ -5,22 +5,16 @@ Provides:
 - get_references(): Find all usages of sections/keywords in file
 """
 
+# Check whether the schema API package is available at runtime
+import importlib.util
 import re
 from typing import List, Optional
 
 from lsprotocol.types import Location, Position, Range
 
-# Try to import schema API; fall back to basic functionality if not available
-try:
-    from cp2k_lsp.agent_api.schema import (
-        lookup_keyword_at_path,
-        lookup_keyword_schema,
-        lookup_section_schema,
-    )
-
-    SCHEMA_AVAILABLE = True
-except ImportError:
-    SCHEMA_AVAILABLE = False
+SCHEMA_AVAILABLE = (
+    importlib.util.find_spec("cp2k_lsp.agent_api.schema") is not None
+)
 
 
 # Pattern to match section definitions (exclude END)

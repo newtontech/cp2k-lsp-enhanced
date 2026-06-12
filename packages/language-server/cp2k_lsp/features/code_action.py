@@ -25,6 +25,10 @@ class CodeActionProvider:
 
     def _create_quick_fix(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
         """Create a quick fix for a diagnostic."""
+        code = str(diagnostic.code) if diagnostic.code is not None else ""
+        if code == "cp2k.version.removed_keyword":
+            return self._fix_removed_keyword(diagnostic, uri)
+
         message = diagnostic.message.lower()
 
         if "unclosed" in message or "expected" in message:
@@ -33,6 +37,33 @@ class CodeActionProvider:
             return self._fix_section_mismatch(diagnostic, uri)
 
         return None
+
+    def _fix_removed_keyword(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Replace a removed keyword with its version-policy replacement."""
+        data = diagnostic.data if isinstance(diagnostic.data, dict) else {}
+        suggested_fix = data.get("suggested_fix", "")
+        replacement = None
+        if isinstance(suggested_fix, str) and " with " in suggested_fix:
+            replacement = suggested_fix.rsplit(" with ", 1)[-1].rstrip(".")
+        if not replacement:
+            return None
+
+        keyword_range = diagnostic.range
+        return lsp.CodeAction(
+            title=f"Replace with {replacement}",
+            kind=lsp.CodeActionKind.QuickFix,
+            diagnostics=[diagnostic],
+            edit=lsp.WorkspaceEdit(
+                changes={
+                    uri: [
+                        lsp.TextEdit(
+                            range=keyword_range,
+                            new_text=replacement,
+                        )
+                    ]
+                }
+            ),
+        )
 
     def _fix_unclosed_section(self, diagnostic: lsp.Diagnostic, uri: str) -> lsp.CodeAction:
         """Fix unclosed section by adding &END."""

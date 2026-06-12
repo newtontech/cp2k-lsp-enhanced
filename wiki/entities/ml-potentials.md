@@ -98,7 +98,7 @@ No native CP2K interface. Used via GPUMD. Typical workflow: CP2K DFT data -> NEP
 - Concept: machine-learning-potentials.md
 - Entity: force-field.md (Fist method / Fist 方法)
 
-## References / 参考资料
+## 参考来源 (Sources)
 
 1. NequIP: https://manual.cp2k.org/trunk/methods/machine_learning/nequip.html
 2. DeePMD: https://manual.cp2k.org/trunk/methods/machine_learning/deepmd.html

@@ -200,18 +200,18 @@ class DependencyExtractor:
         Returns:
             DependencyGraph: Graph representing all dependencies
         """
-        filepath = Path(filepath)
-        if not filepath.is_absolute():
-            filepath = self.base_dir / filepath
+        file_path = Path(filepath)
+        if not file_path.is_absolute():
+            file_path = self.base_dir / file_path
 
-        self._current_file = str(filepath)
-        self._file_stack = [str(filepath)]
+        self._current_file = str(file_path)
+        self._file_stack = [str(file_path)]
 
-        with open(filepath, "r") as f:
+        with open(file_path, "r") as f:
             content = f.read()
 
         # First pass: collect all information
-        self._process_content(content, str(filepath))
+        self._process_content(content, str(file_path))
 
         # Build the graph
         return self._build_graph()
@@ -441,8 +441,8 @@ def build_dependency_graph(tree: dict, base_dir: str = ".") -> DependencyGraph:
     """
     # For tree-based extraction, we can only get external dependencies
     # from keyword values
-    nodes = []
-    edges = []
+    nodes: list[DependencyNode] = []
+    edges: list[DependencyEdge] = []
 
     external_deps = {}
 

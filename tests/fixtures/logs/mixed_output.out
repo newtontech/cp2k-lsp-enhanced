@@ -1,0 +1,13 @@
+ *****************************************************************************
+ *                                                                           *
+ *                              CP2K                                         *
+ *                                                                           *
+ *****************************************************************************
+
+ SCF| SCF run converged in 8 iterations
+ SCF| Final energy: -150.324567 Hartree
+
+ SCF| WARNING: SCF run NOT converged
+ SCF| Maximum number of SCF iterations reached without convergence.
+
+ PROGRAM ENDED AT 2024-01-15 10:45:33.012

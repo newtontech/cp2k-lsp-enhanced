@@ -304,7 +304,7 @@ The parser may throw the following exceptions:
 - `NameRepetitionError`: 重复的名称（不允许重复的关键字）
 - `PreprocessorError`: 预处理器错误（变量、条件块、包含）
 
-## 参考资料 / References
+## 参考来源 (Sources)
 
 - CP2K 输入规范: https://manual.cp2k.org/
 - cp2k-input-tools 源代码: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/parser.py`

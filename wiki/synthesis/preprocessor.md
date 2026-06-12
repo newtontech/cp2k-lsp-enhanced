@@ -391,8 +391,14 @@ for line in preprocessor:
     print(line)  # 处理后的行
 ```
 
+## 参考来源 (Sources)
+
+- CP2K 手册 - 输入预处理: https://manual.cp2k.org/user_guide/input.html
+- `cp2k_input_tools/preprocessor.py`: 预处理器实现
+- `wiki/synthesis/parser-api.md`: 解析器 API 文档
+
 ## 参考资料 / References
 
 - CP2K 手册 - 输入预处理: https://manual.cp2k.org/user_guide/input.html
-- 预处理器实现: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/preprocessor.py`
-- 解析器文档: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/wiki/synthesis/parser-api.md`
+- 预处理器实现: `cp2k_input_tools/preprocessor.py`
+- 解析器文档: `wiki/synthesis/parser-api.md`
