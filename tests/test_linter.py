@@ -213,6 +213,28 @@ class TestConfigSmells:
         diagnostics = lint_config_smells(text)
         assert any(d.code == "lint/loose-scf-eps" for d in diagnostics)
 
+    def test_loose_scf_eps_canonical_rule_id(self):
+        """Loose EPS_SCF diagnostic should carry canonical rule_id."""
+        text = """&DFT
+  &SCF
+    EPS_SCF 1.0E-3
+  &END SCF
+&END DFT"""
+        diagnostics = lint_config_smells(text)
+        loose = [d for d in diagnostics if d.code == "lint/loose-scf-eps"]
+        assert len(loose) == 1
+        assert loose[0].rule_id == "cp2k.scf.eps_scf_loose"
+
+    def test_tight_scf_eps_has_no_rule_id(self):
+        """Tight EPS_SCF should not emit a diagnostic at all."""
+        text = """&DFT
+  &SCF
+    EPS_SCF 1.0E-7
+  &END SCF
+&END DFT"""
+        diagnostics = lint_config_smells(text)
+        assert not any(d.code == "lint/loose-scf-eps" for d in diagnostics)
+
     def test_short_timestep(self):
         """Should warn about suspiciously short timestep."""
         text = """&MOTION
