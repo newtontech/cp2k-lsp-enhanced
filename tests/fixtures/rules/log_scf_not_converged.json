@@ -1,0 +1,20 @@
+{
+  "rule_id": "cp2k.log.scf_not_converged",
+  "description": "Error on SCF non-convergence in CP2K log files",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/scf_not_converged.out",
+    "valid": [
+      "tests/fixtures/logs/scf_converged.out"
+    ]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.scf_not_converged",
+      "message": "SCF calculation did not converge. Review convergence criteria, initial guess, or system setup.",
+      "severity": "error",
+      "hint": "Consider tightening ADAPT or MAX_SCF, improving initial guess (RESTART), or checking system geometry."
+    }
+  ]
+}
