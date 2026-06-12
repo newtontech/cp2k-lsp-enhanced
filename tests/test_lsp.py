@@ -14,6 +14,7 @@ if hasattr(sys, "pypy_version_info"):
 pygls = pytest.importorskip("pygls")
 
 from lsprotocol.types import (  # noqa: E402
+    TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_FORMATTING,
     TEXT_DOCUMENT_HOVER,
@@ -22,11 +23,14 @@ from lsprotocol.types import (  # noqa: E402
     TEXT_DOCUMENT_DOCUMENT_SYMBOL,
     TEXT_DOCUMENT_PREPARE_RENAME,
     TEXT_DOCUMENT_RENAME,
+    CompletionParams,
+    DefinitionParams,
     DidOpenTextDocumentParams,
     DocumentFormattingParams,
     DocumentSymbolParams,
     HoverParams,
     Position,
+    PrepareRenameParams,
     Range,
     ReferenceParams,
     RenameParams,
