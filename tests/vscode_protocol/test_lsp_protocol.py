@@ -13,7 +13,6 @@ if hasattr(sys, "pypy_version_info"):
     pytest.skip("pypy is currently not supported", allow_module_level=True)
 
 pygls = pytest.importorskip("pygls")
-from lsprotocol import types as lsp  # noqa: E402
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 TEST_DIR = ROOT_DIR / "tests"

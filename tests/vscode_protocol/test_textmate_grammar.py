@@ -10,7 +10,6 @@ import json
 import re
 from pathlib import Path
 
-
 ROOT_DIR = Path(__file__).resolve().parents[2]
 GRAMMAR_PATH = ROOT_DIR / "syntaxes" / "cp2k.tmLanguage.json"
 
@@ -27,11 +26,7 @@ def _load_patterns() -> list[tuple[str, re.Pattern[str]]]:
 
 
 def _scopes_for(line: str) -> list[str]:
-    return [
-        scope
-        for scope, pattern in _load_patterns()
-        if pattern.search(line)
-    ]
+    return [scope for scope, pattern in _load_patterns() if pattern.search(line)]
 
 
 def test_grammar_declares_cp2k_language_metadata():
