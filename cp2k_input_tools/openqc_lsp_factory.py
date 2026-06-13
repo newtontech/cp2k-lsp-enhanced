@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .validation_backends import validation_backends_payload
+
 GENERATE_DAG = (
     ("doc-ingest", "DocIngestAgent"),
     ("keyword-extract", "GrammarAgent"),
@@ -107,6 +109,7 @@ def run_generate(root: Path, software: str, version: str, min_confidence: float 
             "software": software,
             "version": version,
             "operations": ["check", "context", "complete", "hover", "symbols", "fix"],
+            "validation_backends": validation_backends_payload(),
             "keyword_count": len(keywords),
             "source": str((root / "sources" / software / f"{version}.json").relative_to(root)),
         },

@@ -3,14 +3,19 @@ from typing import Union
 from lsprotocol.types import (
     TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_COMPLETION,
+    TEXT_DOCUMENT_DEFINITION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DOCUMENT_SYMBOL,
     TEXT_DOCUMENT_HOVER,
+    TEXT_DOCUMENT_PREPARE_RENAME,
+    TEXT_DOCUMENT_REFERENCES,
+    TEXT_DOCUMENT_RENAME,
     WORKSPACE_SYMBOL,
     CodeActionParams,
     CompletionParams,
+    DefinitionParams,
     Diagnostic,
     DiagnosticSeverity,
     DidChangeTextDocumentParams,
@@ -19,7 +24,10 @@ from lsprotocol.types import (
     DocumentSymbolParams,
     HoverParams,
     Position,
+    PrepareRenameParams,
     Range,
+    ReferenceParams,
+    RenameParams,
     SymbolInformation,
     WorkspaceSymbolParams,
 )
@@ -27,9 +35,11 @@ from pygls.server import LanguageServer
 
 from .code_actions import get_code_actions
 from .completion import get_completions
+from .definition import get_definition, get_references
 from .hover import get_hover
 from .parser import CP2KInputParserSimplified
 from .parser_errors import ParserError
+from .rename import can_rename, get_rename_edit
 from .symbols import get_document_symbols, get_workspace_symbols
 from .tokenizer import TokenizerError
 from .validator import validate_semantics
@@ -141,6 +151,39 @@ def hover(ls, params: HoverParams):
     )
 
 
+def go_to_definition(ls, params: DefinitionParams):
+    """Navigate to section, keyword, or variable definitions."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    return get_definition(
+        text=text,
+        position=params.position,
+        uri=params.text_document.uri,
+    )
+
+
+def find_references(ls, params: ReferenceParams):
+    """Find all references to sections, keywords, or variables."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    context = params.context
+    if isinstance(context, dict):
+        context_dict = context
+    elif context is not None:
+        context_dict = {"includeDeclaration": context.include_declaration}
+    else:
+        context_dict = None
+
+    return get_references(
+        text=text,
+        position=params.position,
+        uri=params.text_document.uri,
+        context=context_dict,
+    )
+
+
 def code_actions(ls, params: CodeActionParams):
     """Provide code actions for CP2K input file diagnostics."""
     text_doc = ls.workspace.get_text_document(params.text_document.uri)
@@ -168,6 +211,28 @@ def code_actions(ls, params: CodeActionParams):
     return all_actions
 
 
+def prepare_rename(ls, params: PrepareRenameParams):
+    """Return a rename range when the cursor is on a safe CP2K symbol."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    if not can_rename(text, params.position, params.text_document.uri):
+        return None
+
+    return Range(
+        start=Position(line=params.position.line, character=params.position.character),
+        end=Position(line=params.position.line, character=params.position.character + 1),
+    )
+
+
+def rename(ls, params: RenameParams):
+    """Return workspace edits for a safe CP2K rename request."""
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
+    text = text_doc.source
+
+    return get_rename_edit(text, params.position, params.text_document.uri, params.new_name)
+
+
 def setup_cp2k_ls_server(server):
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls, params: DidChangeTextDocumentParams):
@@ -193,6 +258,16 @@ def setup_cp2k_ls_server(server):
     def did_hover(ls, params: HoverParams):
         """Hover request handler."""
         return hover(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_DEFINITION)
+    def did_definition(ls, params: DefinitionParams):
+        """Go-to-definition request handler (#56)."""
+        return go_to_definition(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_REFERENCES)
+    def did_references(ls, params: ReferenceParams):
+        """Find-references request handler (#56)."""
+        return find_references(ls, params)
 
     @server.feature(TEXT_DOCUMENT_CODE_ACTION)
     def did_code_actions(ls, params: CodeActionParams):
@@ -236,6 +311,16 @@ def setup_cp2k_ls_server(server):
         # Search symbols
         symbols = get_workspace_symbols(params.query, all_files)
         return symbols
+
+    @server.feature(TEXT_DOCUMENT_PREPARE_RENAME)
+    def did_prepare_rename(ls, params: PrepareRenameParams):
+        """Prepare rename request handler."""
+        return prepare_rename(ls, params)
+
+    @server.feature(TEXT_DOCUMENT_RENAME)
+    def did_rename(ls, params: RenameParams):
+        """Rename request handler."""
+        return rename(ls, params)
 
 
 cp2k_server = LanguageServer("cp2k-lsp", "v0.1")

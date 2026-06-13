@@ -9,6 +9,7 @@ from typing import Any
 
 from .agent_operations import OPERATIONS
 from .rich_diagnostics import agent_check_payload
+from .validation_backends import validation_backends_payload
 
 SOFTWARE = "cp2k"
 
@@ -23,6 +24,7 @@ def _capabilities_payload() -> dict[str, Any]:
             "status": "available",
             "source": "cp2k-lsp-tool",
         },
+        "validationBackends": validation_backends_payload(),
     }
 
 
