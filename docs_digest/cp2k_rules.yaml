@@ -1,0 +1,92 @@
+# CP2K LSP Rules
+# This file defines rules for diagnostics, code actions, and hover warnings
+# Each rule has a source for auditability
+
+version: "1.0.0"
+cp2k_version: "2024.1"
+generated_at: "2026-06-13T00:00:00Z"
+generator_version: "0.1.0"
+
+# Forbidden/removed keywords - trigger errors
+forbidden_keywords:
+  - name: "CENTER_COORDINATES"
+    description: "Deprecated in CP2K 2023. Use CENTER_COORDS instead"
+    replacement: "CENTER_COORDS"
+    severity: "error"
+    provenance:
+      source: "manual"
+      cp2k_version: "2023.1"
+      crawl_date: "2026-06-13"
+      license: "CP2K license"
+
+# Risky/community-known settings - trigger warnings
+risky_settings:
+  - keyword: "EPS_SCF"
+    condition: "value < 1.0e-10"
+    warning: "Very tight SCF convergence may cause excessive iterations"
+    severity: "warning"
+    provenance:
+      source: "community"
+      cp2k_version: "2024.1"
+      crawl_date: "2026-06-13"
+      license: "Community knowledge"
+
+  - keyword: "MAX_SCF"
+    condition: "value > 500"
+    warning: "High MAX_SCF may indicate convergence issues"
+    severity: "warning"
+    provenance:
+      source: "community"
+      cp2k_version: "2024.1"
+      crawl_date: "2026-06-13"
+      license: "Community knowledge"
+
+# Method recipes - provide completion/snippet/code action
+method_recipes:
+  - name: "standard_dft"
+    description: "Standard DFT calculation setup"
+    sections:
+      GLOBAL:
+        PROJECT_NAME: "my_calc"
+        RUN_TYPE: "ENERGY"
+        PRINT_LEVEL: "MEDIUM"
+      FORCE_EVAL:
+        METHOD: "QS"
+        DFT:
+          BASIS_SET_FILE_NAME: "BASIS_SET"
+          POTENTIAL_FILE_NAME: "POTENTIAL"
+          QS:
+            METHOD: "GPW"
+          SCF:
+            EPS_SCF: "1.0e-7"
+            MAX_SCF: "50"
+          XC:
+            XC_FUNCTIONAL:
+              _: "PBE"
+    provenance:
+      source: "community"
+      cp2k_version: "2024.1"
+      crawl_date: "2026-06-13"
+      license: "Community knowledge"
+
+# Runtime log patterns - for diagnostics
+log_patterns:
+  - pattern: "SCF convergence NOT reached"
+    severity: "error"
+    description: "SCF calculation did not converge within MAX_SCF iterations"
+    suggestion: "Increase MAX_SCF or adjust convergence parameters"
+    provenance:
+      source: "manual"
+      cp2k_version: "2024.1"
+      crawl_date: "2026-06-13"
+      license: "CP2K license"
+
+  - pattern: "Numerical instability detected"
+    severity: "warning"
+    description: "Numerical instability detected during calculation"
+    suggestion: "Check basis set, cutoff, or system setup"
+    provenance:
+      source: "manual"
+      cp2k_version: "2024.1"
+      crawl_date: "2026-06-13"
+      license: "CP2K license"

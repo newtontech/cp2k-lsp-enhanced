@@ -213,24 +213,48 @@ Maximum number of SCF iterations before giving up.
                 lines.append(f"**Default**: `{default}`")
             lines.append("")
 
-        # Enum values
         enum_values = schema.get("enum_values")
         if enum_values:
             lines.append("**Allowed values**:")
             lines.append("")
-            for value in enum_values:
+            max_values = 10
+            for value in enum_values[:max_values]:
                 lines.append(f"- `{value}`")
+            if len(enum_values) > max_values:
+                lines.append(f"- ... and {len(enum_values) - max_values} more")
             lines.append("")
 
-        # Units
         units = schema.get("units")
         if units:
             lines.append(f"**Units**: {', '.join(units)}")
             lines.append("")
 
-        # Required flag
         if schema.get("required"):
             lines.append("**Required**: Yes")
+            lines.append("")
+
+        manual_url = schema.get("manual_url")
+        if manual_url:
+            lines.append(f"**Manual**: [CP2K Documentation]({manual_url})")
+            lines.append("")
+
+        example = schema.get("example")
+        if example:
+            lines.append("**Example**:")
+            lines.append("```cp2k")
+            lines.append(example)
+            lines.append("```")
+            lines.append("")
+
+        if schema.get("deprecated"):
+            warning = schema.get("deprecation_warning", "This keyword is deprecated")
+            lines.append(f"⚠️ **Warning**: {warning}")
+            lines.append("")
+
+        provenance = schema.get("provenance")
+        if provenance:
+            cp2k_version = provenance.get("cp2k_version", "unknown")
+            lines.append(f"*Source: CP2K {cp2k_version}*")
             lines.append("")
 
         return "\n".join(lines)
@@ -239,45 +263,66 @@ Maximum number of SCF iterations before giving up.
         """Format section schema into markdown hover content."""
         lines = []
 
-        # Title
         name = schema.get("name", "UNKNOWN")
         lines.append(f"**{name}** - Section")
         lines.append("")
 
-        # Description
         description = schema.get("description", "")
         if description:
             lines.append(description)
             lines.append("")
 
-        # Keywords
         keywords = schema.get("keywords", [])
         if keywords:
             lines.append("**Keywords**:")
             lines.append("")
-            for kw in keywords[:10]:  # Limit to first 10 for readability
+            max_keywords = 10
+            for kw in keywords[:max_keywords]:
                 lines.append(f"- `{kw}`")
-            if len(keywords) > 10:
-                lines.append(f"- ... and {len(keywords) - 10} more")
+            if len(keywords) > max_keywords:
+                lines.append(f"- ... and {len(keywords) - max_keywords} more")
             lines.append("")
 
-        # Subsections
         subsections = schema.get("subsections", [])
         if subsections:
             lines.append("**Subsections**:")
             lines.append("")
-            for sub in subsections[:8]:  # Limit to first 8
+            max_subsections = 8
+            for sub in subsections[:max_subsections]:
                 lines.append(f"- `{sub}`")
-            if len(subsections) > 8:
-                lines.append(f"- ... and {len(subsections) - 8} more")
+            if len(subsections) > max_subsections:
+                lines.append(f"- ... and {len(subsections) - max_subsections} more")
             lines.append("")
 
-        # Properties
         if schema.get("required"):
             lines.append("**Required**: Yes")
         if schema.get("repeats"):
             lines.append("**Repeatable**: Yes")
         lines.append("")
+
+        manual_url = schema.get("manual_url")
+        if manual_url:
+            lines.append(f"**Manual**: [CP2K Documentation]({manual_url})")
+            lines.append("")
+
+        example = schema.get("example")
+        if example:
+            lines.append("**Example**:")
+            lines.append("```cp2k")
+            lines.append(example)
+            lines.append("```")
+            lines.append("")
+
+        if schema.get("deprecated"):
+            warning = schema.get("deprecation_warning", "This section is deprecated")
+            lines.append(f"⚠️ **Warning**: {warning}")
+            lines.append("")
+
+        provenance = schema.get("provenance")
+        if provenance:
+            cp2k_version = provenance.get("cp2k_version", "unknown")
+            lines.append(f"*Source: CP2K {cp2k_version}*")
+            lines.append("")
 
         return "\n".join(lines)
 

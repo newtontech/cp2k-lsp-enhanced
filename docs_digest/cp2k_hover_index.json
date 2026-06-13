@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/newtontech/cp2k-lsp-enhanced/docs_digest/cp2k_hover_index.json",
+  "title": "CP2K Hover Index",
+  "description": "Schema for hover documentation index used by the CP2K Language Server",
+  "type": "object",
+  "required": ["version", "cp2k_version", "generated_at", "generator_version", "sections", "keywords"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Schema version"
+    },
+    "cp2k_version": {
+      "type": "string",
+      "description": "CP2K release version this index was generated from"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this index was generated"
+    },
+    "generator_version": {
+      "type": "string",
+      "description": "Version of the digest generator"
+    },
+    "sections": {
+      "type": "object",
+      "description": "Section documentation indexed by section path",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "description", "provenance"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Section name (uppercase)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description from schema/manual"
+          },
+          "path": {
+            "type": "string",
+            "description": "Dot-separated section path (e.g., FORCE_EVAL.DFT.SCF)"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of valid keyword names in this section"
+          },
+          "subsections": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of valid subsection names"
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this section is required"
+          },
+          "repeats": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this section can appear multiple times"
+          },
+          "manual_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to CP2K manual for this section"
+          },
+          "example": {
+            "type": "string",
+            "description": "Minimal valid example snippet"
+          },
+          "deprecated": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this section is deprecated/removed"
+          },
+          "deprecation_warning": {
+            "type": "string",
+            "description": "Warning message for deprecated sections"
+          },
+          "provenance": {
+            "type": "object",
+            "required": ["source", "cp2k_version", "crawl_date"],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": ["schema", "manual", "community"],
+                "description": "Source type"
+              },
+              "source_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Original source URL"
+              },
+              "cp2k_version": {
+                "type": "string",
+                "description": "CP2K version this data was extracted from"
+              },
+              "crawl_date": {
+                "type": "string",
+                "format": "date",
+                "description": "Date when source was accessed"
+              },
+              "license": {
+                "type": "string",
+                "description": "License of the source material"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "keywords": {
+      "type": "object",
+      "description": "Keyword documentation indexed by keyword name",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "type", "provenance"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Keyword name (uppercase)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description from schema/manual"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["string", "integer", "real", "boolean", "enum", "array", "file"],
+            "description": "Value type"
+          },
+          "default": {
+            "description": "Default value (type varies by keyword type)"
+          },
+          "units": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Supported unit strings"
+          },
+          "enum_values": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Allowed values for enum type keywords"
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this keyword is required"
+          },
+          "repeats": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this keyword can appear multiple times"
+          },
+          "section_path": {
+            "type": "string",
+            "description": "Section path where this keyword is valid"
+          },
+          "manual_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to CP2K manual for this keyword"
+          },
+          "example": {
+            "type": "string",
+            "description": "Minimal valid example snippet"
+          },
+          "deprecated": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this keyword is deprecated/removed"
+          },
+          "deprecation_warning": {
+            "type": "string",
+            "description": "Warning message for deprecated keywords"
+          },
+          "provenance": {
+            "type": "object",
+            "required": ["source", "cp2k_version", "crawl_date"],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": ["schema", "manual", "community"],
+                "description": "Source type"
+              },
+              "source_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Original source URL"
+              },
+              "cp2k_version": {
+                "type": "string",
+                "description": "CP2K version this data was extracted from"
+              },
+              "crawl_date": {
+                "type": "string",
+                "format": "date",
+                "description": "Date when source was accessed"
+              },
+              "license": {
+                "type": "string",
+                "description": "License of the source material"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
