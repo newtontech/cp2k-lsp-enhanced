@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import json
+# Ensure the workspace root is importable when run from the worktree
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
-# Ensure the workspace root is importable when run from the worktree
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from cp2k_lsp.agent_commands import (
@@ -20,9 +17,16 @@ from cp2k_lsp.agent_commands import (
     COMMAND_EXPLAIN,
     COMMAND_FIX_PREVIEW,
     COMMAND_REFERENCES,
+    COMMAND_REGISTRY,
     COMMAND_SCHEMA_VALIDATE,
     COMMAND_SYMBOLS,
     COMMAND_WIKI_SEARCH,
+    _extract_symbols,
+    _find_references,
+    _parse_context_at_position,
+    _resolve_definition,
+    _search_wiki_digest,
+    execute_command,
     parse_command_args,
     run_capabilities,
     run_check,
@@ -33,13 +37,6 @@ from cp2k_lsp.agent_commands import (
     run_references,
     run_symbols,
     run_wiki_search,
-    execute_command,
-    _parse_context_at_position,
-    _search_wiki_digest,
-    _extract_symbols,
-    _resolve_definition,
-    _find_references,
-    COMMAND_REGISTRY,
 )
 
 # Minimal valid CP2K input for testing

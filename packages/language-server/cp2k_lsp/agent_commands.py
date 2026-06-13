@@ -528,8 +528,8 @@ def _resolve_definition(text: str, line: int, character: int, uri: str) -> dict[
     if var_match:
         var_name = var_match.group(1)
         # Search for @SET VAR = ... definition
-        for i, l in enumerate(lines):
-            set_match = re.search(rf"@SET\s+{var_name}\s*=\s*(.+)", l, re.IGNORECASE)
+        for i, line in enumerate(lines):
+            set_match = re.search(rf"@SET\s+{var_name}\s*=\s*(.+)", line, re.IGNORECASE)
             if set_match:
                 return {
                     "type": "variable",
@@ -578,11 +578,11 @@ def _find_references(text: str, line: int, character: int) -> list[dict[str, Any
 
     # Find all references to this symbol
     references = []
-    for i, l in enumerate(lines):
-        if target_word in l.upper():
+    for i, line in enumerate(lines):
+        if target_word in line.upper():
             references.append({
                 "line": i,
-                "text": l.strip(),
+                "text": line.strip(),
                 "type": "reference",
             })
 
@@ -645,7 +645,6 @@ def run_schema_validate(_server: Any = None, arguments: list[Any] | None = None)
     """Return schema index health: staleness, section/keyword counts, file path."""
     from cp2k_input_tools.schema_index import get_schema_index
 
-    args = parse_command_args(arguments)
     index = get_schema_index()
 
     stale = index.is_stale()

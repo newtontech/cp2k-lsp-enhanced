@@ -24,8 +24,6 @@ from typing import List, Optional, Tuple
 from lsprotocol.types import (
     CodeAction,
     CodeActionKind,
-    Diagnostic,
-    DiagnosticSeverity,
     OptionalVersionedTextDocumentIdentifier,
     Position,
     Range,
@@ -225,8 +223,6 @@ def _fix_invalid_enum(
     schema: CP2KSchemaIndex,
 ) -> List[CodeAction]:
     """Fix invalid enum value by suggesting the closest valid value."""
-    actions: List[CodeAction] = []
-
     # Extract keyword and value from the line
     parts = line_text.strip().split(None, 1)
     if len(parts) < 2:
@@ -297,8 +293,6 @@ def _fix_unknown_keyword(
     schema: CP2KSchemaIndex,
 ) -> List[CodeAction]:
     """Fix unknown keyword by suggesting the closest valid keyword."""
-    actions: List[CodeAction] = []
-
     # Extract the keyword from the line
     kw_match = _KEYWORD_RE.match(line_text)
     if not kw_match:
@@ -361,8 +355,6 @@ def _fix_unknown_section(
     schema: CP2KSchemaIndex,
 ) -> List[CodeAction]:
     """Fix unknown section by suggesting the closest valid section."""
-    actions: List[CodeAction] = []
-
     # Extract section name from the line
     sec_match = _SECTION_START_RE.match(line_text)
     if not sec_match:
@@ -442,7 +434,6 @@ def _fix_removed_keyword(
     if not parts:
         return []
 
-    old_keyword = parts[0]
     rest = parts[1] if len(parts) > 1 else ""
 
     new_line = f"{replacement}{rest}"

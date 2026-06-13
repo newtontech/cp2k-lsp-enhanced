@@ -174,7 +174,6 @@ class TestCodeActionsUnit:
             "   METHOD QS",
             "&END DFT",  # Wrong: should be &END FORCE_EVAL
         ]
-        text = "\n".join(lines)
         range_obj = Range(start=Position(line=2, character=0), end=Position(line=2, character=len(lines[2])))
         actions = _fix_mismatched_end(lines[2], 2, range_obj, "file:///test.inp", lines)
 
@@ -192,7 +191,6 @@ class TestCodeActionsUnit:
             "&FORCE_EVAL",
             "   METHOD QS",
         ]
-        text = "\n".join(lines)
         range_obj = Range(start=Position(line=0, character=0), end=Position(line=0, character=len(lines[0])))
         schema = get_schema_index()
         actions = _fix_missing_end(lines[0], 0, range_obj, "file:///test.inp", lines, schema)
@@ -212,7 +210,6 @@ class TestCodeActionsUnit:
             "   METHD QS",
             "&END FORCE_EVAL",
         ]
-        text = "\n".join(lines)
         range_obj = Range(start=Position(line=1, character=0), end=Position(line=1, character=len(lines[1])))
         schema = get_schema_index()
         actions = _fix_unknown_keyword(lines[1], 1, range_obj, "file:///test.inp", lines, schema)
@@ -232,7 +229,6 @@ class TestCodeActionsUnit:
             "   METHOD QS",
             "&END FOR_EVAL",
         ]
-        text = "\n".join(lines)
         range_obj = Range(start=Position(line=0, character=0), end=Position(line=0, character=len(lines[0])))
         schema = get_schema_index()
         actions = _fix_unknown_section(lines[0], 0, range_obj, "file:///test.inp", lines, schema)
@@ -251,7 +247,6 @@ class TestCodeActionsUnit:
             "   OLD_KEYWORD value",
             "&END FORCE_EVAL",
         ]
-        text = "\n".join(lines)
         range_obj = Range(start=Position(line=1, character=0), end=Position(line=1, character=len(lines[1])))
         diagnostic_data = {"suggested_fix": "Replace OLD_KEYWORD with NEW_KEYWORD."}
         actions = _fix_removed_keyword(lines[1], 1, range_obj, "file:///test.inp", diagnostic_data)
@@ -271,7 +266,6 @@ class TestCodeActionsUnit:
             "   METHOD QUICKSTP",  # Typo: missing 'E'
             "&END FORCE_EVAL",
         ]
-        text = "\n".join(lines)
         range_obj = Range(start=Position(line=1, character=0), end=Position(line=1, character=len(lines[1])))
         diagnostic_data = {"valid_values": ["QUICKSTEP", "FIST", "EMBEDDED"]}
         schema = get_schema_index()
