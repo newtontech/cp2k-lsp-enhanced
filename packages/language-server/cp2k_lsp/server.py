@@ -19,6 +19,7 @@ from cp2k_lsp.features.completion import CompletionProvider
 from cp2k_lsp.features.diagnostics import DiagnosticsProvider
 from cp2k_lsp.features.formatting import FormattingProvider
 from cp2k_lsp.features.hover import HoverProvider
+from cp2k_lsp.features.semantic_tokens import SemanticTokenProvider
 from cp2k_lsp.parser import CP2KInput, CP2KParser
 
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +42,7 @@ class CP2KLanguageServer(LanguageServer):
         self.hover = HoverProvider(self)
         self.formatting = FormattingProvider(self)
         self.code_action = CodeActionProvider(self)
+        self.semantic_tokens = SemanticTokenProvider()
 
         self._setup_handlers()
         self._register_agent_commands()
@@ -97,6 +99,14 @@ class CP2KLanguageServer(LanguageServer):
         def code_action_provider(params: lsp.CodeActionParams) -> Optional[List[lsp.CodeAction]]:
             return self.code_action.provide_code_actions(params)
 
+        @self.feature(lsp.TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL)
+        def semantic_tokens_full(params: lsp.SemanticTokensParams) -> Optional[lsp.SemanticTokens]:
+            return self._provide_semantic_tokens(params)
+
+        @self.feature(lsp.TEXT_DOCUMENT_SEMANTIC_TOKENS_RANGE)
+        def semantic_tokens_range(params: lsp.SemanticTokensRangeParams) -> Optional[lsp.SemanticTokens]:
+            return self._provide_semantic_tokens(params)
+
     def _parse_document(self, uri: str) -> None:
         """Parse a document and store the AST."""
         try:
@@ -108,6 +118,45 @@ class CP2KLanguageServer(LanguageServer):
             logger.error(f"Error parsing document {uri}: {e}")
             self.parsed_documents[uri] = None
             self.parser_errors[uri] = []
+
+    def _provide_semantic_tokens(
+        self, params: lsp.SemanticTokensParams | lsp.SemanticTokensRangeParams
+    ) -> Optional[lsp.SemanticTokens]:
+        """Provide semantic tokens for a document or range."""
+        try:
+            document = self.workspace.get_text_document(params.text_document.uri)
+            tokens = self.semantic_tokens.get_semantic_tokens(document.source)
+            if not tokens:
+                return lsp.SemanticTokens(data=[])
+
+            # Build token data array in LSP format:
+            # [deltaLine, deltaStartChar, length, tokenType, tokenModifiers]
+            token_types = ["section", "keyword", "value", "unit", "comment", "preprocessor", "variable"]
+            data = []
+            prev_line = 0
+            prev_char = 0
+
+            for token in sorted(tokens, key=lambda t: (t.line, t.start_char)):
+                delta_line = token.line - prev_line
+                if delta_line == 0:
+                    delta_char = token.start_char - prev_char
+                else:
+                    delta_char = token.start_char
+
+                token_type_idx = token_types.index(token.token_type) if token.token_type in token_types else 0
+                token_modifiers = 0
+                for i, mod in enumerate(["definition", "readonly"]):
+                    if mod in token.modifiers:
+                        token_modifiers |= (1 << i)
+
+                data.extend([delta_line, delta_char, token.length, token_type_idx, token_modifiers])
+                prev_line = token.line
+                prev_char = token.start_char
+
+            return lsp.SemanticTokens(data=data)
+        except Exception as e:
+            logger.error(f"Error providing semantic tokens: {e}")
+            return None
 
     async def _publish_diagnostics(self, uri: str) -> None:
         """Publish diagnostics for a document."""
