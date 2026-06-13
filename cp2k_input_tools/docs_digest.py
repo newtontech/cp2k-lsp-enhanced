@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
 _DOCS_DIGEST_DIR = Path(__file__).resolve().parent.parent / "docs_digest"
 
 

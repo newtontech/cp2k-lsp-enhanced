@@ -8,7 +8,6 @@ Tests cover:
 - Enum truncation
 """
 
-import pytest
 from cp2k_lsp.agent_api.schema import (
     lookup_keyword_schema,
     lookup_section_schema,

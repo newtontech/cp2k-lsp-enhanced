@@ -10,8 +10,6 @@ Tests cover:
 
 import json
 import os
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -36,9 +34,39 @@ def tmp_digest_dir(tmp_path):
     (digest_dir / "cp2k_hover_index.json").write_text(json.dumps(hover_index, indent=2))
 
     entries = [
-        {"type": "keyword", "name": "RUN_TYPE", "description": "Run type", "provenance": {"source": "schema", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "CP2K license"}},
-        {"type": "section", "name": "GLOBAL", "description": "Global parameters", "provenance": {"source": "schema", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "CP2K license"}},
-        {"type": "recipe", "name": "H2O_DFT", "description": "Water DFT calculation", "provenance": {"source": "community", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "MIT"}},
+        {
+            "type": "keyword",
+            "name": "RUN_TYPE",
+            "description": "Run type",
+            "provenance": {
+                "source": "schema",
+                "cp2k_version": "2024.1",
+                "crawl_date": "2026-06-13",
+                "license": "CP2K license",
+            },
+        },
+        {
+            "type": "section",
+            "name": "GLOBAL",
+            "description": "Global parameters",
+            "provenance": {
+                "source": "schema",
+                "cp2k_version": "2024.1",
+                "crawl_date": "2026-06-13",
+                "license": "CP2K license",
+            },
+        },
+        {
+            "type": "recipe",
+            "name": "H2O_DFT",
+            "description": "Water DFT calculation",
+            "provenance": {
+                "source": "community",
+                "cp2k_version": "2024.1",
+                "crawl_date": "2026-06-13",
+                "license": "MIT",
+            },
+        },
     ]
     lines = [json.dumps(e) for e in entries]
     (digest_dir / "cp2k_wiki.jsonl").write_text("\n".join(lines) + "\n")

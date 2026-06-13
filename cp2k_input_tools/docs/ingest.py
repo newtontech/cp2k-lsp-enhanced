@@ -10,12 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
 from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 
 _DOCS_RAW_DIR = Path(__file__).resolve().parent.parent.parent / "docs_raw"
 _DOCS_DIGEST_DIR = Path(__file__).resolve().parent.parent.parent / "docs_digest"
@@ -71,7 +68,6 @@ def _get_manual_url_for_section(section_name: str) -> Optional[str]:
         "CHARGE_EXTRAPOLATION": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/CHARGE_EXTRAPOLATION.html",
         "SCREEN_POC_FORMULA": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/SCREEN_POC_FORMULA.html",
         "ITERATION_INFO": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/ITERATION_INFO.html",
-        "PRINT": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/PRINT.html",
         "KPOINTS": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/KPOINTS.html",
         "LOCALIZE": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/LOCALIZE.html",
         "MOLECULES": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/MOLECULES.html",
@@ -529,7 +525,7 @@ def _generate_rules_yaml(out_dir: Path) -> None:
         yaml.dump(rules, default_flow_style=False, sort_keys=False),
         encoding="utf-8",
     )
-    print(f"  Generated cp2k_rules.yaml")
+    print("  Generated cp2k_rules.yaml")
 
 
 def main() -> None:
