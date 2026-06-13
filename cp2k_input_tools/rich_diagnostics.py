@@ -149,6 +149,18 @@ def diagnostic_to_dict(
         suggested_fix = legacy.get("suggested_fix")
         fix_hints = [] if suggested_fix is None else [suggested_fix]
     blocking = bool(legacy.get("blocking", severity == "error" and confidence >= 0.8))
+    source_provenance = legacy.get("source_provenance") or [
+        {
+            "kind": "official_schema",
+            "label": "Bundled CP2K input XML schema",
+            "path": "cp2k_input_tools/cp2k_input.xml",
+        }
+    ]
+    version_assumption = legacy.get("version_assumption") or {
+        "software": software,
+        "version": "unknown",
+        "source": "bundled cp2k_input.xml",
+    }
     return {
         "diagnostic_engine": DIAGNOSTIC_ENGINE_VERSION,
         "code": str(code or "diagnostic"),
@@ -163,7 +175,11 @@ def diagnostic_to_dict(
         "expected": legacy.get("expected"),
         "actual": legacy.get("actual"),
         "manual_ref": legacy.get("manual_ref"),
+        "source_provenance": source_provenance,
+        "version_assumption": version_assumption,
+        "artifact_role": legacy.get("artifact_role", file_type or "input"),
         "fix_hints": fix_hints,
+        "actions": legacy.get("actions", []),
         "blocking": blocking,
         "message": str(message or ""),
     }
