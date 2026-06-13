@@ -1,0 +1,5 @@
+{
+  "description": "An unknown keyword under GLOBAL triggers cp2k.schema.unknown_keyword.",
+  "expected_rules": ["cp2k.schema.unknown_keyword"],
+  "diagnostic_count": 1
+}

@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.segfault",
+  "description": "CP2K process died with SIGSEGV",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/segfault.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.segfault",
+      "severity": "error",
+      "likely_section": "GLOBAL",
+      "message": "CP2K crashed with a segmentation fault."
+    }
+  ]
+}

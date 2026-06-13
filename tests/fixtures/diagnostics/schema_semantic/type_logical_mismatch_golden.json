@@ -1,0 +1,5 @@
+{
+  "description": "A non-logical UKS triggers cp2k.type.logical.",
+  "expected_rules": ["cp2k.type.logical"],
+  "diagnostic_count": 1
+}

@@ -1,0 +1,5 @@
+{
+  "description": "A non-integer CHARGE triggers cp2k.type.integer.",
+  "expected_rules": ["cp2k.type.integer"],
+  "diagnostic_count": 1
+}

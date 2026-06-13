@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.missing_potential_file",
+  "description": "CP2K could not open POTENTIAL_FILE_NAME",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/missing_potential_file.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.missing_potential_file",
+      "severity": "error",
+      "likely_section": "FORCE_EVAL > DFT",
+      "message": "CP2K could not read the pseudopotential file."
+    }
+  ]
+}

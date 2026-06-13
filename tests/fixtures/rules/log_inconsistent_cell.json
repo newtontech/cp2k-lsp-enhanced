@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.inconsistent_cell",
+  "description": "CELL / PERIODIC / POISSON / KPOINTS settings are inconsistent",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/inconsistent_cell.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.inconsistent_cell",
+      "severity": "error",
+      "likely_section": "FORCE_EVAL > DFT > POISSON / FORCE_EVAL > SUBSYS > CELL",
+      "message": "CELL / PERIODIC / POISSON / KPOINTS settings are inconsistent."
+    }
+  ]
+}

@@ -12,9 +12,13 @@
   "diagnostics": [
     {
       "rule_id": "cp2k.log.scf_not_converged",
-      "message": "SCF calculation did not converge. Review convergence criteria, initial guess, or system setup.",
+      "message": "SCF calculation did not converge.",
       "severity": "error",
-      "hint": "Consider tightening ADAPT or MAX_SCF, improving initial guess (RESTART), or checking system geometry."
+      "hint": "Increase MAX_SCF or tighten EPS_SCF; consider a better initial guess.",
+      "likely_section": "FORCE_EVAL > DFT > SCF",
+      "explanation": "The self-consistent field cycle did not reach the requested convergence threshold.",
+      "suggested_action": "Raise MAX_SCF, tighten EPS_SCF, switch to OT, or improve the initial guess (SCF_GUESS RESTART).",
+      "provenance_id": "cp2k manual:FORCE_EVAL/DFT/SCF"
     }
   ]
 }

@@ -1,0 +1,5 @@
+{
+  "description": "Missing GLOBAL section triggers cp2k.schema.missing_global.",
+  "expected_rules": ["cp2k.schema.missing_global"],
+  "diagnostic_count": 1
+}

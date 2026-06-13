@@ -126,15 +126,30 @@ class CP2KSchemaIndex:
         enumeration_values: List[str] = []
 
         if dt_elem is not None:
-            kind_elem = dt_elem.find("kind")
-            if kind_elem is not None and kind_elem.text:
-                variable_type = kind_elem.text.strip()
+            # The CP2K schema stores the data type as a ``kind`` *attribute*
+            # on ``DATA_TYPE`` (e.g. ``<DATA_TYPE kind="integer"/>``).  Older
+            # builds additionally emitted a child element, so keep both
+            # fallbacks for robustness.
+            kind_attr = dt_elem.get("kind")
+            if kind_attr:
+                variable_type = kind_attr.strip()
+            else:
+                kind_elem = dt_elem.find("kind")
+                if kind_elem is not None and kind_elem.text:
+                    variable_type = kind_elem.text.strip()
 
-            # For keyword type, extract enum values
+            # For keyword (enum) type, extract enum values from ITEM/NAME.
             if variable_type == "keyword":
-                for name_elem in dt_elem.findall(".//NAME"):
-                    if name_elem.text:
+                for item_elem in dt_elem.findall(".//ENUMERATION/ITEM"):
+                    name_elem = item_elem.find("NAME")
+                    if name_elem is not None and name_elem.text:
                         enumeration_values.append(name_elem.text.strip())
+                # Backwards-compatible fallback for schemas that store the
+                # values directly under NAME siblings.
+                if not enumeration_values:
+                    for name_elem in dt_elem.findall(".//ENUMERATION/NAME"):
+                        if name_elem.text:
+                            enumeration_values.append(name_elem.text.strip())
 
         # Get default value
         default_value = None

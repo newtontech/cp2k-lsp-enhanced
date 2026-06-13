@@ -1,0 +1,5 @@
+{
+  "description": "GLOBAL nested under FORCE_EVAL triggers cp2k.schema.invalid_nesting.",
+  "expected_rules": ["cp2k.schema.invalid_nesting"],
+  "diagnostic_count": 1
+}
