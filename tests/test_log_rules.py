@@ -19,7 +19,6 @@ import pytest
 
 from cp2k_input_tools.log_parser import (
     LOG_RULES,
-    LogDiagnostic,
     RULE_LOG_ABORT,
     RULE_LOG_GEO_OPT_NOT_CONVERGED,
     RULE_LOG_INCONSISTENT_CELL,
@@ -27,11 +26,12 @@ from cp2k_input_tools.log_parser import (
     RULE_LOG_MISSING_BASIS_FILE,
     RULE_LOG_MISSING_POTENTIAL_FILE,
     RULE_LOG_OUTER_SCF_NOT_CONVERGED,
-    RULE_LOG_SEGFAULT,
     RULE_LOG_SCF_NOT_CONVERGED,
+    RULE_LOG_SEGFAULT,
     RULE_LOG_UNKNOWN_BASIS,
     RULE_LOG_UNKNOWN_POTENTIAL,
     RULE_LOG_WALLTIME_EXCEEDED,
+    LogDiagnostic,
     list_log_rules,
     parse_log_content,
     parse_log_file,

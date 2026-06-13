@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
-
 # ---------------------------------------------------------------------------
 # Canonical rule IDs (single source of truth for #117)
 # ---------------------------------------------------------------------------

@@ -33,19 +33,17 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from . import DEFAULT_CP2K_INPUT_XML
 from .linter import (
     CANONICAL_RULE_LOOSE_SCF_EPS,
     RULE_FEW_SCF,
     RULE_GEO_OPT_MAX_ITER_LOW,
+    RULE_LONG_TIMESTEP,
     RULE_LOOSE_SCF_EPS,
     RULE_LOW_CUTOFF,
     RULE_LOW_REL_CUTOFF,
-    RULE_LONG_TIMESTEP,
     RULE_LOW_TEMP,
     RULE_MAX_SCF_TOO_LOW,
     RULE_MISSING_BASIS,
-    RULE_MISSING_END,
     RULE_MISSING_POTENTIAL,
     RULE_SHORT_TIMESTEP,
     lint,
@@ -53,6 +51,7 @@ from .linter import (
 from .linter import RULE_DUPLICATE_KEYWORD as LINT_RULE_DUPLICATE_KEYWORD
 from .linter import RULE_DUPLICATE_SECTION as LINT_RULE_DUPLICATE_SECTION
 from .linter import RULE_INVALID_NESTING as LINT_RULE_INVALID_NESTING
+from .linter import RULE_MISSING_END as LINT_RULE_MISSING_END
 from .linter import RULE_MISSPELLED_KEYWORD as LINT_RULE_MISSPELLED_KEYWORD
 from .linter import RULE_UNKNOWN_ENUM as LINT_RULE_UNKNOWN_ENUM
 from .rich_diagnostics import DIAGNOSTIC_ENGINE_VERSION, infer_category
@@ -136,7 +135,7 @@ _LEGACY_CODE_POLICY: Dict[str, Dict[str, str]] = {
         "provenance_id": "cp2k_input.xml:FORCE_EVAL/DFT/POTENTIAL_FILE_NAME",
         "suggested_fix": "Add POTENTIAL_FILE_NAME pointing to a readable potential file.",
     },
-    RULE_MISSING_END: {
+    LINT_RULE_MISSING_END: {
         "rule_id": RULE_MISSING_END,
         "provenance_id": "cp2k_input.xml:SECTION",
         "suggested_fix": "Add the matching &END <name> line for the section.",
