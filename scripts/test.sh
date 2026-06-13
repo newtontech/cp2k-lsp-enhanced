@@ -9,6 +9,14 @@ has_npm_script() {
   node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts[process.argv[1]] ? 0 : 1)" "$script"
 }
 
+python_cmd() {
+  if command -v python3 >/dev/null 2>&1; then
+    echo python3
+  else
+    echo python
+  fi
+}
+
 if has_npm_script test; then
   npm test
   ran=1
@@ -20,7 +28,7 @@ if [ -f Cargo.toml ]; then
 fi
 
 if ([ -d tests ] || [ -d test ] || [ -f pytest.ini ]) && ([ -f pyproject.toml ] || [ -f setup.py ] || [ -f pytest.ini ]); then
-  python -m pytest
+  "$(python_cmd)" -m pytest
   ran=1
 fi
 
