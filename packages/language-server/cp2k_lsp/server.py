@@ -6,6 +6,8 @@ from typing import Dict, List, Optional
 from lsprotocol import types as lsp
 from pygls.server import LanguageServer
 
+from cp2k_input_tools.cache_invalidation import CacheInvalidator
+from cp2k_input_tools.workspace_index import WorkspaceResourceIndex
 from cp2k_lsp.agent_commands import (
     COMMAND_CAPABILITIES,
     COMMAND_CHECK,
@@ -16,9 +18,19 @@ from cp2k_lsp.agent_commands import (
 )
 from cp2k_lsp.features.code_action import CodeActionProvider
 from cp2k_lsp.features.completion import CompletionProvider
+from cp2k_lsp.features.definition import (
+    provide_definition,
+    provide_references,
+)
 from cp2k_lsp.features.diagnostics import DiagnosticsProvider
 from cp2k_lsp.features.formatting import FormattingProvider
 from cp2k_lsp.features.hover import HoverProvider
+from cp2k_lsp.features.resource_completion import provide_resource_completions
+from cp2k_lsp.features.resource_diagnostics import provide_resource_diagnostics
+from cp2k_lsp.features.symbols import (
+    provide_document_symbols,
+    provide_folding_ranges,
+)
 from cp2k_lsp.parser import CP2KInput, CP2KParser
 
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +46,11 @@ class CP2KLanguageServer(LanguageServer):
         super().__init__("cp2k-lsp", "0.1.0", *args, **kwargs)
         self.parsed_documents: Dict[str, Optional[CP2KInput]] = {}
         self.parser_errors: Dict[str, List] = {}
+        self.document_lines: Dict[str, List[str]] = {}
+
+        # Workspace resource index + cache invalidator (#123)
+        self.workspace_index = WorkspaceResourceIndex()
+        self.cache_invalidator = CacheInvalidator(self.workspace_index)
 
         # Feature providers
         self.diagnostics = DiagnosticsProvider(self)
@@ -80,10 +97,34 @@ class CP2KLanguageServer(LanguageServer):
                 del self.parsed_documents[uri]
             if uri in self.parser_errors:
                 del self.parser_errors[uri]
+            if uri in self.document_lines:
+                del self.document_lines[uri]
+            self.workspace_index.clear_document(uri)
 
         @self.feature(lsp.TEXT_DOCUMENT_COMPLETION)
         def completion(params: lsp.CompletionParams) -> Optional[lsp.CompletionList]:
-            return self.completion.provide_completion(params)
+            base = self.completion.provide_completion(params)
+            ast = self.get_ast(params.text_document.uri)
+            extras = (
+                provide_resource_completions(
+                    ast,
+                    params.position,
+                    params.text_document.uri,
+                    self.workspace_index,
+                    self.get_lines(params.text_document.uri),
+                )
+                if ast is not None
+                else None
+            )
+            if extras is None:
+                return base
+            if base is None:
+                return extras
+            # Merge items from both lists
+            return lsp.CompletionList(
+                items=list(base.items) + list(extras.items),
+                is_incomplete=base.is_incomplete or extras.is_incomplete,
+            )
 
         @self.feature(lsp.TEXT_DOCUMENT_HOVER)
         def hover_provider(params: lsp.HoverParams) -> Optional[lsp.Hover]:
@@ -97,21 +138,99 @@ class CP2KLanguageServer(LanguageServer):
         def code_action_provider(params: lsp.CodeActionParams) -> Optional[List[lsp.CodeAction]]:
             return self.code_action.provide_code_actions(params)
 
+        @self.feature(lsp.TEXT_DOCUMENT_DOCUMENT_SYMBOL)
+        def document_symbol(
+            params: lsp.DocumentSymbolParams
+        ) -> Optional[List[lsp.DocumentSymbol]]:
+            ast = self.get_ast(params.text_document.uri)
+            if ast is None:
+                return []
+            return provide_document_symbols(ast, self.get_lines(params.text_document.uri))
+
+        @self.feature(lsp.TEXT_DOCUMENT_FOLDING_RANGE)
+        def folding_range(
+            params: lsp.FoldingRangeParams
+        ) -> Optional[List[lsp.FoldingRange]]:
+            ast = self.get_ast(params.text_document.uri)
+            if ast is None:
+                return []
+            return provide_folding_ranges(ast)
+
+        @self.feature(lsp.TEXT_DOCUMENT_DEFINITION)
+        def definition(
+            params: lsp.DefinitionParams
+        ) -> Optional[lsp.Location]:
+            ast = self.get_ast(params.text_document.uri)
+            if ast is None:
+                return None
+            return provide_definition(
+                ast,
+                params.position,
+                params.text_document.uri,
+                self.workspace_index,
+                self.get_lines(params.text_document.uri),
+            )
+
+        @self.feature(lsp.TEXT_DOCUMENT_REFERENCES)
+        def references(
+            params: lsp.ReferenceParams
+        ) -> Optional[List[lsp.Location]]:
+            ast = self.get_ast(params.text_document.uri)
+            if ast is None:
+                return []
+            return provide_references(
+                ast,
+                params.position,
+                params.text_document.uri,
+                self.workspace_index,
+                params.context.include_declaration if params.context else True,
+                self.get_lines(params.text_document.uri),
+            )
+
+        @self.feature(lsp.WORKSPACE_DID_CHANGE_WATCHED_FILES)
+        def watched_files(params: lsp.DidChangeWatchedFilesParams):
+            for change in params.changes:
+                uri = change.uri
+                path = uri[7:] if uri.startswith("file://") else uri
+                if change.type == lsp.FileChangeType.Created:
+                    self.cache_invalidator.on_file_created(path)
+                elif change.type == lsp.FileChangeType.Changed:
+                    self.cache_invalidator.on_file_changed(path)
+                else:
+                    # FileChangeType.Deleted (1) or any other enum value
+                    self.cache_invalidator.on_file_deleted(path)
+
     def _parse_document(self, uri: str) -> None:
         """Parse a document and store the AST."""
         try:
             document = self.workspace.get_text_document(uri)
-            parser = CP2KParser.parse_text(document.source, uri)
+            source = document.source
+            self.document_lines[uri] = source.split("\n")
+            parser = CP2KParser.parse_text(source, uri)
             self.parsed_documents[uri] = parser.ast
             self.parser_errors[uri] = parser.errors
+            # Reindex file references for #123 workspace tracking
+            self.workspace_index.parse_cp2k_document(uri, source)
         except Exception as e:
             logger.error(f"Error parsing document {uri}: {e}")
             self.parsed_documents[uri] = None
             self.parser_errors[uri] = []
+            self.document_lines[uri] = []
 
     async def _publish_diagnostics(self, uri: str) -> None:
         """Publish diagnostics for a document."""
         diagnostics = self.diagnostics.get_diagnostics(uri)
+        # Augment with resource diagnostics (#123) — keep base diagnostics intact
+        ast = self.get_ast(uri)
+        if ast is not None:
+            diagnostics = list(diagnostics) + list(
+                provide_resource_diagnostics(
+                    ast,
+                    uri,
+                    self.workspace_index,
+                    self.get_lines(uri),
+                )
+            )
         self.publish_diagnostics(uri, diagnostics)
 
     def get_ast(self, uri: str) -> Optional[CP2KInput]:
@@ -119,6 +238,12 @@ class CP2KLanguageServer(LanguageServer):
         if uri not in self.parsed_documents:
             self._parse_document(uri)
         return self.parsed_documents.get(uri)
+
+    def get_lines(self, uri: str) -> List[str]:
+        """Get source lines for a document (0-indexed)."""
+        if uri not in self.document_lines:
+            self._parse_document(uri)
+        return self.document_lines.get(uri, [])
 
     def get_errors(self, uri: str) -> List:
         """Get parser errors for a document."""
