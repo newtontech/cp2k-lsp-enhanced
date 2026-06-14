@@ -35,3 +35,52 @@ class CodeActionProvider:
             )
 
         return actions or None
+
+    def _create_quick_fix(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Backward-compatible quick-fix helper used by older tests."""
+        diagnostic_data = diagnostic.data if isinstance(diagnostic.data, dict) else {}
+        suggested_fix = str(diagnostic_data.get("suggested_fix", ""))
+        replacement = ""
+        if " with " in suggested_fix:
+            replacement = suggested_fix.rsplit(" with ", 1)[-1].rstrip(".")
+        elif suggested_fix:
+            replacement = suggested_fix.rstrip(".").split()[-1]
+        if not replacement:
+            return None
+        return lsp.CodeAction(
+            title=f"Replace with {replacement}",
+            kind=lsp.CodeActionKind.QuickFix,
+            is_preferred=True,
+            edit=lsp.WorkspaceEdit(changes={uri: [lsp.TextEdit(range=diagnostic.range, new_text=replacement)]}),
+        )
+
+    def _fix_unclosed_section(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Backward-compatible helper for inserting a missing &END."""
+        section_name = "SECTION"
+        marker = "&"
+        if marker in diagnostic.message:
+            section_name = diagnostic.message.split(marker, 1)[1].split()[0]
+        return lsp.CodeAction(
+            title=f"Add missing &END {section_name}",
+            kind=lsp.CodeActionKind.QuickFix,
+            is_preferred=True,
+            edit=lsp.WorkspaceEdit(
+                changes={
+                    uri: [
+                        lsp.TextEdit(
+                            range=lsp.Range(start=diagnostic.range.end, end=diagnostic.range.end),
+                            new_text=f"\n&END {section_name}",
+                        )
+                    ]
+                }
+            ),
+        )
+
+    def _fix_section_mismatch(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Backward-compatible helper for section mismatch diagnostics."""
+        return lsp.CodeAction(
+            title="Fix section name mismatch",
+            kind=lsp.CodeActionKind.QuickFix,
+            is_preferred=True,
+            edit=lsp.WorkspaceEdit(changes={uri: [lsp.TextEdit(range=diagnostic.range, new_text="&END")]}),
+        )

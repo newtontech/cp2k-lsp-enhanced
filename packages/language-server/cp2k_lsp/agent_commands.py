@@ -528,8 +528,8 @@ def _resolve_definition(text: str, line: int, character: int, uri: str) -> dict[
     if var_match:
         var_name = var_match.group(1)
         # Search for @SET VAR = ... definition
-        for i, line in enumerate(lines):
-            set_match = re.search(rf"@SET\s+{var_name}\s*=\s*(.+)", line, re.IGNORECASE)
+        for i, candidate_line in enumerate(lines):
+            set_match = re.search(rf"@SET\s+{var_name}\s*=\s*(.+)", candidate_line, re.IGNORECASE)
             if set_match:
                 return {
                     "type": "variable",
@@ -578,11 +578,11 @@ def _find_references(text: str, line: int, character: int) -> list[dict[str, Any
 
     # Find all references to this symbol
     references = []
-    for i, line in enumerate(lines):
-        if target_word in line.upper():
+    for i, candidate_line in enumerate(lines):
+        if target_word in candidate_line.upper():
             references.append({
                 "line": i,
-                "text": line.strip(),
+                "text": candidate_line.strip(),
                 "type": "reference",
             })
 
