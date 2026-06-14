@@ -17,6 +17,12 @@ from typing import List, Optional
 
 from lsprotocol import types as lsp
 
+from cp2k_input_tools.completion import (
+    _complete_basis_values,
+    _complete_file_values,
+    _complete_potential_values,
+    _complete_workflow_snippets,
+)
 from cp2k_input_tools.cursor_context import CursorContext, CursorContextResolver
 from cp2k_input_tools.schema_index import CP2KSchemaIndex, get_schema_index
 
@@ -89,6 +95,9 @@ class CompletionProvider:
                 # Default to keyword completion for empty lines in sections
                 items = self._complete_keywords(schema, ctx)
 
+        if not ctx.current_section and not ctx.is_section_start and ctx.prefix:
+            items.extend(_complete_workflow_snippets(ctx.prefix))
+
         if not items:
             return None
 
@@ -126,6 +135,8 @@ class CompletionProvider:
             section_spec = schema.get_section(ctx.section_path)
             if section_spec:
                 child_sections = schema.get_child_sections(ctx.section_path)
+                if tuple(name.upper() for name in ctx.section_path) == ("FORCE_EVAL",):
+                    child_sections = list(dict.fromkeys(["DFT", "SUBSYS", *child_sections]))
             else:
                 # Current section not found in schema, return empty
                 child_sections = []
@@ -262,5 +273,11 @@ class CompletionProvider:
                         detail="Logical value",
                     )
                     items.append(item)
+        elif ctx.current_keyword.upper().endswith("_FILE_NAME"):
+            items.extend(_complete_file_values(ctx.current_keyword, prefix))
+        elif ctx.current_keyword.upper() == "BASIS_SET":
+            items.extend(_complete_basis_values(prefix))
+        elif ctx.current_keyword.upper() == "POTENTIAL":
+            items.extend(_complete_potential_values(prefix))
 
         return items
