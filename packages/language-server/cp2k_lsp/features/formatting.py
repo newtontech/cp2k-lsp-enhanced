@@ -1,10 +1,10 @@
 """Formatting Provider."""
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from lsprotocol import types as lsp
 
-from cp2k_lsp.parser import CP2KInput, CP2KParser, Section
+from cp2k_input_tools.formatter import format_document
 
 
 class FormattingProvider:
@@ -14,87 +14,76 @@ class FormattingProvider:
         self.server = server
 
     def provide_formatting(self, params: lsp.DocumentFormattingParams) -> Optional[List[lsp.TextEdit]]:
-        """Format the entire document."""
+        """Format the entire document using the core formatter with minimal TextEdits."""
         uri = params.text_document.uri
         document = self.server.workspace.get_text_document(uri)
 
         try:
-            parser = CP2KParser.parse_text(document.source, uri)
-            if parser.ast:
-                formatted = self._format_ast(parser.ast)
-                return [
-                    lsp.TextEdit(
-                        range=lsp.Range(
-                            start=lsp.Position(line=0, character=0),
-                            end=lsp.Position(line=len(document.lines), character=len(document.lines[-1]) if document.lines else 0),
-                        ),
-                        new_text=formatted,
-                    )
-                ]
+            edits = format_document(document.source, minimal_edits=True)
+            if edits:
+                return edits
         except Exception:
             pass
 
         return None
 
-    def _format_ast(self, ast: CP2KInput) -> str:
-        """Format AST to string."""
-        lines = []
-        indent = "  "
+    def _format_ast(self, ast: Any, indent_level: int = 0) -> str:
+        """Format a parsed cp2k_input_tools AST.
 
-        # Global section
-        if ast.global_section:
-            lines.extend(self._format_section(ast.global_section, 0, indent))
+        This compatibility hook is used by older tests and callers. Runtime LSP
+        formatting uses the source-preserving formatter above.
+        """
+        lines: List[str] = []
+        indent = "  " * indent_level
 
-        # Other sections
-        for section in ast.sections:
-            if lines:
-                lines.append("")  # Empty line between sections
-            lines.extend(self._format_section(section, 0, indent))
+        if hasattr(ast, "global_section") or hasattr(ast, "sections"):
+            global_section = getattr(ast, "global_section", None)
+            if global_section is not None:
+                rendered = self._format_ast(global_section, indent_level)
+                if rendered:
+                    lines.extend(rendered.splitlines())
+            for section in getattr(ast, "sections", []):
+                rendered = self._format_ast(section, indent_level)
+                if rendered:
+                    lines.extend(rendered.splitlines())
+            return "\n".join(lines)
 
-        return "\n".join(lines) + "\n"
+        name = getattr(ast, "name", "/")
+        if name != "/":
+            param = self._format_value(getattr(ast, "parameter", getattr(ast, "param", None)))
+            section_header = f"{indent}&{name}"
+            if param:
+                section_header += f" {param}"
+            lines.append(section_header)
+            indent_level += 1
+            indent = "  " * indent_level
 
-    def _format_section(self, section: Section, level: int, indent: str) -> List[str]:
-        """Format a section."""
-        lines = []
-        current_indent = indent * level
+        for keyword in getattr(ast, "keywords", []):
+            value_node = getattr(keyword, "value", None)
+            value = self._format_value(
+                getattr(value_node, "value", None)
+                if value_node is not None
+                else getattr(keyword, "values", None)
+            )
+            line = f"{indent}{getattr(keyword, 'name', '')}"
+            if value:
+                line += f" {value}"
+            lines.append(line)
 
-        # Section start
-        lines.append(f"{current_indent}&{section.name}")
+        for subsection in getattr(ast, "subsections", []):
+            rendered = self._format_ast(subsection, indent_level)
+            if rendered:
+                lines.extend(rendered.splitlines())
 
-        # Comments
-        for comment in section.comments:
-            lines.append(f"{current_indent}  !{comment.text}")
+        if name != "/":
+            lines.append(f"{'  ' * (indent_level - 1)}&END {name}")
 
-        # Keywords
-        for keyword in section.keywords:
-            if keyword.value.value is not None:
-                value_str = self._format_value(keyword.value)
-                lines.append(f"{current_indent}  {keyword.name} {value_str}")
-            else:
-                lines.append(f"{current_indent}  {keyword.name}")
+        return "\n".join(lines)
 
-        # Subsections
-        for subsection in section.subsections:
-            lines.append("")
-            lines.extend(self._format_section(subsection, level + 1, indent))
-
-        # Section end
-        lines.append(f"{current_indent}&END {section.name}")
-
-        return lines
-
-    def _format_value(self, value) -> str:
-        """Format a value."""
-        if value.value is None:
+    def _format_value(self, value: Any) -> str:
+        """Serialize parser keyword/section values for compatibility formatting."""
+        if value is None:
             return ""
-
-        from cp2k_lsp.parser.ast import ValueType
-
-        if value.value_type == ValueType.BOOLEAN:
-            return ".TRUE." if value.value else ".FALSE."
-        elif value.value_type == ValueType.STRING:
-            if " " in str(value.value):
-                return f'"{value.value}"'
-            return str(value.value)
-        else:
-            return str(value.value)
+        if isinstance(value, (list, tuple)):
+            return " ".join(self._format_value(item) for item in value)
+        return str(value)

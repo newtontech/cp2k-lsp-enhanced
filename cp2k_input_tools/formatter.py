@@ -89,13 +89,11 @@ def _extract_inline_comment(content: str) -> Tuple[str, Optional[str]]:
     return content, None
 
 
-def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
-    """Format a CP2K input document. Returns TextEdit list for full document replacement."""
-    lines = text.split('\n')
+def _format_lines(lines: List[str], indent_str: str = "  ") -> List[str]:
+    """Format a list of lines, returning the formatted lines."""
     formatted_lines: List[str] = []
     indent_level = 0
     pending_blank_lines = 0
-    section_stack: List[str] = []  # Stack of section names for &END matching
 
     for line in lines:
         fl = _parse_line(line)
@@ -104,33 +102,23 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
             pending_blank_lines += 1
             continue
 
-        # Adjust indent for section ends (dedent before writing)
         if fl.is_section_end:
             indent_level = max(0, indent_level - 1)
-            # Pop from section stack
-            if section_stack:
-                section_stack.pop()
 
-        # Flush pending blank lines (at most one between content lines)
         if pending_blank_lines > 0 and formatted_lines:
             formatted_lines.append("")
             pending_blank_lines = 0
         elif pending_blank_lines > 0 and not formatted_lines:
-            pending_blank_lines = 0  # Skip leading blanks
+            pending_blank_lines = 0
 
-        # Format based on line type
         indent = indent_str * indent_level
 
         if fl.is_comment:
             formatted_lines.append(indent + fl.content)
         elif fl.is_directive:
-            # Keep directives at current indent level
             formatted_lines.append(indent + fl.content)
         elif fl.is_section_start:
-            # Format: &SECTION param ! comment
-            content = fl.content
-            # Ensure proper casing: &SECTIONNAME uppercase
-            sec_match = _SECTION_START_RE.match(content)
+            sec_match = _SECTION_START_RE.match(fl.content)
             if sec_match:
                 sec_name = sec_match.group(2).upper()
                 sec_param = sec_match.group(3)
@@ -139,12 +127,9 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
                 else:
                     formatted_lines.append(indent + f"&{sec_name}")
             else:
-                formatted_lines.append(indent + content)
+                formatted_lines.append(indent + fl.content)
             indent_level += 1
-            if fl.section_name is not None:
-                section_stack.append(fl.section_name)
         elif fl.is_section_end:
-            # Format: &END SECTIONNAME
             end_match = _SECTION_END_RE.match(fl.content)
             if end_match:
                 end_name = end_match.group(3).upper()
@@ -156,11 +141,9 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
             else:
                 formatted_lines.append(indent + fl.content)
         else:
-            # Regular keyword line
             content, inline_comment = _extract_inline_comment(fl.content)
             content = content.strip()
             if content:
-                # Normalize keyword casing to uppercase
                 kw_match = re.match(r'^([\w\-_]+)\s*(.*)', content)
                 if kw_match:
                     kw_name = kw_match.group(1).upper()
@@ -175,23 +158,132 @@ def format_document(text: str, indent_str: str = "  ") -> List[TextEdit]:
                     else:
                         formatted_lines.append(indent + content)
 
-    # Build single TextEdit for the entire document
-    line_count = len(lines)
+    return formatted_lines
+
+
+def _compute_diff_edits(original_lines: List[str], formatted_lines: List[str]) -> List[TextEdit]:
+    """Compute minimal TextEdits by comparing original and formatted lines.
+
+    Handles trailing empty lines from split('\n') on text ending with newline.
+    """
+    edits: List[TextEdit] = []
+    orig_idx = 0
+    fmt_idx = 0
+
+    orig_len = len(original_lines)
+    fmt_len = len(formatted_lines)
+
+    while orig_idx < orig_len or fmt_idx < fmt_len:
+        if orig_idx >= orig_len:
+            remaining = '\n'.join(formatted_lines[fmt_idx:])
+            if remaining:
+                edits.append(TextEdit(
+                    range=Range(
+                        start=Position(line=orig_idx, character=0),
+                        end=Position(line=orig_idx, character=0),
+                    ),
+                    new_text=remaining,
+                ))
+            break
+
+        if fmt_idx >= fmt_len:
+            remaining_count = orig_len - orig_idx
+            edits.append(TextEdit(
+                range=Range(
+                    start=Position(line=orig_idx, character=0),
+                    end=Position(line=orig_idx + remaining_count, character=0),
+                ),
+                new_text='',
+            ))
+            break
+
+        if original_lines[orig_idx] == formatted_lines[fmt_idx]:
+            orig_idx += 1
+            fmt_idx += 1
+            continue
+
+        run_start_orig = orig_idx
+        run_start_fmt = fmt_idx
+
+        while (orig_idx < orig_len and fmt_idx < fmt_len
+               and original_lines[orig_idx] != formatted_lines[fmt_idx]):
+            orig_idx += 1
+            fmt_idx += 1
+
+        run_end_orig = orig_idx
+        run_end_fmt = fmt_idx
+
+        new_text = '\n'.join(formatted_lines[run_start_fmt:run_end_fmt])
+        edits.append(TextEdit(
+            range=Range(
+                start=Position(line=run_start_orig, character=0),
+                end=Position(line=run_end_orig, character=0),
+            ),
+            new_text=new_text,
+        ))
+
+    return edits
+
+
+def _is_formatting_safe(text: str) -> bool:
+    """Check if formatting is safe (no ambiguous constructs that could change semantics)."""
+    lines = text.split('\n')
+    for line in lines:
+        fl = _parse_line(line)
+        if fl.is_directive:
+            return False
+        stripped = line.strip()
+        if stripped.startswith('!') or stripped.startswith('#'):
+            if '! ' not in stripped and '# ' not in stripped:
+                if len(stripped) > 1 and stripped[1] not in (' ', '!', '#'):
+                    return False
+    return True
+
+
+def format_document(text: str, indent_str: str = "  ", minimal_edits: bool = True) -> List[TextEdit]:
+    """Format a CP2K input document.
+
+    Args:
+        text: The input document text.
+        indent_str: Indentation string (default: two spaces).
+        minimal_edits: If True, return minimal diff-based edits. If False, return full replacement.
+
+    Returns:
+        List of TextEdits. Empty list if formatting is unsafe or no changes needed.
+    """
+    if not _is_formatting_safe(text):
+        return []
+
+    if text == "":
+        return [
+            TextEdit(
+                range=Range(start=Position(line=0, character=0), end=Position(line=0, character=0)),
+                new_text="",
+            )
+        ]
+
+    lines = text.split('\n')
+    formatted_lines = _format_lines(lines, indent_str)
+
+    if text.endswith('\n') and formatted_lines and not formatted_lines[-1] == '':
+        pass
+
     new_text = '\n'.join(formatted_lines)
-    # Ensure trailing newline if original had one
     if text.endswith('\n') and not new_text.endswith('\n'):
         new_text += '\n'
 
+    if new_text == text:
+        return []
+
     return [TextEdit(
-        range=Range(start=Position(line=0, character=0), end=Position(line=line_count, character=0)),
-        new_text=new_text
+        range=Range(start=Position(line=0, character=0), end=Position(line=len(lines), character=0)),
+        new_text=new_text,
     )]
 
 
 def format_range(text: str, start_line: int, end_line: int, indent_str: str = "  ") -> List[TextEdit]:
     """Format a range of lines in a CP2K input document."""
     lines = text.split('\n')
-    # Extract the range, format it, and return edits
     range_lines = lines[start_line:end_line]
     range_text = '\n'.join(range_lines)
 
@@ -201,5 +293,5 @@ def format_range(text: str, start_line: int, end_line: int, indent_str: str = " 
 
     return [TextEdit(
         range=Range(start=Position(line=start_line, character=0), end=Position(line=end_line, character=0)),
-        new_text=formatted[0].new_text
+        new_text=formatted[0].new_text,
     )]
