@@ -124,9 +124,9 @@ LOG_RULES: List[LogRule] = _compile(
     [
         # ------------------------------------------------------------------
         # SCF non-convergence (two variants for backward-compat messages).
-        # Both rules share the same rule_id and use ``once_per_file=True`` so
-        # that a single SCF failure yields exactly one diagnostic regardless
-        # of how many lines in the log repeat the warning.
+        # Both rules share the same rule_id.  The parser checks rules in order,
+        # so the more specific max-iteration message wins when a line matches
+        # both patterns, while repeated failure lines still produce diagnostics.
         # ------------------------------------------------------------------
         LogRule(
             rule_id=RULE_LOG_SCF_NOT_CONVERGED,
@@ -148,7 +148,6 @@ LOG_RULES: List[LogRule] = _compile(
             ),
             provenance_id="cp2k manual:FORCE_EVAL/DFT/SCF/MAX_SCF",
             related_keyword="MAX_SCF",
-            once_per_file=True,
         ),
         LogRule(
             rule_id=RULE_LOG_SCF_NOT_CONVERGED,
@@ -170,7 +169,6 @@ LOG_RULES: List[LogRule] = _compile(
             ),
             provenance_id="cp2k manual:FORCE_EVAL/DFT/SCF",
             related_keyword="MAX_SCF",
-            once_per_file=True,
         ),
         LogRule(
             rule_id=RULE_LOG_OUTER_SCF_NOT_CONVERGED,
@@ -529,14 +527,18 @@ def parse_log_content(content: str, *, rules: Optional[Sequence[LogRule]] = None
     seen_once: set[str] = set()
 
     for offset, raw in enumerate(lines, start=1):
+        seen_on_line: set[str] = set()
         for rule in active_rules:
             if not rule.pattern.search(raw):
+                continue
+            if rule.rule_id in seen_on_line:
                 continue
             if rule.once_per_file:
                 if rule.rule_id in seen_once:
                     continue
                 seen_once.add(rule.rule_id)
             diagnostics.append(_diagnostic_from_rule(rule, offset, raw))
+            seen_on_line.add(rule.rule_id)
 
     diagnostics.sort(key=lambda d: (d.line_number, d.rule_id))
     return diagnostics
