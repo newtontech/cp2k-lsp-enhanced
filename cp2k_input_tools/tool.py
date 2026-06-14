@@ -95,6 +95,83 @@ def _empty_operation(path: Path, operation: str) -> dict[str, Any]:
     return payload
 
 
+def _completion_payload(path: Path, line: int, character: int) -> dict[str, Any]:
+    from cp2k_input_tools.cli.tool import _get_completions
+
+    payload = _empty_operation(path, "complete")
+    payload["summary"].pop("note", None)
+    payload["items"] = _get_completions(str(path), line, character)["items"]
+    payload["is_incomplete"] = False
+    return payload
+
+
+def _hover_payload(path: Path, line: int, character: int) -> dict[str, Any]:
+    from cp2k_lsp.agent_api.schema import (  # type: ignore[import-untyped]
+        lookup_keyword_at_path,
+        lookup_keyword_schema,
+        lookup_section_schema,
+    )
+    from cp2k_lsp.features.hover import HoverProvider  # type: ignore[import-untyped]
+
+    from cp2k_input_tools.cursor_context import resolve_cursor_context
+
+    payload = _empty_operation(path, "hover")
+    payload["summary"].pop("note", None)
+    text = path.read_text(encoding="utf-8")
+    ctx = resolve_cursor_context(text=text, line=line, character=character, uri=path.resolve().as_uri())
+    word = (ctx.current_keyword or ctx.current_section or "").upper()
+    section_path = ".".join(ctx.section_path) if ctx.section_path else None
+
+    provider = HoverProvider(server=object())
+    content = None
+    if word:
+        keyword_schema = lookup_keyword_at_path(section_path, word) if section_path else None
+        if keyword_schema is None:
+            keyword_schema = lookup_keyword_schema(word)
+        if keyword_schema:
+            content = provider._format_keyword_hover(keyword_schema)
+        else:
+            section_schema = lookup_section_schema(word)
+            if section_schema:
+                content = provider._format_section_hover(section_schema)
+
+    payload["hover"] = {
+        "contents": content or "No documentation available",
+        "keyword": ctx.current_keyword,
+        "section_path": list(ctx.section_path),
+    }
+    return payload
+
+
+def _explain_payload(name: str) -> dict[str, Any]:
+    from cp2k_lsp.agent_api.schema import lookup_keyword_schema, lookup_section_schema  # type: ignore[import-untyped]
+    from cp2k_lsp.features.hover import HoverProvider  # type: ignore[import-untyped]
+
+    query = name.upper()
+    provider = HoverProvider(server=object())
+    content = None
+    kind = None
+
+    keyword_schema = lookup_keyword_schema(query)
+    if keyword_schema:
+        content = provider._format_keyword_hover(keyword_schema)
+        kind = "keyword"
+    else:
+        section_schema = lookup_section_schema(query)
+        if section_schema:
+            content = provider._format_section_hover(section_schema)
+            kind = "section"
+
+    return {
+        "software": SOFTWARE,
+        "status": "available" if content else "not_found",
+        "operation": "explain",
+        "query": query,
+        "kind": kind,
+        "contents": content or f"No CP2K schema documentation found for {query}.",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cp2k-lsp-tool")
     subparsers = parser.add_subparsers(dest="operation", required=True)
@@ -109,9 +186,12 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--format", choices=["json"], default="json")
         if operation == "check":
             sub.add_argument("--fail-on-blocking", action="store_true")
-        if operation in {"context", "hover", "fix"}:
+        if operation in {"context", "complete", "hover", "fix"}:
             sub.add_argument("--line", type=int, default=0)
             sub.add_argument("--character", type=int, default=0)
+    explain = subparsers.add_parser("explain")
+    explain.add_argument("name")
+    explain.add_argument("--format", choices=["json"], default="json")
     args = parser.parse_args(argv)
     if args.operation == "capabilities":
         print(json.dumps(_capabilities_payload(), indent=2, sort_keys=True))
@@ -143,6 +223,15 @@ def main(argv: list[str] | None = None) -> int:
 
         payload = run_fix_preview(arguments=[{"path": str(args.path), "line": args.line, "character": args.character}])
         print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.operation == "complete":
+        print(json.dumps(_completion_payload(args.path, args.line, args.character), indent=2, sort_keys=True))
+        return 0
+    if args.operation == "hover":
+        print(json.dumps(_hover_payload(args.path, args.line, args.character), indent=2, sort_keys=True))
+        return 0
+    if args.operation == "explain":
+        print(json.dumps(_explain_payload(args.name), indent=2, sort_keys=True))
         return 0
     print(json.dumps(_empty_operation(args.path, args.operation), indent=2, sort_keys=True))
     return 0
