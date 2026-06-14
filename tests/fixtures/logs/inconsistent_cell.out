@@ -1,0 +1,8 @@
+ *******************************************************************************
+ *                                                                             *
+ *                     CP2K - STRUCTURE AND ENVIRONMENT                         *
+ *                                                                             *
+ *******************************************************************************
+
+ DFT| POISSON solver ANALYTIC requires XYZ periodicity
+ DFT| current PERIODIC = NONE

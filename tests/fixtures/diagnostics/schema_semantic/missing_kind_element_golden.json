@@ -1,0 +1,5 @@
+{
+  "description": "KIND block missing ELEMENT triggers cp2k.schema.missing_required_keyword.",
+  "expected_rules": ["cp2k.schema.missing_required_keyword"],
+  "diagnostic_count": 1
+}

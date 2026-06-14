@@ -1,0 +1,5 @@
+{
+  "description": "A non-real EPS_SCF triggers cp2k.type.real.",
+  "expected_rules": ["cp2k.type.real"],
+  "diagnostic_count": 1
+}

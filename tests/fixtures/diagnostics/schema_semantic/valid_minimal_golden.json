@@ -1,0 +1,5 @@
+{
+  "description": "A valid minimal CP2K input should produce no schema/type/path semantic diagnostics.",
+  "expected_rules": [],
+  "diagnostic_count": 0
+}

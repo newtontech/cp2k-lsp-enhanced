@@ -200,11 +200,15 @@ def code_actions(ls, params: CodeActionParams):
     # Collect all code actions from all diagnostics
     all_actions = []
     for diag in diagnostics:
+        diagnostic_code = str(diag.code) if getattr(diag, "code", None) is not None else None
+        diagnostic_data = diag.data if isinstance(getattr(diag, "data", None), dict) else None
         actions = get_code_actions(
             text=text,
             diagnostic_range=diag.range,
             diagnostic_message=diag.message,
             uri=params.text_document.uri,
+            diagnostic_code=diagnostic_code,
+            diagnostic_data=diagnostic_data,
         )
         all_actions.extend(actions)
 

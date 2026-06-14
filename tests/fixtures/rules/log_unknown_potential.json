@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.unknown_potential",
+  "description": "POTENTIAL label on a KIND is unknown to the loaded potential file",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/unknown_potential.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.unknown_potential",
+      "severity": "error",
+      "likely_section": "FORCE_EVAL > SUBSYS > KIND",
+      "message": "Requested pseudopotential is unknown for the kind."
+    }
+  ]
+}

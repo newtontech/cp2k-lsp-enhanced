@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.md_instability",
+  "description": "MD simulation produced NaN / unphysical temperature blow-up",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/md_instability.out",
+    "valid": ["tests/fixtures/logs/md_stable.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.md_instability",
+      "severity": "error",
+      "likely_section": "MOTION > MD",
+      "message": "MD simulation became unstable (NaN/temperature blow-up)."
+    }
+  ]
+}

@@ -4,10 +4,14 @@ Provides lazy-loaded access to CP2K section/keyword definitions parsed from
 the cp2k_input.xml schema file.
 """
 
+import json
+import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+from .precomputed_index import apply_precomputed_schema, precomputed_schema_is_stale
 
 
 @dataclass
@@ -35,6 +39,7 @@ class CP2KSchemaIndex:
     """Index of CP2K schema parsed from cp2k_input.xml.
 
     Provides efficient lookup of sections and keywords by path.
+    Supports staleness detection for schema file changes.
     """
 
     def __init__(self, xml_path: Path):
@@ -44,10 +49,74 @@ class CP2KSchemaIndex:
         self._keywords: Dict[Tuple[str, ...], Dict[str, KeywordSpec]] = {}
         self._root_section_names: List[str] = []
         self._loaded = False
+        self._xml_mtime: float = 0.0
+        self._xml_size: int = 0
+        self._release_version: Optional[str] = None
+        self._loaded_from_precomputed = False
+        self._capture_file_metadata()
+
+    def _capture_file_metadata(self) -> None:
+        """Record mtime/size of the schema file for staleness checks."""
+        try:
+            stat = os.stat(self._xml_path)
+            self._xml_mtime = stat.st_mtime
+            self._xml_size = stat.st_size
+        except (OSError, TypeError):
+            self._xml_mtime = 0.0
+            self._xml_size = 0
+
+    @property
+    def release_version(self) -> Optional[str]:
+        """Release metadata stored in the precomputed index, if any."""
+        return self._release_version
+
+    def is_stale(self) -> bool:
+        """Return True if the schema file has changed since the index was built."""
+        if not self._loaded:
+            return False
+        if self._loaded_from_precomputed:
+            from .precomputed_index import DEFAULT_SCHEMA_INDEX_JSON
+
+            if precomputed_schema_is_stale(DEFAULT_SCHEMA_INDEX_JSON, self._xml_path):
+                return True
+        try:
+            stat = os.stat(self._xml_path)
+            return stat.st_mtime != self._xml_mtime or stat.st_size != self._xml_size
+        except (OSError, TypeError):
+            return True
+
+    def invalidate(self) -> None:
+        """Discard cached data so the next access re-parses the XML."""
+        self._tree = None
+        self._sections.clear()
+        self._keywords.clear()
+        self._root_section_names.clear()
+        self._loaded = False
+        self._loaded_from_precomputed = False
+        self._release_version = None
+        self._capture_file_metadata()
+
+    def _load_from_precomputed(self) -> bool:
+        """Try loading from the generated JSON index."""
+        from .precomputed_index import DEFAULT_SCHEMA_INDEX_JSON
+
+        if precomputed_schema_is_stale(DEFAULT_SCHEMA_INDEX_JSON, self._xml_path):
+            return False
+        try:
+            payload = json.loads(DEFAULT_SCHEMA_INDEX_JSON.read_text(encoding="utf-8"))
+            apply_precomputed_schema(self, payload)
+            self._loaded_from_precomputed = True
+            self._release_version = payload.get("release_version")
+            return True
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            return False
 
     def _ensure_loaded(self) -> None:
         """Lazy-load the schema on first access."""
         if self._loaded:
+            return
+
+        if self._load_from_precomputed():
             return
 
         tree = ET.parse(self._xml_path)
@@ -126,15 +195,30 @@ class CP2KSchemaIndex:
         enumeration_values: List[str] = []
 
         if dt_elem is not None:
-            kind_elem = dt_elem.find("kind")
-            if kind_elem is not None and kind_elem.text:
-                variable_type = kind_elem.text.strip()
+            # The CP2K schema stores the data type as a ``kind`` *attribute*
+            # on ``DATA_TYPE`` (e.g. ``<DATA_TYPE kind="integer"/>``).  Older
+            # builds additionally emitted a child element, so keep both
+            # fallbacks for robustness.
+            kind_attr = dt_elem.get("kind")
+            if kind_attr:
+                variable_type = kind_attr.strip()
+            else:
+                kind_elem = dt_elem.find("kind")
+                if kind_elem is not None and kind_elem.text:
+                    variable_type = kind_elem.text.strip()
 
-            # For keyword type, extract enum values
+            # For keyword (enum) type, extract enum values from ITEM/NAME.
             if variable_type == "keyword":
-                for name_elem in dt_elem.findall(".//NAME"):
-                    if name_elem.text:
+                for item_elem in dt_elem.findall(".//ENUMERATION/ITEM"):
+                    name_elem = item_elem.find("NAME")
+                    if name_elem is not None and name_elem.text:
                         enumeration_values.append(name_elem.text.strip())
+                # Backwards-compatible fallback for schemas that store the
+                # values directly under NAME siblings.
+                if not enumeration_values:
+                    for name_elem in dt_elem.findall(".//ENUMERATION/NAME"):
+                        if name_elem.text:
+                            enumeration_values.append(name_elem.text.strip())
 
         # Get default value
         default_value = None

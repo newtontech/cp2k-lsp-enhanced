@@ -1,0 +1,9 @@
+ *******************************************************************************
+ *                                                                             *
+ *                     CP2K - STRUCTURE AND ENVIRONMENT                         *
+ *                                                                             *
+ *******************************************************************************
+
+ OUTER SCF| iter 1, total energy = -76.234 hartree
+ OUTER SCF| outer SCF loop not converged after 50 iterations
+ OUTER SCF| EPS = 1.0E-3

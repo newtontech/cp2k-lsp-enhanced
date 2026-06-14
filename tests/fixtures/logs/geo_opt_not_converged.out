@@ -1,0 +1,9 @@
+ *******************************************************************************
+ *                                                                             *
+ *                     CP2K - STRUCTURE AND ENVIRONMENT                         *
+ *                                                                             *
+ *******************************************************************************
+
+ GEO_OPT - INFO: step 200
+ GEO_OPT - INFO: Reaching maximum number of geometry optimizations
+ GEO_OPT - WARNING: Geometry optimization not converged

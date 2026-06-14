@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.geo_opt_not_converged",
+  "description": "Geometry optimization exhausted its iteration budget",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/geo_opt_not_converged.out",
+    "valid": ["tests/fixtures/logs/geo_opt_converged.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.geo_opt_not_converged",
+      "severity": "error",
+      "likely_section": "MOTION > GEO_OPT",
+      "message": "Geometry optimization did not converge."
+    }
+  ]
+}

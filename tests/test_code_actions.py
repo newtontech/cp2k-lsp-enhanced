@@ -1,4 +1,4 @@
-"""Tests for schema-backed LSP code actions (issue #49).
+"""Tests for schema-backed LSP code actions (issue #49, #122).
 
 Test Cases:
 1. Invalid enum value suggests closest valid value
@@ -6,6 +6,10 @@ Test Cases:
 3. Missing &END suggests insert fix
 4. Section name mismatch suggests rename fix
 5. Code actions are not provided for non-fixable diagnostics
+6. Typo keywords suggest nearest valid keyword
+7. Typo sections suggest nearest valid child section
+8. Removed/deprecated keywords suggest documented replacement
+9. KEY=VALUE style suggests canonical KEY VALUE format
 """
 
 import sys
@@ -124,3 +128,172 @@ def test_no_code_actions_for_syntax_errors(client_server, tmp_path):
 
     # Code actions for syntax errors are not currently implemented
     # This test documents that syntax errors don't crash the server
+
+
+# Unit tests for code_actions module (no LSP server needed)
+class TestCodeActionsUnit:
+    """Unit tests for code actions functionality."""
+
+    def test_find_closest_match(self):
+        """Test closest match finding."""
+        from cp2k_input_tools.code_actions import _find_closest_match
+
+        # Exact match
+        assert _find_closest_match("METHOD", ["METHOD", "RUN_TYPE"]) == "METHOD"
+
+        # Close match
+        assert _find_closest_match("METHD", ["METHOD", "RUN_TYPE"]) == "METHOD"
+
+        # No match
+        assert _find_closest_match("XYZ", ["METHOD", "RUN_TYPE"]) is None
+
+        # Empty options
+        assert _find_closest_match("METHOD", []) is None
+
+    def test_fix_equals_style(self):
+        """Test KEY=VALUE to KEY VALUE conversion."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_equals_style
+
+        text = "CUTOFF=1000"
+        range_obj = Range(start=Position(line=0, character=0), end=Position(line=0, character=len(text)))
+        actions = _fix_equals_style(text, 0, range_obj, "file:///test.inp")
+
+        assert len(actions) == 1
+        assert "CUTOFF 1000" in actions[0].edit.document_changes[0].edits[0].new_text
+
+    def test_fix_mismatched_end(self):
+        """Test mismatched &END section name fix."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_mismatched_end
+
+        lines = [
+            "&FORCE_EVAL",
+            "   METHOD QS",
+            "&END DFT",  # Wrong: should be &END FORCE_EVAL
+        ]
+        range_obj = Range(start=Position(line=2, character=0), end=Position(line=2, character=len(lines[2])))
+        actions = _fix_mismatched_end(lines[2], 2, range_obj, "file:///test.inp", lines)
+
+        assert len(actions) == 1
+        assert "FORCE_EVAL" in actions[0].edit.document_changes[0].edits[0].new_text
+
+    def test_fix_missing_end(self):
+        """Test missing &END fix."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_missing_end
+        from cp2k_input_tools.schema_index import get_schema_index
+
+        lines = [
+            "&FORCE_EVAL",
+            "   METHOD QS",
+        ]
+        range_obj = Range(start=Position(line=0, character=0), end=Position(line=0, character=len(lines[0])))
+        schema = get_schema_index()
+        actions = _fix_missing_end(lines[0], 0, range_obj, "file:///test.inp", lines, schema)
+
+        assert len(actions) == 1
+        assert "&END FORCE_EVAL" in actions[0].edit.document_changes[0].edits[0].new_text
+
+    def test_fix_unknown_keyword(self):
+        """Test unknown keyword fix."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_unknown_keyword
+        from cp2k_input_tools.schema_index import get_schema_index
+
+        lines = [
+            "&FORCE_EVAL",
+            "   METHD QS",
+            "&END FORCE_EVAL",
+        ]
+        range_obj = Range(start=Position(line=1, character=0), end=Position(line=1, character=len(lines[1])))
+        schema = get_schema_index()
+        actions = _fix_unknown_keyword(lines[1], 1, range_obj, "file:///test.inp", lines, schema)
+
+        assert len(actions) == 1
+        assert "METHOD" in actions[0].edit.document_changes[0].edits[0].new_text
+
+    def test_fix_unknown_section(self):
+        """Test unknown section fix."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_unknown_section
+        from cp2k_input_tools.schema_index import get_schema_index
+
+        lines = [
+            "&FOR_EVAL",
+            "   METHOD QS",
+            "&END FOR_EVAL",
+        ]
+        range_obj = Range(start=Position(line=0, character=0), end=Position(line=0, character=len(lines[0])))
+        schema = get_schema_index()
+        actions = _fix_unknown_section(lines[0], 0, range_obj, "file:///test.inp", lines, schema)
+
+        assert len(actions) == 1
+        assert "FORCE_EVAL" in actions[0].edit.document_changes[0].edits[0].new_text
+
+    def test_fix_removed_keyword(self):
+        """Test removed keyword fix."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_removed_keyword
+
+        lines = [
+            "&FORCE_EVAL",
+            "   OLD_KEYWORD value",
+            "&END FORCE_EVAL",
+        ]
+        range_obj = Range(start=Position(line=1, character=0), end=Position(line=1, character=len(lines[1])))
+        diagnostic_data = {"suggested_fix": "Replace OLD_KEYWORD with NEW_KEYWORD."}
+        actions = _fix_removed_keyword(lines[1], 1, range_obj, "file:///test.inp", diagnostic_data)
+
+        assert len(actions) == 1
+        assert "NEW_KEYWORD" in actions[0].edit.document_changes[0].edits[0].new_text
+
+    def test_fix_invalid_enum(self):
+        """Test invalid enum fix with a realistic typo."""
+        from lsprotocol.types import Position, Range
+
+        from cp2k_input_tools.code_actions import _fix_invalid_enum
+        from cp2k_input_tools.schema_index import get_schema_index
+
+        lines = [
+            "&FORCE_EVAL",
+            "   METHOD QUICKSTP",  # Typo: missing 'E'
+            "&END FORCE_EVAL",
+        ]
+        range_obj = Range(start=Position(line=1, character=0), end=Position(line=1, character=len(lines[1])))
+        diagnostic_data = {"valid_values": ["QUICKSTEP", "FIST", "EMBEDDED"]}
+        schema = get_schema_index()
+        actions = _fix_invalid_enum(lines[1], 1, range_obj, "file:///test.inp", diagnostic_data, schema)
+
+        assert len(actions) == 1
+        # Should suggest closest valid value
+        new_text = actions[0].edit.document_changes[0].edits[0].new_text
+        assert "QUICKSTEP" in new_text
+
+    def test_build_section_context(self):
+        """Test section context building."""
+        from cp2k_input_tools.code_actions import _build_section_context
+
+        lines = [
+            "&GLOBAL",
+            "   PROJECT_NAME test",
+            "&END GLOBAL",
+            "&FORCE_EVAL",
+            "   &DFT",
+            "      METHOD QS",
+        ]
+
+        # Line 5 (METHOD QS) should be in (FORCE_EVAL, DFT) context
+        ctx = _build_section_context(lines, 5)
+        assert "FORCE_EVAL" in ctx
+        assert "DFT" in ctx
+
+        # Line 1 (PROJECT_NAME) should be in (GLOBAL,) context
+        ctx = _build_section_context(lines, 1)
+        assert "GLOBAL" in ctx

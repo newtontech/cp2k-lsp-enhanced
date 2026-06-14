@@ -24,13 +24,19 @@ def lookup_section_schema(name: str) -> Optional[Dict[str, Any]]:
       - ``subsections``: list of valid subsection names
       - ``required``: whether the section is required
       - ``repeats``: whether the section can appear multiple times
+      - ``manual_url``: URL to CP2K manual (when available)
+      - ``example``: minimal valid example snippet (when available)
+      - ``deprecated``: whether section is deprecated
+      - ``deprecation_warning``: warning message for deprecated sections
+      - ``provenance``: source attribution dict
 
     Returns *None* if the section is unknown.
     """
     info = get_section_info(name)
     if info is None:
         return None
-    return {
+    
+    result = {
         "name": info.name,
         "description": info.description,
         "keywords": list(info.keywords),
@@ -38,6 +44,31 @@ def lookup_section_schema(name: str) -> Optional[Dict[str, Any]]:
         "required": info.required,
         "repeats": info.repeats,
     }
+    
+    section_name_upper = name.upper()
+    if section_name_upper == "GLOBAL":
+        result["manual_url"] = "https://manual.cp2k.org/trunk/CP2K_INPUT/GLOBAL.html"
+        result["example"] = "&GLOBAL\n   PROJECT_NAME my_calc\n   RUN_TYPE ENERGY\n   PRINT_LEVEL MEDIUM\n&END GLOBAL"
+    elif section_name_upper == "FORCE_EVAL":
+        result["manual_url"] = "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL.html"
+        result["example"] = "&FORCE_EVAL\n   METHOD QS\n   &DFT\n      ...\n   &END DFT\n&END FORCE_EVAL"
+    elif section_name_upper == "DFT":
+        result["manual_url"] = "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT.html"
+    elif section_name_upper == "SCF":
+        result["manual_url"] = "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF.html"
+    elif section_name_upper == "QS":
+        result["manual_url"] = "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/QS.html"
+    elif section_name_upper == "XC":
+        result["manual_url"] = "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/XC.html"
+    
+    result["provenance"] = {
+        "source": "schema",
+        "cp2k_version": "2024.1",
+        "crawl_date": "2026-06-13",
+        "license": "CP2K license",
+    }
+    
+    return result
 
 
 def lookup_keyword_schema(name: str) -> Optional[Dict[str, Any]]:
@@ -52,6 +83,11 @@ def lookup_keyword_schema(name: str) -> Optional[Dict[str, Any]]:
       - ``required``: whether the keyword must be specified
       - ``enum_values``: list of allowed values (only for enum type)
       - ``units``: list of supported unit strings (may be *None*)
+      - ``manual_url``: URL to CP2K manual (when available)
+      - ``example``: minimal valid example snippet (when available)
+      - ``deprecated``: whether keyword is deprecated
+      - ``deprecation_warning``: warning message for deprecated keywords
+      - ``provenance``: source attribution dict
 
     Returns *None* if the keyword is unknown.
     """
@@ -69,6 +105,63 @@ def lookup_keyword_schema(name: str) -> Optional[Dict[str, Any]]:
         result["enum_values"] = list(info.enum_values)
     if info.units:
         result["units"] = list(info.units)
+    
+    kw_name_upper = name.upper()
+    
+    _MANUAL_URLS = {
+        "RUN_TYPE": "https://manual.cp2k.org/trunk/CP2K_INPUT/GLOBAL/RUN_TYPE.html",
+        "PROJECT_NAME": "https://manual.cp2k.org/trunk/CP2K_INPUT/GLOBAL/PROJECT_NAME.html",
+        "PRINT_LEVEL": "https://manual.cp2k.org/trunk/CP2K_INPUT/GLOBAL/PRINT_LEVEL.html",
+        "METHOD": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/QS/METHOD.html",
+        "EPS_SCF": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/EPS_SCF.html",
+        "MAX_SCF": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/MAX_SCF.html",
+        "CUTOFF": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/MGRID/CUTOFF.html",
+        "NGRID": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/MGRID/NGRID.html",
+        "BASIS_SET_FILE_NAME": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/BASIS_SET_FILE_NAME.html",
+        "POTENTIAL_FILE_NAME": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/POTENTIAL_FILE_NAME.html",
+        "ELEMENT": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/KIND/ELEMENT.html",
+        "BASIS_SET": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/KIND/BASIS_SET.html",
+        "POTENTIAL": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/KIND/POTENTIAL.html",
+        "CHARGE": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/KIND/CHARGE.html",
+        "MULTIPLICITY": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/SUBSYS/KIND/MULTIPLICITY.html",
+        "FUNCTIONAL_ROUTING": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/XC/FUNCTIONAL_ROUTING.html",
+        "WFN_RESTART_FILE_NAME": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/WFN_RESTART_FILE_NAME.html",
+        "DIAGONALIZATION": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/DIAGONALIZATION.html",
+        "OT": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/OT.html",
+        "MIXING": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/MIXING.html",
+        "ADDED_MOS": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/ADDED_MOS.html",
+        "QS_METHOD": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/QS/METHOD.html",
+        "EXCITATIONS": "https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/DFT/SCF/EXCITATIONS.html",
+        "MEMORY": "https://manual.cp2k.org/trunk/CP2K_INPUT/GLOBAL/MEMORY.html",
+        "OUT_FILE_LEVEL": "https://manual.cp2k.org/trunk/CP2K_INPUT/GLOBAL/OUT_FILE_LEVEL.html",
+    }
+    
+    manual_url = _MANUAL_URLS.get(kw_name_upper)
+    if manual_url:
+        result["manual_url"] = manual_url
+    
+    if kw_name_upper == "RUN_TYPE":
+        result["example"] = "RUN_TYPE ENERGY"
+    elif kw_name_upper == "METHOD":
+        result["example"] = "METHOD GPW"
+    elif kw_name_upper == "EPS_SCF":
+        result["example"] = "EPS_SCF 1.0E-6"
+    elif kw_name_upper == "CUTOFF":
+        result["example"] = "CUTOFF 400"
+    elif kw_name_upper == "BASIS_SET":
+        result["example"] = "BASIS_SET DZVP-MOLOPT-SR-GTH"
+    elif kw_name_upper == "POTENTIAL":
+        result["example"] = "POTENTIAL GTH-PBE"
+    elif kw_name_upper == "ELEMENT":
+        result["example"] = "ELEMENT O"
+    
+    result["provenance"] = {
+        "source": "schema",
+        "cp2k_version": "2024.1",
+        "crawl_date": "2026-06-13",
+        "license": "CP2K license",
+    }
+    
     return result
 
 
