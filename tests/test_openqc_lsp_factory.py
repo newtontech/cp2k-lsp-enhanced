@@ -9,6 +9,7 @@ from lsprotocol import types as lsp
 
 from cp2k_input_tools.openqc_lsp_factory import main as factory_main
 from cp2k_input_tools.tool import check_path
+from cp2k_input_tools.tool import main as cp2k_lsp_tool_main
 from cp2k_input_tools.version_policy import lint_version_policy
 
 
@@ -654,6 +655,39 @@ def test_capabilities_subcommand_returns_json_and_exits_zero(script_runner) -> N
     assert "symbols" in caps["operations"]
     assert "fix" in caps["operations"]
     assert "capabilities" in caps["operations"]
+
+
+def test_agent_cli_complete_returns_real_items(capsys) -> None:
+    rc = cp2k_lsp_tool_main(["complete", "tests/inputs/NaCl.inp", "--line", "20", "--character", "3"])
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["operation"] == "complete"
+    assert payload["items"]
+    assert any(item["label"] == "RUN_TYPE" for item in payload["items"])
+    assert "note" not in payload["summary"]
+
+
+def test_agent_cli_hover_returns_keyword_docs(capsys) -> None:
+    rc = cp2k_lsp_tool_main(["hover", "tests/inputs/NaCl.inp", "--line", "18", "--character", "3"])
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["operation"] == "hover"
+    assert payload["hover"]["keyword"] == "RUN_TYPE"
+    assert "Allowed values" in payload["hover"]["contents"]
+    assert "note" not in payload["summary"]
+
+
+def test_agent_cli_explain_returns_keyword_usage(capsys) -> None:
+    rc = cp2k_lsp_tool_main(["explain", "RUN_TYPE"])
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["operation"] == "explain"
+    assert payload["status"] == "available"
+    assert payload["kind"] == "keyword"
+    assert "RUN_TYPE ENERGY" in payload["contents"]
 
 
 # ---------------------------------------------------------------------------
