@@ -408,3 +408,146 @@ class TestIssue42AcceptanceCriteria:
         assert lookup_keyword_schema("NONEXISTENT") is None
         assert lookup_section_path("INVALID.PATH") is None
         assert lookup_keyword_at_path("INVALID.PATH", "KW") is None
+
+
+class TestSchemaStaleness:
+    """Tests for schema index staleness detection (issue #125)."""
+
+    def test_new_index_not_stale(self):
+        """Freshly loaded index should not be stale."""
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        idx.get_root_sections()
+        assert idx.is_stale() is False
+
+    def test_stale_after_touch(self):
+        """Index should detect staleness after file modification."""
+        import time
+
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        idx.get_root_sections()
+        assert idx.is_stale() is False
+
+        DEFAULT_CP2K_INPUT_XML.touch()
+        time.sleep(0.05)
+
+        assert idx.is_stale() is True
+
+    def test_invalidate_clears_cache(self):
+        """invalidate() should reset loaded state and re-capture metadata."""
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        idx.get_root_sections()
+        assert idx._loaded is True
+
+        idx.invalidate()
+        assert idx._loaded is False
+        assert len(idx._sections) == 0
+
+    def test_invalidate_allows_reload(self):
+        """After invalidate(), next access should reload successfully."""
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        sections_before = idx.get_root_sections()
+        idx.invalidate()
+        sections_after = idx.get_root_sections()
+        assert sections_before == sections_after
+
+    def test_unloaded_index_not_stale(self):
+        """Index that has never been loaded should not report stale."""
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        assert idx._loaded is False
+        assert idx.is_stale() is False
+
+    def test_missing_file_reports_stale(self):
+        """Index pointing at a deleted file should report stale."""
+        import tempfile
+
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        with tempfile.NamedTemporaryFile(suffix=".xml", mode="w", delete=False) as tmp:
+            tmp.write("<root><SECTIONS></SECTIONS></root>")
+            tmp_path = tmp.name
+
+        idx = CP2KSchemaIndex(tmp_path)
+        idx.get_root_sections()
+
+        import os
+        os.unlink(tmp_path)
+
+        assert idx.is_stale() is True
+
+
+class TestPrecomputedIndex:
+    """Tests for precomputed schema/docs indexes (issue #125)."""
+
+    def test_regenerate_indexes_is_deterministic(self, tmp_path):
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.precomputed_index import regenerate_indexes
+
+        schema_path = tmp_path / "schema_index.json"
+        docs_path = tmp_path / "docs_digest_index.json"
+
+        first = regenerate_indexes(
+            release_version="2025.1",
+            schema_path=schema_path,
+            docs_path=docs_path,
+            xml_path=DEFAULT_CP2K_INPUT_XML,
+        )
+        second = regenerate_indexes(
+            release_version="2025.1",
+            schema_path=schema_path,
+            docs_path=docs_path,
+            xml_path=DEFAULT_CP2K_INPUT_XML,
+        )
+
+        assert first["section_count"] == second["section_count"]
+        assert first["docs_entry_count"] == second["docs_entry_count"]
+        assert schema_path.read_text(encoding="utf-8") == schema_path.read_text(encoding="utf-8")
+
+    def test_precomputed_schema_loads_without_parsing_xml(self, tmp_path):
+        import cp2k_input_tools.precomputed_index as precomputed_index
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.precomputed_index import DEFAULT_SCHEMA_INDEX_JSON, regenerate_indexes
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        schema_path = tmp_path / "schema_index.json"
+        docs_path = tmp_path / "docs_digest_index.json"
+        regenerate_indexes(schema_path=schema_path, docs_path=docs_path, xml_path=DEFAULT_CP2K_INPUT_XML)
+
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        original_path = DEFAULT_SCHEMA_INDEX_JSON
+        try:
+            precomputed_index.DEFAULT_SCHEMA_INDEX_JSON = schema_path
+            idx._load_from_precomputed()
+            assert idx._loaded is True
+            assert idx._loaded_from_precomputed is True
+            assert len(idx.get_root_sections()) > 0
+        finally:
+            precomputed_index.DEFAULT_SCHEMA_INDEX_JSON = original_path
+
+    def test_schema_index_loads_under_time_budget(self):
+        import time
+
+        from cp2k_input_tools import DEFAULT_CP2K_INPUT_XML
+        from cp2k_input_tools.schema_index import CP2KSchemaIndex
+
+        start = time.perf_counter()
+        idx = CP2KSchemaIndex(DEFAULT_CP2K_INPUT_XML)
+        sections = idx.get_root_sections()
+        elapsed = time.perf_counter() - start
+
+        assert sections
+        assert elapsed < 5.0

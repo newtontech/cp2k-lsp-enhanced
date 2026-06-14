@@ -128,6 +128,18 @@ Maximum number of SCF iterations before giving up.
     def __init__(self, server):
         self.server = server
 
+    @property
+    def _release_version(self) -> str | None:
+        """Return the release version from the server, if set."""
+        return getattr(self.server, "release_version", None)
+
+    def _append_provenance_footer(self, content: str) -> str:
+        """Append a provenance footer to hover content showing schema version."""
+        version = self._release_version
+        if version:
+            return content + f"\n---\n*Schema version: {version}*"
+        return content
+
     def provide_hover(self, params: lsp.HoverParams) -> Optional[lsp.Hover]:
         """Provide hover information.
 
@@ -160,10 +172,17 @@ Maximum number of SCF iterations before giving up.
         # Try schema-backed hover first
         hover_content = self._get_schema_hover(word_upper, section_path)
         if hover_content:
+            hover_content = self._append_provenance_footer(hover_content)
             return lsp.Hover(contents=lsp.MarkupContent(kind=lsp.MarkupKind.Markdown, value=hover_content))
 
         # Fall back to hardcoded docs
-        return self._get_fallback_hover(word_upper)
+        fallback = self._get_fallback_hover(word_upper)
+        if fallback is None:
+            return None
+        content = fallback.contents
+        if isinstance(content, lsp.MarkupContent):
+            content.value = self._append_provenance_footer(content.value)
+        return fallback
 
     def _get_schema_hover(self, word_upper: str, section_path: Optional[str]) -> Optional[str]:
         """Get hover content from schema lookups.

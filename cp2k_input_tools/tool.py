@@ -100,20 +100,50 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="operation", required=True)
     capabilities = subparsers.add_parser("capabilities")
     capabilities.add_argument("--format", choices=["json"], default="json")
+    index_regenerate = subparsers.add_parser("index-regenerate")
+    index_regenerate.add_argument("--release-version", default=None)
+    index_regenerate.add_argument("--format", choices=["json"], default="json")
     for operation in ("check", "context", "complete", "hover", "symbols", "fix"):
         sub = subparsers.add_parser(operation)
         sub.add_argument("path", type=Path)
         sub.add_argument("--format", choices=["json"], default="json")
         if operation == "check":
             sub.add_argument("--fail-on-blocking", action="store_true")
+        if operation in {"context", "hover", "fix"}:
+            sub.add_argument("--line", type=int, default=0)
+            sub.add_argument("--character", type=int, default=0)
     args = parser.parse_args(argv)
     if args.operation == "capabilities":
         print(json.dumps(_capabilities_payload(), indent=2, sort_keys=True))
+        return 0
+    if args.operation == "index-regenerate":
+        from .precomputed_index import regenerate_indexes
+
+        payload = regenerate_indexes(release_version=args.release_version)
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
     if args.operation == "check":
         payload = check_path(args.path)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if getattr(args, "fail_on_blocking", False) and not payload["ok"] else 0
+    if args.operation == "context":
+        from cp2k_lsp.agent_commands import run_context  # type: ignore[import-untyped]
+
+        payload = run_context(arguments=[{"path": str(args.path), "line": args.line, "character": args.character}])
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.operation == "symbols":
+        from cp2k_lsp.agent_commands import run_symbols  # type: ignore[import-untyped]
+
+        payload = run_symbols(arguments=[{"path": str(args.path)}])
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.operation == "fix":
+        from cp2k_lsp.agent_commands import run_fix_preview  # type: ignore[import-untyped]
+
+        payload = run_fix_preview(arguments=[{"path": str(args.path), "line": args.line, "character": args.character}])
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     print(json.dumps(_empty_operation(args.path, args.operation), indent=2, sort_keys=True))
     return 0
 

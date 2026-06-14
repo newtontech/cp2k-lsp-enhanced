@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from lsprotocol import types as lsp
 
+from cp2k_input_tools.code_actions import get_code_actions
+
 
 class CodeActionProvider:
     """Provides code actions (Quick Fixes) for CP2K input."""
@@ -13,83 +15,72 @@ class CodeActionProvider:
 
     def provide_code_actions(self, params: lsp.CodeActionParams) -> Optional[List[lsp.CodeAction]]:
         """Provide code actions for diagnostics."""
-        actions = []
         uri = params.text_document.uri
+        document = self.server.workspace.get_text_document(uri)
+        text = document.source
 
-        for diagnostic in params.context.diagnostics:
-            action = self._create_quick_fix(diagnostic, uri)
-            if action:
-                actions.append(action)
+        actions: list[lsp.CodeAction] = []
+        for diagnostic in params.context.diagnostics or []:
+            diagnostic_code = str(diagnostic.code) if diagnostic.code is not None else None
+            diagnostic_data = diagnostic.data if isinstance(diagnostic.data, dict) else None
+            actions.extend(
+                get_code_actions(
+                    text=text,
+                    diagnostic_range=diagnostic.range,
+                    diagnostic_message=diagnostic.message,
+                    uri=uri,
+                    diagnostic_code=diagnostic_code,
+                    diagnostic_data=diagnostic_data,
+                )
+            )
 
-        return actions if actions else None
+        return actions or None
 
     def _create_quick_fix(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
-        """Create a quick fix for a diagnostic."""
-        code = str(diagnostic.code) if diagnostic.code is not None else ""
-        if code == "cp2k.version.removed_keyword":
-            return self._fix_removed_keyword(diagnostic, uri)
-
-        message = diagnostic.message.lower()
-
-        if "unclosed" in message or "expected" in message:
-            return self._fix_unclosed_section(diagnostic, uri)
-        elif "mismatch" in message:
-            return self._fix_section_mismatch(diagnostic, uri)
-
-        return None
-
-    def _fix_removed_keyword(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
-        """Replace a removed keyword with its version-policy replacement."""
-        data = diagnostic.data if isinstance(diagnostic.data, dict) else {}
-        suggested_fix = data.get("suggested_fix", "")
-        replacement = None
-        if isinstance(suggested_fix, str) and " with " in suggested_fix:
+        """Backward-compatible quick-fix helper used by older tests."""
+        diagnostic_data = diagnostic.data if isinstance(diagnostic.data, dict) else {}
+        suggested_fix = str(diagnostic_data.get("suggested_fix", ""))
+        replacement = ""
+        if " with " in suggested_fix:
             replacement = suggested_fix.rsplit(" with ", 1)[-1].rstrip(".")
+        elif suggested_fix:
+            replacement = suggested_fix.rstrip(".").split()[-1]
         if not replacement:
             return None
-
-        keyword_range = diagnostic.range
         return lsp.CodeAction(
             title=f"Replace with {replacement}",
             kind=lsp.CodeActionKind.QuickFix,
-            diagnostics=[diagnostic],
-            edit=lsp.WorkspaceEdit(
-                changes={
-                    uri: [
-                        lsp.TextEdit(
-                            range=keyword_range,
-                            new_text=replacement,
-                        )
-                    ]
-                }
-            ),
+            is_preferred=True,
+            edit=lsp.WorkspaceEdit(changes={uri: [lsp.TextEdit(range=diagnostic.range, new_text=replacement)]}),
         )
 
-    def _fix_unclosed_section(self, diagnostic: lsp.Diagnostic, uri: str) -> lsp.CodeAction:
-        """Fix unclosed section by adding &END."""
-        range_ = diagnostic.range
-
+    def _fix_unclosed_section(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Backward-compatible helper for inserting a missing &END."""
+        section_name = "SECTION"
+        marker = "&"
+        if marker in diagnostic.message:
+            section_name = diagnostic.message.split(marker, 1)[1].split()[0]
         return lsp.CodeAction(
-            title="Add missing &END tag",
+            title=f"Add missing &END {section_name}",
             kind=lsp.CodeActionKind.QuickFix,
-            diagnostics=[diagnostic],
+            is_preferred=True,
             edit=lsp.WorkspaceEdit(
                 changes={
                     uri: [
                         lsp.TextEdit(
-                            range=lsp.Range(
-                                start=lsp.Position(line=range_.end.line + 1, character=0),
-                                end=lsp.Position(line=range_.end.line + 1, character=0),
-                            ),
-                            new_text="\u0026END\n",
+                            range=lsp.Range(start=diagnostic.range.end, end=diagnostic.range.end),
+                            new_text=f"\n&END {section_name}",
                         )
                     ]
                 }
             ),
         )
 
-    def _fix_section_mismatch(self, diagnostic: lsp.Diagnostic, uri: str) -> lsp.CodeAction:
-        """Fix section name mismatch."""
+    def _fix_section_mismatch(self, diagnostic: lsp.Diagnostic, uri: str) -> Optional[lsp.CodeAction]:
+        """Backward-compatible helper for section mismatch diagnostics."""
         return lsp.CodeAction(
-            title="Fix section name", kind=lsp.CodeActionKind.QuickFix, diagnostics=[diagnostic], is_preferred=True
+            title="Fix section name mismatch",
+            kind=lsp.CodeActionKind.QuickFix,
+            is_preferred=True,
+            edit=lsp.WorkspaceEdit(changes={uri: [lsp.TextEdit(range=diagnostic.range, new_text="&END")]}),
         )

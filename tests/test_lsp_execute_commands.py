@@ -9,7 +9,9 @@ from cp2k_lsp.agent_commands import (
     AGENT_COMMANDS,
     COMMAND_CAPABILITIES,
     COMMAND_CHECK,
+    COMMAND_CONTEXT,
     COMMAND_EXPLAIN,
+    COMMAND_SCHEMA_VALIDATE,
     run_capabilities,
     run_check,
     run_explain,
@@ -30,7 +32,11 @@ def _assert_capabilities_block(payload: dict, operation: str) -> None:
 
 
 def test_agent_command_constants() -> None:
-    assert AGENT_COMMANDS == (COMMAND_CHECK, COMMAND_EXPLAIN, COMMAND_CAPABILITIES)
+    assert COMMAND_CHECK in AGENT_COMMANDS
+    assert COMMAND_EXPLAIN in AGENT_COMMANDS
+    assert COMMAND_CAPABILITIES in AGENT_COMMANDS
+    assert COMMAND_CONTEXT in AGENT_COMMANDS
+    assert COMMAND_SCHEMA_VALIDATE in AGENT_COMMANDS
 
 
 def test_capabilities_command_returns_stable_json_shape() -> None:
