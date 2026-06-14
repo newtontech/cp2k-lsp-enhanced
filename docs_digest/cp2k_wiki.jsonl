@@ -1,0 +1,6 @@
+{"type": "keyword", "name": "RUN_TYPE", "description": "Type of calculation to perform", "section_path": "GLOBAL", "provenance": {"source": "schema", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "CP2K license"}}
+{"type": "keyword", "name": "EPS_SCF", "description": "SCF convergence threshold", "section_path": "FORCE_EVAL.DFT.SCF", "provenance": {"source": "schema", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "CP2K license"}}
+{"type": "section", "name": "GLOBAL", "description": "Global settings for the calculation", "provenance": {"source": "schema", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "CP2K license"}}
+{"type": "section", "name": "FORCE_EVAL", "description": "Force evaluation settings", "provenance": {"source": "schema", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "CP2K license"}}
+{"type": "recipe", "name": "standard_dft", "description": "Standard DFT calculation setup", "provenance": {"source": "community", "cp2k_version": "2024.1", "crawl_date": "2026-06-13", "license": "Community knowledge"}}
+{"type": "rule", "name": "forbidden_keyword", "keyword": "CENTER_COORDINATES", "description": "Deprecated in CP2K 2023", "provenance": {"source": "manual", "cp2k_version": "2023.1", "crawl_date": "2026-06-13", "license": "CP2K license"}}
