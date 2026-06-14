@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.walltime_exceeded",
+  "description": "CP2K stopped cleanly after WALLTIME was reached",
+  "severity": "warning",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/walltime_exceeded.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.walltime_exceeded",
+      "severity": "warning",
+      "likely_section": "GLOBAL",
+      "message": "CP2K stopped because the GLOBAL WALLTIME was reached."
+    }
+  ]
+}

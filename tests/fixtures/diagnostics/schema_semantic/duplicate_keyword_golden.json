@@ -1,0 +1,5 @@
+{
+  "description": "Duplicate non-repeatable METHOD keyword triggers cp2k.schema.duplicate_keyword.",
+  "expected_rules": ["cp2k.schema.duplicate_keyword"],
+  "diagnostic_count": 1
+}

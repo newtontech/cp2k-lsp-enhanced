@@ -1,0 +1,5 @@
+{
+  "description": "An unknown subsection under DFT triggers cp2k.schema.unknown_section.",
+  "expected_rules": ["cp2k.schema.unknown_section"],
+  "diagnostic_count": 1
+}

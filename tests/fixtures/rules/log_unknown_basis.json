@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.unknown_basis",
+  "description": "BASIS_SET label on a KIND is unknown to the loaded basis set file",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/unknown_basis.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.unknown_basis",
+      "severity": "error",
+      "likely_section": "FORCE_EVAL > SUBSYS > KIND",
+      "message": "Requested basis set is unknown for the kind."
+    }
+  ]
+}

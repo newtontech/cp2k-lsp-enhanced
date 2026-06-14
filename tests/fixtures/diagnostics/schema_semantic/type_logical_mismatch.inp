@@ -1,0 +1,14 @@
+&GLOBAL
+  PROJECT_NAME test
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    UKS not_logical
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+  &END DFT
+&END FORCE_EVAL

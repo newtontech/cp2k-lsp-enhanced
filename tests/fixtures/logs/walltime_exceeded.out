@@ -1,0 +1,8 @@
+ *******************************************************************************
+ *                                                                             *
+ *                     CP2K - STRUCTURE AND ENVIRONMENT                         *
+ *                                                                             *
+ *******************************************************************************
+
+ GLOBAL| exceeded the requested wall time of 3600 seconds
+ GLOBAL| writing restart file

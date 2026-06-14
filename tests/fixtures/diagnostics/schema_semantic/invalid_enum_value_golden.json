@@ -1,0 +1,5 @@
+{
+  "description": "An invalid RUN_TYPE enum value triggers cp2k.schema.unknown_enum.",
+  "expected_rules": ["cp2k.schema.unknown_enum"],
+  "diagnostic_count": 1
+}

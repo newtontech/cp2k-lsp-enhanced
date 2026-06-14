@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.outer_scf_not_converged",
+  "description": "Outer SCF loop (CDFT/Krylov) hit MAX_SCF without converging",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/outer_scf_not_converged.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.outer_scf_not_converged",
+      "severity": "error",
+      "likely_section": "FORCE_EVAL > DFT > SCF > OUTER_SCF",
+      "message": "Outer SCF loop did not converge."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "rule_id": "cp2k.log.abort",
+  "description": "CP2K raised an explicit abort from a precondition violation",
+  "severity": "error",
+  "source": "cp2k-log",
+  "fixtures": {
+    "invalid": "tests/fixtures/logs/abort.out",
+    "valid": ["tests/fixtures/logs/clean_run.out"]
+  },
+  "diagnostics": [
+    {
+      "rule_id": "cp2k.log.abort",
+      "severity": "error",
+      "likely_section": "GLOBAL",
+      "message": "CP2K aborted mid-run."
+    }
+  ]
+}
