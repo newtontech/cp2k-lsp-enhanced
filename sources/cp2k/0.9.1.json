@@ -197,6 +197,16 @@
       "version": "0.9.1",
       "confidence": 0.95,
       "notes": "OpenQC LSP asset manifest added for fixture/provenance gate evidence."
+    },
+    {
+      "source_ref": "raw/assets/manifest.json",
+      "kind": "schema",
+      "path": "raw/assets/manifest.json",
+      "sha256": "742c9afebceb56a7d25933b26eb4f2201236844eba83c15a752abc3e8fd12eb3",
+      "size_bytes": 3509,
+      "version": "0.9.1",
+      "confidence": 0.95,
+      "notes": "Generated raw asset manifest consumed by the OpenQC traceability report."
     }
   ]
 }

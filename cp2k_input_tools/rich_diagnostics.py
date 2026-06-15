@@ -2,6 +2,8 @@
 
 The module keeps existing LSP/provider diagnostics untouched and provides a
 python-lsp-server-style provider boundary for agent-facing JSON consumers.
+
+See also: wiki/concepts/diagnostic-engine-v1.md
 """
 
 from __future__ import annotations

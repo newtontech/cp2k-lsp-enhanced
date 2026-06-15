@@ -1,3 +1,8 @@
+"""CP2K input parser for section, keyword, and preprocessor syntax.
+
+See also: wiki/concepts/parserarchitecture.md
+"""
+
 import itertools
 import re
 import xml.etree.ElementTree as ET

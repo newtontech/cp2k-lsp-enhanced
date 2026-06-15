@@ -1,0 +1,85 @@
+{
+  "entries": [
+    {
+      "path": "NaCl.inp",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/NaCl.inp",
+      "stable_id": "raw-assets-NaCl-inp"
+    },
+    {
+      "path": "README.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/README.md",
+      "stable_id": "raw-assets-README-md"
+    },
+    {
+      "path": "agent-workflow.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/agent-workflow.md",
+      "stable_id": "raw-assets-agent-workflow-md"
+    },
+    {
+      "path": "cp2k-dft-qs-reference.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k-dft-qs-reference.md",
+      "stable_id": "raw-assets-cp2k-dft-qs-reference-md"
+    },
+    {
+      "path": "cp2k-input-sections-reference.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k-input-sections-reference.md",
+      "stable_id": "raw-assets-cp2k-input-sections-reference-md"
+    },
+    {
+      "path": "cp2k-md-tutorials.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k-md-tutorials.md",
+      "stable_id": "raw-assets-cp2k-md-tutorials-md"
+    },
+    {
+      "path": "cp2k-ml-potentials.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k-ml-potentials.md",
+      "stable_id": "raw-assets-cp2k-ml-potentials-md"
+    },
+    {
+      "path": "cp2k-output-format.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k-output-format.md",
+      "stable_id": "raw-assets-cp2k-output-format-md"
+    },
+    {
+      "path": "cp2k_input_tools/cli/lint.py",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k_input_tools/cli/lint.py",
+      "stable_id": "raw-assets-cp2k_input_tools-cli-lint-py"
+    },
+    {
+      "path": "cp2k_input_tools/completion.py",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k_input_tools/completion.py",
+      "stable_id": "raw-assets-cp2k_input_tools-completion-py"
+    },
+    {
+      "path": "cp2k_input_tools/parser.py",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/cp2k_input_tools/parser.py",
+      "stable_id": "raw-assets-cp2k_input_tools-parser-py"
+    },
+    {
+      "path": "example-nvt-md.inp",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/example-nvt-md.inp",
+      "stable_id": "raw-assets-example-nvt-md-inp"
+    },
+    {
+      "path": "upstream-cp2k-reference.md",
+      "source_type": "raw_asset",
+      "source_url": "https://github.com/newtontech/cp2k-lsp-enhanced/blob/develop/raw/assets/upstream-cp2k-reference.md",
+      "stable_id": "raw-assets-upstream-cp2k-reference-md"
+    }
+  ],
+  "manifest_version": "1.0.0",
+  "repository": "newtontech/cp2k-lsp-enhanced",
+  "schema_version": "provenance-manifest-v1"
+}
