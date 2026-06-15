@@ -101,3 +101,4 @@ F_i = m_i a_i = -∂V/∂r_i
 - Frenkel & Smit (2002). "Understanding Molecular Simulation"
 - Tuckerman et al. (1992). "Statistical mechanics. Isobaric-isothermal molecular dynamics"
 - Marx & Hutter (2009). "Ab Initio Molecular Dynamics"
+- `raw/assets/cp2k-md-tutorials.md` — Raw evidence

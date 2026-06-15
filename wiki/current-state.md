@@ -11,3 +11,4 @@
 - `sources/cp2k/2025.2.json`
 - `sources/cp2k/2026.1.json`
 - `generated/openqc_lsp_factory/cp2k/release-diff-2025.2-to-2026.1/release_diff.json`
+- `raw/assets/asset-manifest.json` — Raw evidence

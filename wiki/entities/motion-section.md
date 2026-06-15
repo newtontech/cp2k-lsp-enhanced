@@ -198,6 +198,7 @@ The `&MOTION` section controls atomic motion calculations in CP2K, including geo
 ### XML 规范
 
 `cp2k_input.xml` 定义了完整的 MOTION 参数结构。
+- `raw/assets/cp2k-md-tutorials.md` — Raw evidence
 
 ## 常用配置模板 / Common Templates
 

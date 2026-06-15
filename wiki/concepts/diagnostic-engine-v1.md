@@ -6,3 +6,4 @@ CP2K diagnostics use `DiagnosticEnvelope/v1` with blocking policy from `lsp-capa
 
 - `cp2k_input_tools/lsp_capabilities.json`: diagnostic envelope and blocking policy
 - `wiki/synthesis/diagnosticscatalog.md`: diagnostic catalog synthesis
+- `raw/assets/asset-manifest.json` — Raw evidence

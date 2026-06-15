@@ -91,6 +91,7 @@ H    DZVP-MOLOPT-GTH
 ### XML 规范
 
 `cp2k_input.xml` 定义了基组相关的数据结构和验证规则。
+- `raw/assets/inputs/BASIS_MOLOPT.H` — Raw evidence
 
 ## 基组选择指南 / Basis Set Selection Guide
 

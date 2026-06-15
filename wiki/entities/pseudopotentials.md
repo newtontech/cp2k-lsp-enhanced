@@ -108,3 +108,4 @@ cp2k-datafile-lint --pseudopotential POTENTIALS
 
 - `cp2k_input_tools/pseudopotentials/`: 赝势验证实现
 - `tests/inputs/GTH_POTENTIALS.*`: 赝势文件示例
+- `raw/assets/inputs/GTH_POTENTIALS.Cl` — Raw evidence

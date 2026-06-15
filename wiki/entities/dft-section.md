@@ -113,6 +113,7 @@ The `&DFT` section is the core part for configuring Density Functional Theory ca
 ### XML 规范
 
 `cp2k_input.xml` 中定义了完整的 DFT 参数结构和验证规则。
+- `raw/assets/cp2k-dft-qs-reference.md` — Raw evidence
 
 ## 常用配置模板 / Common Templates
 

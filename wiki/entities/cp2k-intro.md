@@ -69,6 +69,7 @@ CP2K is developed and maintained by the CP2K Foundation under the GPLv3 open-sou
 - **输入示例**：`tests/inputs/He_PBE.inp` - 氢原子 PBE 计算示例
 - **XML 规范**：`cp2k_input_tools/cp2k_input.xml` - 完整输入语法规范
 - **LSP 工具**：`cp2k-language-server` - 语言服务器支持
+- `raw/assets/upstream-cp2k-reference.md` — Raw evidence
 
 ## 参考资料 / References
 

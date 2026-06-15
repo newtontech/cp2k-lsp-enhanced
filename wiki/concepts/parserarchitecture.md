@@ -231,3 +231,4 @@ except ParserError as e:
 - `cp2k_input_tools/parser.py`: 语法分析器实现
 - `cp2k_input_tools/validator.py`: 验证器实现
 - `cp2k_input_tools/typecheck.py`: 类型检查器实现
+- `raw/assets/README.md` — Raw evidence

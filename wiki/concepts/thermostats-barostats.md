@@ -114,3 +114,4 @@ Configured under `&MD / &BAROSTAT` for NPT ensembles.
 2. MD Methods: https://manual.cp2k.org/trunk/methods/sampling/molecular_dynamics.html
 3. Frenkel & Smit, "Understanding Molecular Simulation" (2002)
 4. Marx & Hutter, "Ab Initio Molecular Dynamics" (2009)
+- `raw/assets/cp2k-md-tutorials.md` — Raw evidence

@@ -135,3 +135,4 @@ PAW 将全电子和赝波函数关联：PAW relates all-electron and pseudowave 
 - /Users/yhm/Desktop/code/cp2k-lsp-enhanced/tests/inputs/He_PBE.inp (line 33)
 - Goedecker et al. (1996). "Separable dual-space Gaussian pseudopotentials"
 - Blöchl (1994). "Projector augmented-wave method"
+- `raw/assets/inputs/GTH_POTENTIALS.Cl` — Raw evidence

@@ -153,3 +153,4 @@ min Σ_i,j c_i c_j e_i · e_j
 - /Users/yhm/Desktop/code/cp2k-lsp-enhanced/tests/inputs/He_PBE.inp (lines 13-19)
 - Pulay (1980). "Convergence acceleration of iterative sequences"
 - Kresse & Furthmüller (1996). "Efficient iterative schemes for ab initio total-energy calculations"
+- `raw/assets/cp2k-dft-qs-reference.md` — Raw evidence

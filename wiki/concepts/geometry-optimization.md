@@ -161,3 +161,4 @@ min E(R)  subject to  |F_i| < F_tol
 - Nocedal & Wright (2006). "Numerical Optimization"
 - Henkelman & Jónsson (2000). "A climbing image nudged elastic band method"
 - Page & McIver (1978). "On gradient methods in optimization"
+- `raw/assets/cp2k-dft-qs-reference.md` — Raw evidence
