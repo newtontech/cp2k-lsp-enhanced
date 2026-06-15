@@ -444,6 +444,7 @@ cp2k.popt -i single_point.inp -o single_point.out
 - CP2K 手册: https://manual.cp2k.org/
 - `README.md`: cp2k-input-tools 项目说明
 - `docs/agent-workflow.md`: LSP+CLI 验证循环文档
+- `raw/assets/cp2k-dft-qs-reference.md` — Raw evidence
 
 ## 参考资料 / References
 

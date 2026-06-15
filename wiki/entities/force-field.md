@@ -120,6 +120,7 @@ FIST (Fast Integrated Simulation Tool) 是 CP2K 的经典力场引擎：
 ### XML 规范
 
 `cp2k_input.xml` 定义了力场相关的完整结构。
+- `raw/assets/cp2k-input-sections-reference.md` — Raw evidence
 
 ## 力场参数设置 / Force Field Parameters
 

@@ -191,6 +191,7 @@ F 0.25 0.25 0.25
 ### XML 规范
 
 `cp2k_input.xml` 定义了 SUBSYS 相关的完整结构和验证规则。
+- `raw/assets/cp2k-input-sections-reference.md` — Raw evidence
 
 ## 常用配置模板 / Common Templates
 

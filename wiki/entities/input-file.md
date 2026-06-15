@@ -86,6 +86,7 @@ _KEYWORD_MATCH = re.compile(r"(?P<name>[\w\-_]+)\s*(?P<value>.*)")
 - 数据类型 (DATA_TYPE)
 - 默认值 (DEFAULT_VALUE)
 - 重复属性 (repeats)
+- `raw/assets/NaCl.inp` — Raw evidence
 
 ## JSON/YAML 转换 / JSON/YAML Conversion
 

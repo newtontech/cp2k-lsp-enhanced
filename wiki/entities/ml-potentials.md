@@ -105,3 +105,4 @@ No native CP2K interface. Used via GPUMD. Typical workflow: CP2K DFT data -> NEP
 3. ACE: https://manual.cp2k.org/trunk/methods/machine_learning/ace.html
 4. NNP: https://manual.cp2k.org/trunk/CP2K_INPUT/FORCE_EVAL/NNP.html
 5. ML Methods Index: https://manual.cp2k.org/trunk/methods/machine_learning/
+- `raw/assets/cp2k-ml-potentials.md` — Raw evidence

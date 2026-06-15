@@ -296,3 +296,4 @@ Keyword 'SINGLE_PRECISION_MATRICES' was removed in CP2K 2024.1
 - `cp2k_input_tools/validator.py`: 验证规则实现
 - `cp2k_input_tools/parser_errors.py`: 错误定义
 - `tests/test_validation.py`: 验证测试用例
+- `raw/assets/asset-manifest.json` — Raw evidence

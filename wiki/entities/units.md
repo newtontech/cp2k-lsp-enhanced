@@ -171,3 +171,4 @@ UREG = UnitRegistry(system='atomic')
 
 - `cp2k_input_tools/keyword_helpers.py`: 单位处理实现
 - `cp2k_input_tools/pint_units.txt`: Pint 单位定义
+- `raw/assets/cp2k_input_tools/pint_units.txt` — Raw evidence

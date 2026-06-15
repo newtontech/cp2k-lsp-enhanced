@@ -216,3 +216,4 @@ cp2k-lsp validate input.inp --dry-run --cp2k-exe cp2k.psmp
 - `cp2k_input_tools/linter.py`: Linter 实现
 - `cp2k_input_tools/typecheck.py`: 类型检查器
 - `tests/test_validation.py`: 验证测试
+- `raw/assets/asset-manifest.json` — Raw evidence

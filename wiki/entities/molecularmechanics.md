@@ -213,3 +213,4 @@ E_COUPL GAUSS
 
 - CP2K 手册: QM/MM 方法
 - CP2K 示例: QMMM 输入文件
+- `raw/assets/cp2k-input-sections-reference.md` — Raw evidence

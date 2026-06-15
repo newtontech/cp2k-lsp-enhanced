@@ -59,3 +59,4 @@
 
 - `wiki/log.md`: wiki update log and provenance notes
 - `sources/cp2k/0.9.1.json`: versioned source manifest
+- `raw/assets/asset-manifest.json` — Raw evidence

@@ -396,6 +396,7 @@ for line in preprocessor:
 - CP2K 手册 - 输入预处理: https://manual.cp2k.org/user_guide/input.html
 - `cp2k_input_tools/preprocessor.py`: 预处理器实现
 - `wiki/synthesis/parser-api.md`: 解析器 API 文档
+- `raw/assets/README.md` — Raw evidence
 
 ## 参考资料 / References
 

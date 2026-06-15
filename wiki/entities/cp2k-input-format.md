@@ -103,6 +103,6 @@ TEMPERATURE [kelvin] 300.0
 
 ## 参考来源 (Sources)
 
-- `raw/assets/*.rst`: CP2K 输入工具文档快照
+- `raw/assets/index.rst`: CP2K 输入工具文档快照
 - `raw/assets/README.md`: 项目 README
 - CP2K 官方手册: https://manual.cp2k.org/

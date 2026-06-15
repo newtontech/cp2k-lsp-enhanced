@@ -81,3 +81,4 @@ The Kohn-Sham method maps the interacting many-electron system to a non-interact
 - /Users/yhm/Desktop/code/cp2k-lsp-enhanced/tests/inputs/He_PBE.inp
 - Hohenberg-Kohn (1964), Kohn-Sham (1965) original papers
 - Burke, K. (2012). "Perspective on density functional theory." J. Chem. Phys.
+- `raw/assets/cp2k-dft-qs-reference.md` — Raw evidence

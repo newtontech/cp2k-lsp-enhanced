@@ -269,3 +269,4 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
 - cp2k-input-tools LSP 实现: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/ls.py`
 - 补全模块: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/completion.py`
 - 验证模块: `/Users/yhm/Desktop/code/cp2k-lsp-enhanced/cp2k_input_tools/validator.py`
+- `raw/assets/README.md` — Raw evidence

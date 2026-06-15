@@ -82,6 +82,7 @@ H    GTH-PADE-q1
 ### 验证工具
 
 `cp2k-datafile-lint` 可用于验证赝势文件格式。
+- `raw/assets/inputs/GTH_POTENTIALS.Cl` — Raw evidence
 
 ## 赝势选择指南 / Pseudopotential Selection Guide
 

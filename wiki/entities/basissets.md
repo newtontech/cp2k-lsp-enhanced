@@ -88,3 +88,4 @@ cp2k-datafile-lint --basis-set BASIS_SETS
 - `cp2k_input_tools/basissets/`: 基组验证实现
 - `tests/inputs/BASIS_MOLOPT.*`: 基组文件示例
 - CP2K 基组库: https://www.cp2k.org/basissets
+- `raw/assets/inputs/BASIS_MOLOPT.H` — Raw evidence

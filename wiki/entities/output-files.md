@@ -145,6 +145,7 @@ CP2K 提供的工具：
 - `cp2kget` - 从重启文件提取数据
 - `xyz2cp2k` - XYZ 格式转换
 - `cp2k-rstchk` - 重启文件检查
+- `raw/assets/cp2k-output-format.md` — Raw evidence
 
 ## 文件命名约定 / File Naming Conventions
 

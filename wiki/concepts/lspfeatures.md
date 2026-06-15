@@ -260,3 +260,4 @@ cp2k-lsp inspect format-preview input.inp --apply
 - `cp2k_input_tools/ls.py`: LSP 实现源码
 - `docs/agent-workflow.md`: LSP + CLI 验证工作流
 - `tests/test_lsp.py`: LSP 功能测试
+- `raw/assets/README.md` — Raw evidence
