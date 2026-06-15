@@ -187,6 +187,16 @@
       "version": "0.9.1",
       "confidence": 0.95,
       "notes": "Existing tracked keyword registry; intentionally not duplicated under raw/assets."
+    },
+    {
+      "source_ref": "raw/assets/asset-manifest.json",
+      "kind": "schema",
+      "path": "raw/assets/asset-manifest.json",
+      "sha256": "6c9b86f12b98b173735b0bb35c13f9fa7bf7d64a5d8f52034a6ae7c919449e1c",
+      "size_bytes": 2059,
+      "version": "0.9.1",
+      "confidence": 0.95,
+      "notes": "OpenQC LSP asset manifest added for fixture/provenance gate evidence."
     }
   ]
 }

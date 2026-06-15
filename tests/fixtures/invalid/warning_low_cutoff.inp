@@ -1,0 +1,18 @@
+&FORCE_EVAL
+  METHOD QS
+  &DFT
+    &MGRID
+      CUTOFF 10
+      REL_CUTOFF 5
+    &END MGRID
+    &SCF
+      MAX_SCF 2
+      EPS_SCF 1.0E-1
+    &END SCF
+  &END DFT
+  &SUBSYS
+    &COORD
+      O 0.0 0.0 0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL
