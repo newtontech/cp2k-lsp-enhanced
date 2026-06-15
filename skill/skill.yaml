@@ -10,7 +10,7 @@ entrypoints:
   server: cp2k-language-server
   tool: cp2k-lsp-tool
 file_patterns:
-  - *.inp
+  - "*.inp"
 operations:
   - capabilities
   - check
