@@ -9,6 +9,8 @@ Provides lint checks that go beyond syntax and semantic validation:
 - Missing section END detection
 - Unknown enum value detection
 - File reference validation (basis sets, potentials)
+
+See also: wiki/concepts/validationrules.md
 """
 
 import difflib

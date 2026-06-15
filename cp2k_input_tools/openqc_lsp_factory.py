@@ -1,4 +1,7 @@
-"""OpenQC DSL-to-LSP factory CLI for source-manifest driven CP2K updates."""
+"""OpenQC DSL-to-LSP factory CLI for source-manifest driven CP2K updates.
+
+See also: wiki/synthesis/openqc-agent-context.md
+"""
 
 from __future__ import annotations
 
@@ -254,8 +257,12 @@ DSL_IR_SCHEMA_BODY: dict[str, Any] = {
                     "kind": {
                         "type": "string",
                         "enum": [
-                            "documentation", "example", "schema",
-                            "source", "release-notes", "agent-guidance",
+                            "documentation",
+                            "example",
+                            "schema",
+                            "source",
+                            "release-notes",
+                            "agent-guidance",
                         ],
                     },
                     "path": {"type": "string", "minLength": 1},
@@ -530,12 +537,7 @@ def _version_policy(
     changes: list[dict[str, Any]],
 ) -> dict[str, Any]:
     policy_keywords = [
-        {
-            key: item[key]
-            for key in ("name", "status", "replacement", "renamed_from")
-            if key in item
-        }
-        for item in keywords
+        {key: item[key] for key in ("name", "status", "replacement", "renamed_from") if key in item} for item in keywords
     ]
     policy_names = {str(item.get("name", "")).upper() for item in policy_keywords}
     for change in changes:
