@@ -1,0 +1,48 @@
+{
+  "manifest_version": 1,
+  "software": "cp2k",
+  "generated_at": "2026-06-15T00:00:00Z",
+  "refresh_command": "python scripts/wiki_lint.py && python -m cp2k_input_tools.openqc_lsp_factory generate --software cp2k --version 2026.1",
+  "pipeline": "official-docs -> raw/assets -> wiki/entities+concepts+synthesis -> sources/ versioned manifests -> fixtures/eval -> LSP runtime/OpenQC",
+  "assets": [
+    {
+      "path": "raw/assets/upstream-cp2k-reference.md",
+      "kind": "official_docs_index",
+      "url": "https://manual.cp2k.org/trunk/CP2K_INPUT.html",
+      "retrieved_at": "2026-06-13",
+      "software_version": "trunk",
+      "license_note": "Link-only index; canonical content remains upstream.",
+      "sha256": "25e2f901fceb3c65f1876f22e8fec6d3131c21f7b20f31652d47bec338188564",
+      "size_bytes": 2837
+    },
+    {
+      "path": "raw/assets/cp2k-input-sections-reference.md",
+      "kind": "official_docs",
+      "url": "https://manual.cp2k.org/trunk/CP2K_INPUT.html",
+      "retrieved_at": "2026-06-13",
+      "software_version": "trunk",
+      "license_note": "Curated section anchors for wiki entities.",
+      "sha256": "ccdf81420c67640a198513845f15310a1ce931c6de6263ecffe8a7a96a393549",
+      "size_bytes": 7157
+    },
+    {
+      "path": "raw/assets/cp2k-release-2026.1.md",
+      "kind": "release-notes",
+      "url": "https://www.cp2k.org/release_notes",
+      "retrieved_at": "2026-06-12",
+      "software_version": "2026.1",
+      "license_note": "Fixture-backed release diff evidence for version policy rules.",
+      "sha256": "ee3f4d9b84ce36580ab1885c4cc028fc7fcce9bcfe1e5a7ac1470c734083dab2",
+      "size_bytes": 218
+    },
+    {
+      "path": "sources/cp2k/2026.1.json",
+      "kind": "versioned_schema",
+      "url": "https://manual.cp2k.org/trunk/CP2K_INPUT.html",
+      "retrieved_at": "2026-06-12",
+      "software_version": "2026.1",
+      "license_note": "Machine-readable DSL IR linked from sources/manifest.schema.json.",
+      "path_note": "Provenance layer; large upstream manuals are linked, not copied."
+    }
+  ]
+}

@@ -166,6 +166,11 @@
       "kind": "upstream_manifest",
       "label": "Upstream CP2K reference links",
       "path": "raw/assets/upstream-cp2k-reference.md"
+    },
+    {
+      "kind": "repo_manifest",
+      "label": "Captured raw asset manifest",
+      "path": "raw/assets/asset-manifest.json"
     }
   ]
 }
