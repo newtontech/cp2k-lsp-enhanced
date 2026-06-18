@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .skill_export import export_skill, skill_spec_text
+
 from .agent_operations import OPERATIONS
 from .rich_diagnostics import agent_check_payload
 from .validation_backends import validation_backends_payload
@@ -175,6 +177,10 @@ def _explain_payload(name: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cp2k-lsp-tool")
     subparsers = parser.add_subparsers(dest="operation", required=True)
+    skill_spec = subparsers.add_parser("skill-spec")
+    skill_spec.add_argument("--format", choices=["json", "yaml"], default="json")
+    skill_export = subparsers.add_parser("skill-export")
+    skill_export.add_argument("--output", type=Path, required=True)
     capabilities = subparsers.add_parser("capabilities")
     capabilities.add_argument("--format", choices=["json"], default="json")
     index_regenerate = subparsers.add_parser("index-regenerate")
@@ -193,6 +199,13 @@ def main(argv: list[str] | None = None) -> int:
     explain.add_argument("name")
     explain.add_argument("--format", choices=["json"], default="json")
     args = parser.parse_args(argv)
+
+    if args.operation == "skill-spec":
+        print(skill_spec_text(args.format))
+        return 0
+    if args.operation == "skill-export":
+        print(json.dumps(export_skill(args.output), indent=2, sort_keys=True))
+        return 0
     if args.operation == "capabilities":
         print(json.dumps(_capabilities_payload(), indent=2, sort_keys=True))
         return 0
