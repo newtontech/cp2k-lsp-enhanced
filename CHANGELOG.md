@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.1.0] - 2026-07-16
+
+- Publish the enhanced OpenQC CP2K language server under the independent
+  `cp2k-lsp-enhanced` distribution identity.
+- Preserve the `cp2k-language-server` compatibility command and upstream
+  Python import namespace.
+- Replace token-based deployment with PyPI trusted publishing through the
+  protected `pypi` environment.
 
 ## [0.9.2] - 2026-02-xy
 

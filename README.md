@@ -1,6 +1,11 @@
-# cp2k-input-tools
+# cp2k-lsp-enhanced
 
-[![Build status](https://github.com/cp2k/cp2k-input-tools/actions/workflows/test.yml/badge.svg)](https://github.com/cp2k/cp2k-input-tools/actions) [![codecov](https://codecov.io/gh/cp2k/cp2k-input-tools/branch/develop/graph/badge.svg)](https://codecov.io/gh/cp2k/cp2k-input-tools) [![PyPI](https://img.shields.io/pypi/pyversions/cp2k-input-tools)](https://pypi.org/project/cp2k-input-tools/)
+[![Build status](https://github.com/newtontech/cp2k-lsp-enhanced/actions/workflows/test.yml/badge.svg)](https://github.com/newtontech/cp2k-lsp-enhanced/actions) [![PyPI](https://img.shields.io/pypi/pyversions/cp2k-lsp-enhanced)](https://pypi.org/project/cp2k-lsp-enhanced/)
+
+This Newton Technology distribution extends the upstream
+`cp2k-input-tools` project with the OpenQC language-server, agent CLI, and
+traceability contract. The Python import namespace and the
+`cp2k-language-server` command remain compatible with the upstream project.
 
 Fully validating pure-python CP2K input file parsers including preprocessing capabilities
 
@@ -54,19 +59,19 @@ When changing CP2K language-server behavior, parser validation, command names, f
 You will get most tools using simply:
 
 ```console
-$ pip install cp2k-input-tools
+$ pip install cp2k-lsp-enhanced
 ```
 
 For YAML support you should use
 
 ```console
-$ pip install cp2k-input-tools[yaml]
+$ pip install cp2k-lsp-enhanced[yaml]
 ```
 
 and for the Language Server:
 
 ```console
-$ pip install cp2k-input-tools[lsp]
+$ pip install cp2k-lsp-enhanced[lsp]
 ```
 
 ## Command Line Interface

@@ -3,10 +3,10 @@ import sys
 
 import click
 
-LSP_EXTRA_ERROR = """Could not import the pygls package. You have to install the cp2k-input-tools with the 'lsp' extra:
+LSP_EXTRA_ERROR = """Could not import the pygls package. Install cp2k-lsp-enhanced with the 'lsp' extra:
 
-pip install cp2k-input-tools[lsp]
-    """
+pip install cp2k-lsp-enhanced[lsp]
+"""
 
 
 @click.command()
