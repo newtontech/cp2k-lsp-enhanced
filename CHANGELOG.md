@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.1.0] - 2026-07-16
+## [0.1.1] - 2026-07-16
 
 - Publish the enhanced OpenQC CP2K language server under the independent
   `cp2k-lsp-enhanced` distribution identity.
@@ -8,6 +8,8 @@
   Python import namespace.
 - Replace token-based deployment with PyPI trusted publishing through the
   protected `pypi` environment.
+- Avoid the historical upstream `v0.1.0` tag and publish from an immutable
+  `v0.1.1` tag owned by Newton Technology.
 
 ## [0.9.2] - 2026-02-xy
 

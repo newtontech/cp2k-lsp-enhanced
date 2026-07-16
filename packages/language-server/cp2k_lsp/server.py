@@ -37,7 +37,7 @@ class CP2KLanguageServer(LanguageServer):
     CONFIGURATION_SECTION = "cp2k"
 
     def __init__(self, *args, **kwargs):
-        super().__init__("cp2k-lsp", "0.1.0", *args, **kwargs)
+        super().__init__("cp2k-lsp", "0.1.1", *args, **kwargs)
         self.parsed_documents: Dict[str, Optional[CP2KInput]] = {}
         self.parser_errors: Dict[str, List] = {}
         self.document_lines: Dict[str, List[str]] = {}
