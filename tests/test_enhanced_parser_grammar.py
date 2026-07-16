@@ -21,7 +21,7 @@ class TestPackageImportability:
         from cp2k_lsp import __version__
 
         assert isinstance(__version__, str)
-        assert __version__ == "0.1.0"
+        assert __version__ == "0.1.1"
 
     def test_import_server(self):
         """Language server class should be importable."""

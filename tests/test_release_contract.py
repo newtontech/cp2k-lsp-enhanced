@@ -15,7 +15,7 @@ def test_newtontech_distribution_identity_and_compatibility_command() -> None:
     poetry = metadata["tool"]["poetry"]
 
     assert poetry["name"] == "cp2k-lsp-enhanced"
-    assert poetry["version"] == "0.1.0"
+    assert poetry["version"] == "0.1.1"
     assert poetry["repository"] == "https://github.com/newtontech/cp2k-lsp-enhanced"
     assert poetry["scripts"]["cp2k-language-server"] == ("cp2k_input_tools.cli.lsp:cp2k_language_server")
     assert poetry["scripts"]["cp2k-lsp-tool"] == "cp2k_input_tools.tool:main"

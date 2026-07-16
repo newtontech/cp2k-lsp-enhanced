@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cp2k-lsp-enhanced"
-version = "0.1.0"
+version = "0.1.1"
 description = "Enhanced CP2K language server and input tooling for OpenQC"
 authors = [
     "Newton Technology",
